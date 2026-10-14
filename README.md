@@ -783,3 +783,381 @@ CONSTRUCTOR AI is being developed to make professional software engineering more
 Copyright © 2026 Alexander Romaskevich. All rights reserved.
 
 *Architecture is the plan. Execution is the proof.*
+# CONSTRUCTOR AI
+## From Imagination to Engineered Software
+
+**An AI-Native Software Engineering Platform**
+
+**An IMPERIAL Core Product**
+
+**Founder & Chief Systems Architect:** Alexander Romaskevich  
+**Public Signature:** RomaskevicH  
+**Stage:** Active Engineering Development  
+**Target v1.0:** December 14, 2026
+
+---
+
+> **THE VISION**
+>
+> A future where building useful software begins with an idea — and ends with a verifiable, working application.
+
+## 01. Executive Investment Overview
+
+CONSTRUCTOR AI is a software engineering platform in development within the IMPERIAL Core ecosystem.
+
+Its objective is to make application development more accessible through coordinated AI engineering agents, automated workflows, isolated builds, testing, debugging, independent quality assurance and human-controlled release.
+
+The intended experience:
+
+**Describe → Plan → Generate → Build → Test → Verify → Deliver**
+
+The product is not yet a generally available commercial service. Production readiness, revenue, customer traction and autonomous end-to-end execution have not been established.
+
+This document describes the opportunity, product strategy and validation milestones. It is not a claim of achieved market share, profitability or guaranteed delivery.
+
+---
+
+## 02. The Problem
+
+Software creation remains difficult for many individuals and organizations.
+
+Common challenges include:
+
+- Translating business requirements into technical specifications.
+- Coordinating multiple engineering disciplines.
+- Managing source code, builds, testing and debugging.
+- Verifying the quality of AI-generated code.
+- Maintaining security and authorization boundaries.
+- Delivering reliable, maintainable applications.
+
+AI code generation reduces some friction, but generated code alone is not equivalent to a verified software product.
+
+### Our Product Thesis
+
+The next step in AI-assisted development is not simply faster code generation.
+
+It is an accountable engineering workflow that can plan, implement, validate and deliver software with traceable evidence.
+
+---
+
+## 03. The Solution
+
+CONSTRUCTOR AI is designed to integrate the essential stages of software development into one controlled workflow.
+
+```mermaid
+flowchart LR
+    IDEA["HUMAN IDEA"]
+    SPEC["AI PLANNING"]
+    CODE["SOURCE CODE"]
+    BUILD["ISOLATED BUILD"]
+    TEST["AUTOMATED TESTS"]
+    QA["INDEPENDENT QA"]
+    APP["WORKING APPLICATION"]
+
+    IDEA --> SPEC --> CODE --> BUILD --> TEST --> QA --> APP
+
+    classDef start fill:#164e63,stroke:#22d3ee,color:#fff
+    classDef finish fill:#14532d,stroke:#4ade80,color:#fff
+    class IDEA start
+    class APP finish
+```
+
+**The intended deliverable is software — not merely a chat response.**
+
+---
+
+## 04. Who We Intend to Serve
+
+| Customer Segment | Problem | Intended Product Value |
+| --- | --- | --- |
+| Entrepreneurs | Limited engineering capacity | Rapid application prototyping |
+| Startups | Time-to-MVP pressure | Structured development automation |
+| Independent Developers | Repetitive implementation work | AI-assisted engineering workflow |
+| Agencies | Multiple client projects | Repeatable production processes |
+| SMBs | Custom internal software needs | Accessible business application creation |
+| Enterprise Teams | Security and governance requirements | Auditable engineering workflows |
+
+These segments are hypotheses for validation, not confirmed paying customer groups.
+
+---
+
+## 05. Product Capabilities
+
+### Natural-Language Software Requirements
+
+Users describe the intended product, features and constraints.
+
+### AI Planning
+
+The platform decomposes requirements into engineering tasks and acceptance criteria.
+
+### Code Generation
+
+Authorized models and agents generate source files within approved project boundaries.
+
+### Secure Build Execution
+
+Generated source is intended to be built and tested inside isolated environments.
+
+### Automated Testing
+
+Functional and integration checks determine whether requirements have been met.
+
+### Bounded Debugging
+
+Failed checks may trigger limited repair cycles.
+
+### Independent Quality Assurance
+
+Critical work is reviewed separately from the agent that created it.
+
+### Human-Controlled Release
+
+High-risk operations require explicit authorization.
+
+**Development disclosure:** These are intended capabilities. Availability varies by implementation stage and must be confirmed by real tests.
+
+---
+
+## 06. Why Our Approach Is Different
+
+CONSTRUCTOR AI is being designed around the integration of engineering execution, governance and verifiable outcomes.
+
+| Product Dimension | CONSTRUCTOR AI Design Objective |
+| --- | --- |
+| Natural-language creation | Convert intent into structured engineering tasks |
+| Agent orchestration | Coordinate specialized authorized NCA roles |
+| Code execution | Use controlled, isolated environments |
+| Verification | Record real build and test evidence |
+| Quality assurance | Separate implementation and independent review |
+| Security | Apply least privilege and approval boundaries |
+| Ownership | Provide traceable project artifacts |
+| Accountability | Maintain audit and execution records |
+
+### Competitive Landscape
+
+The product operates in a market that includes AI coding assistants, AI-native IDEs, app builders and autonomous software engineering tools.
+
+Examples include GitHub Copilot, Cursor, Replit, Lovable and other AI development platforms.
+
+Our differentiation hypothesis is the combination of **multi-agent coordination, evidence-based quality assurance and human-controlled engineering execution**.
+
+This hypothesis must be validated through direct feature benchmarking, reliability tests, customer research and measured development outcomes.
+
+No claim of technical superiority over competitors is made without supporting benchmark evidence.
+
+---
+
+## 07. Technology Strategy
+
+The platform is designed to extend existing IMPERIAL Core infrastructure rather than duplicate it.
+
+```mermaid
+flowchart TB
+    USER["CUSTOMER WORKSPACE"]
+    EDITOR["PRODUCT EDITOR"]
+    ORCH["ASTRA ORCHESTRATION"]
+    NCA["AUTHORIZED ENGINEERING AGENTS"]
+    BUILD["SECURE BUILD ENVIRONMENT"]
+    QA["INDEPENDENT QA"]
+    DELIVERY["ARTIFACTS / PREVIEW / EXPORT"]
+    CONTROL["SECURITY + APPROVAL + AUDIT"]
+
+    USER --> EDITOR --> ORCH --> NCA --> BUILD --> QA --> DELIVERY
+    CONTROL -.-> EDITOR
+    CONTROL -.-> ORCH
+    CONTROL -.-> BUILD
+    CONTROL -.-> QA
+
+    classDef core fill:#164e63,stroke:#22d3ee,color:#fff
+    classDef output fill:#14532d,stroke:#4ade80,color:#fff
+    class ORCH core
+    class DELIVERY output
+```
+
+### Infrastructure Components Under Evaluation
+
+- Supabase — task execution, authorization and data services.
+- Neon — staging and application data.
+- GitHub — version control and engineering collaboration.
+- Netlify — frontend and preview deployment.
+- AI Model Gateway — planning and source generation.
+- CYBER HAK — intended security integration.
+
+Existing integrations must be verified independently before being described as production-ready.
+
+---
+
+## 08. Commercial Strategy
+
+Potential monetization paths:
+
+**Individual Subscription**
+Access to a defined quota of software creation and engineering tasks.
+
+**Professional Subscription**
+Expanded projects, development capabilities and artifact management.
+
+**Team Workspace**
+Shared projects, collaboration and quality workflows.
+
+**Business / Enterprise**
+Governance, controlled integrations, support and deployment options.
+
+**Usage-Based Add-ons**
+Potential metered build, compute or generation capacity where commercially viable.
+
+No subscription price, billing capability or paying customer base is asserted in this document.
+
+### Unit Economics Must Be Proven
+
+Before pricing is finalized, measure:
+
+- Model inference cost per successful project.
+- Sandbox compute cost.
+- Storage and artifact cost.
+- Average repair iterations.
+- Human QA and support requirements.
+- Customer acquisition cost.
+- Gross margin per subscription tier.
+
+**FREE_ONLY** governs the current authorized engineering work. Commercial deployment costs require separate planning and owner approval.
+
+---
+
+## 09. Business Validation Funnel
+
+```mermaid
+flowchart TD
+    A["PRODUCT AWARENESS"]
+    B["QUALIFIED INTEREST"]
+    C["DEMO / TRIAL"]
+    D["FIRST SUCCESSFUL PROJECT"]
+    E["PAID CONVERSION"]
+    F["REPEAT USAGE"]
+    G["RETENTION / EXPANSION"]
+
+    A --> B --> C --> D --> E --> F --> G
+
+    classDef goal fill:#14532d,stroke:#4ade80,color:#fff
+    class E,F,G goal
+```
+
+The funnel is a planned measurement framework. Conversion rates, customers and revenue are not yet verified.
+
+---
+
+## 10. Engineering Roadmap
+
+| Phase | Delivery Objective | Evidence Required |
+| --- | --- | --- |
+| Integration | Confirm editor-to-worker task flow | Real task ID and execution trace |
+| Generation | Produce actual source files | Artifact manifest and checksums |
+| Build | Compile or package software safely | Build logs and reproducible result |
+| First MVP | Generate Task Manager | CRUD, persistence and E2E tests |
+| Automation | Integrate authorized engineering agents | Runtime, capability and QA evidence |
+| Product Expansion | Multi-file projects, preview and export | Functional acceptance tests |
+| Release Readiness | Security, regression and documentation | Independent release approval |
+
+**Target release:** December 14, 2026.
+
+The release target remains conditional on successful acceptance tests.
+
+---
+
+## 11. What We Will Measure
+
+### Engineering Metrics
+
+- End-to-end task success rate.
+- Build success rate.
+- Automated test pass rate.
+- Mean time to repair.
+- Cost per successful generated application.
+- Security findings per release candidate.
+- Independent QA rejection rate.
+- Time from requirement to verified artifact.
+
+### Business Metrics
+
+- Qualified product inquiries.
+- Demo-to-trial conversion.
+- Trial-to-paid conversion.
+- Monthly recurring revenue.
+- Customer retention.
+- Gross margin.
+- Customer satisfaction.
+
+No metrics are presented as achieved until supported by actual records.
+
+---
+
+## 12. Risk Management
+
+| Risk | Mitigation |
+| --- | --- |
+| AI-generated defects | Automated tests and independent QA |
+| Untrusted code execution | Isolated sandbox and strict permissions |
+| Excessive inference costs | Quotas, model routing and budgets |
+| Unreliable integrations | Health checks, retries and audit evidence |
+| Scope expansion | Milestone-based delivery |
+| Premature commercialization | Verified release gates and honest disclosures |
+| Intellectual property exposure | Repository review and secret protection |
+
+---
+
+## 13. Investment Readiness
+
+Before any formal investment process, prepare a verified data room containing:
+
+1. Demonstrable product build.
+2. Source ownership and intellectual property records.
+3. Architecture and security documentation.
+4. Independent QA evidence.
+5. Product roadmap and milestone history.
+6. Real cost and operating assumptions.
+7. Customer discovery results.
+8. Financial model with disclosed assumptions.
+9. Company and contractual documentation, where applicable.
+10. Clearly stated funding needs and use of proceeds.
+
+Funding terms, valuations and investor returns must not be represented as established without appropriate supporting documentation.
+
+---
+
+## 14. Founder & Long-Term Vision
+
+**Alexander Romaskevich**  
+Founder • Owner • CEO • Chief Systems Architect  
+**RomaskevicH**
+
+CONSTRUCTOR AI is part of the IMPERIAL Core vision: building practical AI systems that extend human capability, improve access to technology and preserve human authority over consequential decisions.
+
+### Our Guiding Principle
+
+**Architecture → Implementation → Evidence.**
+
+### Our Product Ambition
+
+To build an AI engineering platform where ideas can become dependable software through intelligent automation, rigorous verification and accountable human oversight.
+
+---
+
+## Contact & Project Identity
+
+**Project:** CONSTRUCTOR AI  
+**Ecosystem:** IMPERIAL Core  
+**Founder:** Alexander Romaskevich  
+**Public Signature:** RomaskevicH
+
+For partnership or investment inquiries, use verified official project communication channels when published.
+
+Copyright © 2026 Alexander Romaskevich. All rights reserved.
+
+---
+
+**CONSTRUCTOR AI**
+
+*From imagination to engineered software.*
+
+**Build with intelligence. Verify with evidence. Keep humans in control.**
