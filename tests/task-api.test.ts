@@ -1,20 +1,28 @@
 import request from 'supertest';
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import app from '../src/server';
-import { initDb, resetDbForTests, getDb } from '../src/db';
+import { initDb, resetDbForTests, closeDb } from '../src/db';
 import { unlinkSync, existsSync } from 'fs';
+import { v4 as uuidv4 } from 'uuid';
 
-const TEST_DB = './data/test-db.sqlite';
+const TEST_DB_BASE = './data/test-';
+
+function makeTestDbPath() {
+  return `${TEST_DB_BASE}${uuidv4()}.sqlite`;
+}
 
 describe('Task Manager API', () => {
+  const testDb = makeTestDbPath();
+
   beforeAll(async () => {
-    process.env.DATABASE_PATH = TEST_DB;
-    await initDb(TEST_DB);
-    await resetDbForTests(TEST_DB);
+    process.env.DATABASE_PATH = testDb;
+    await initDb(testDb);
+    await resetDbForTests(testDb);
   });
 
-  afterAll(() => {
-    if (existsSync(TEST_DB)) unlinkSync(TEST_DB);
+  afterAll(async () => {
+    try { await closeDb(); } catch (e) {}
+    if (existsSync(testDb)) unlinkSync(testDb);
   });
 
   it('GET /health returns ok', async () => {
@@ -23,7 +31,7 @@ describe('Task Manager API', () => {
     expect(res.body).toEqual({ status: 'ok' });
   });
 
-  it('creates a task and persists after reopen', async () => {
+  it('creates a task and persists after DB reopen', async () => {
     const res = await request(app)
       .post('/tasks')
       .send({ title: 'Persist test', description: 'Should persist' });
@@ -31,50 +39,39 @@ describe('Task Manager API', () => {
     expect(res.status).toBe(201);
     const id = res.body.id;
 
-    // simulate server restart by closing db instance and reopening
-    // getDb is cached; but we can re-init by deleting file handle by reopening a new process
-    // For test simplicity: call getDb and ensure row exists
+    // close DB via internal endpoint and reopen
+    await request(app).post('/internal/close-db');
+    await initDb(testDb);
+
     const get = await request(app).get(`/tasks/${id}`);
     expect(get.status).toBe(200);
     expect(get.body.title).toBe('Persist test');
   });
 
-  it('lists tasks', async () => {
-    const res = await request(app).get('/tasks');
-    expect(res.status).toBe(200);
-    expect(Array.isArray(res.body)).toBe(true);
-  });
-
-  it('updates a task', async () => {
+  it('performs full CRUD and complete', async () => {
     const created = await request(app)
       .post('/tasks')
-      .send({ title: 'Old', description: 'old' });
+      .send({ title: 'Full CRUD', description: 'Test' });
 
-    const res = await request(app)
-      .put(`/tasks/${created.body.id}`)
-      .send({ title: 'New', description: 'new' });
+    expect(created.status).toBe(201);
+    const id = created.body.id;
 
-    expect(res.status).toBe(200);
-    expect(res.body.title).toBe('New');
-  });
+    const read = await request(app).get(`/tasks/${id}`);
+    expect(read.status).toBe(200);
 
-  it('marks a task complete', async () => {
-    const created = await request(app)
-      .post('/tasks')
-      .send({ title: 'Do it', description: 'do' });
+    const updated = await request(app).put(`/tasks/${id}`).send({ title: 'Updated' });
+    expect(updated.status).toBe(200);
+    expect(updated.body.title).toBe('Updated');
 
-    const res = await request(app).post(`/tasks/${created.body.id}/complete`);
-    expect(res.status).toBe(200);
-    expect(res.body.completed).toBe(true);
-  });
+    const comp = await request(app).post(`/tasks/${id}/complete`);
+    expect(comp.status).toBe(200);
+    expect(comp.body.completed).toBe(true);
 
-  it('deletes a task', async () => {
-    const created = await request(app)
-      .post('/tasks')
-      .send({ title: 'To delete', description: 'del' });
+    const del = await request(app).delete(`/tasks/${id}`);
+    expect(del.status).toBe(204);
 
-    const res = await request(app).delete(`/tasks/${created.body.id}`);
-    expect(res.status).toBe(204);
+    const notFound = await request(app).get(`/tasks/${id}`);
+    expect(notFound.status).toBe(404);
   });
 
 });

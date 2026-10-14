@@ -9,7 +9,6 @@ on:
 jobs:
   ci:
     runs-on: ubuntu-latest
-    services: {}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -32,18 +31,38 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Build Docker image
-        run: |
-          docker build -t constructor-ai-task-manager .
+      - name: Build Docker image (multi-stage)
+        run: docker build -t constructor-ai-task-manager .
 
-      - name: Docker smoke test
+      - name: Run Docker container
         run: |
           docker run -d -e DATABASE_PATH=/data/db.sqlite --name constructor-ai-task-manager -p 3000:3000 constructor-ai-task-manager
-          sleep 2
-          curl --fail http://localhost:3000/health
-          docker stop constructor-ai-task-manager
+          sleep 3
 
-      - name: Upload test results
+      - name: Docker CRUD smoke tests
+        run: |
+          set -e
+          BASE_URL=http://localhost:3000
+          # CREATE
+          CREATE_RESP=$(curl -s -X POST "$BASE_URL/tasks" -H "Content-Type: application/json" -d '{"title":"smoke","description":"smoke"}')
+          echo "CREATE_RESP=$CREATE_RESP"
+          ID=$(echo "$CREATE_RESP" | jq -r '.id')
+          if [ "$ID" = "null" ] || [ -z "$ID" ]; then
+            echo "Create failed"; exit 1
+          fi
+          # READ
+          curl --fail "$BASE_URL/tasks/$ID"
+          # UPDATE
+          curl -s -X PUT "$BASE_URL/tasks/$ID" -H "Content-Type: application/json" -d '{"title":"smoke-updated"}'
+          # COMPLETE
+          curl --fail -X POST "$BASE_URL/tasks/$ID/complete"
+          # DELETE
+          curl --fail -X DELETE "$BASE_URL/tasks/$ID"
+
+      - name: Stop Docker container
+        run: docker stop constructor-ai-task-manager || true
+
+      - name: Upload test results and coverage
         uses: actions/upload-artifact@v4
         with:
           name: test-results

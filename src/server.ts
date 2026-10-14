@@ -7,7 +7,8 @@ import {
   deleteTask,
   completeTask,
   initDb,
-  resetDbForTests
+  resetDbForTests,
+  closeDb
 } from './db';
 import { CreateTaskSchema, UpdateTaskSchema, IdParamSchema } from './validators';
 
@@ -94,6 +95,15 @@ app.delete('/tasks/:id', async (req: Request, res: Response, next: NextFunction)
   } catch (error: any) {
     if (error?.issues) return res.status(400).json({ error: 'INVALID_ID', details: error.issues });
     next(error);
+  }
+});
+
+app.post('/internal/close-db', async (_req, res) => {
+  try {
+    await closeDb();
+    res.status(200).json({ status: 'closed' });
+  } catch (e) {
+    res.status(500).json({ error: 'CLOSE_DB_FAILED' });
   }
 });
 
