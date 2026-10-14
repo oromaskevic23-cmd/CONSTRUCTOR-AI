@@ -39,6 +39,11 @@ jobs:
           docker run -d -e DATABASE_PATH=/data/db.sqlite --name constructor-ai-task-manager -p 3000:3000 constructor-ai-task-manager
           sleep 3
 
+      - name: Install jq (required for smoke test parsing)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq
+
       - name: Docker CRUD smoke tests
         run: |
           set -e
