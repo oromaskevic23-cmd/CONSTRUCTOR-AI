@@ -1161,3 +1161,25 @@ Copyright © 2026 Alexander Romaskevich. All rights reserved.
 *From imagination to engineered software.*
 
 **Build with intelligence. Verify with evidence. Keep humans in control.**
+◈ IMPERIAL CORE / CONSTRUCTOR AI
+PUBLIC DEMO · LOCAL ONLY
+Ideas become working software.
+A real, interactive Task Manager reference application. Create, update and complete tasks. Your data stays in this browser — no account or backend required.
+Task Manager
+A functional reference demo for the CONSTRUCTOR AI engineering roadmap.
+
++ Add task
+0
+Total tasks
+0
+In progress
+0
+Completed
+Your tasks
+All
+Active
+Done
+
+
+CONSTRUCTOR AI · IMPERIAL Core · Founder: Alexander Romaskevich · RomaskevicH
+Reference application, not proof of autonomous generation or production platform readiness. Data is stored only in your browser.
