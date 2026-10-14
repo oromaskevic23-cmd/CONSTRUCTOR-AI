@@ -1,4 +1,5 @@
 # CONSTRUCTOR-AI
+ 
 CONSTRUCTOR AI — Autonomous Software Engineering Platform by IMPERIAL Core. Transform ideas into working applications through AI-powered planning, coding, building, testing, debugging and independent QA. Founded by Alexander Romaskevich | RomaskevicH.
 ---
 CONSTRUCTOR AI
@@ -477,3 +478,308 @@ No open-source license is granted merely by publishing this document.
 
 **CONSTRUCTOR AI**
 Build with intelligence. Verify with evidence. Keep humans in control.
+# CONSTRUCTOR AI — Visual Engineering Architecture
+
+> **Architecture as Code · Engineering Blueprint v1.0**
+>
+> IMPERIAL Core | Founder & Chief Systems Architect: Alexander Romaskevich | RomaskevicH
+
+**Status:** Target architecture / implementation in progress  
+**Release target:** 14 December 2026  
+**Design principles:** Evidence-first · Zero Trust · Human Control · Independent QA
+
+---
+
+## 01 — End-to-End Platform Architecture
+
+The platform is designed as an integrated engineering system rather than a collection of disconnected AI chatbots.
+
+```mermaid
+flowchart TB
+    U["USER / PRODUCT OWNER"]
+    UI["CONSTRUCTOR AI EDITOR"]
+    API["AUTHENTICATED TASK API"]
+    GATE{"AUTHORIZATION GATE"}
+    QUEUE[("CANONICAL TASK QUEUE")]
+    ASTRA["ASTRA ORCHESTRATOR"]
+    MODEL["AI MODEL GATEWAY"]
+    AGENTS["AUTHORIZED NCA TEAM"]
+    SANDBOX["ISOLATED BUILD SANDBOX"]
+    QA["INDEPENDENT QA"]
+    ART[("ARTIFACT STORAGE")]
+    AUDIT[("AUDIT LEDGER")]
+    RELEASE{"HUMAN APPROVAL"}
+    OUT["PREVIEW / EXPORT / RELEASE"]
+    DENY["REJECT + AUDIT"]
+
+    U --> UI --> API --> GATE
+    GATE -->|Authorized| QUEUE
+    GATE -->|Denied| DENY
+    QUEUE --> ASTRA
+    ASTRA --> MODEL
+    ASTRA --> AGENTS
+    MODEL --> AGENTS
+    AGENTS --> SANDBOX
+    SANDBOX --> QA
+    QA -->|Pass| ART
+    QA -->|Fail| ASTRA
+    ART --> RELEASE
+    RELEASE -->|Approved| OUT
+    RELEASE -->|Rejected| DENY
+    API -.-> AUDIT
+    ASTRA -.-> AUDIT
+    QA -.-> AUDIT
+    RELEASE -.-> AUDIT
+
+    classDef control fill:#102a43,stroke:#38bdf8,color:#fff
+    classDef safe fill:#14532d,stroke:#4ade80,color:#fff
+    classDef risk fill:#7f1d1d,stroke:#f87171,color:#fff
+    class ASTRA,GATE,RELEASE control
+    class OUT,ART safe
+    class DENY risk
+```
+
+**Implementation note:** The diagram represents the target logical architecture. It does not certify that every integration has passed end-to-end testing.
+
+---
+
+## 02 — Multi-Agent Engineering Coordination
+
+ASTRA coordinates specialized, authorized agents. No agent may approve its own critical work.
+
+```mermaid
+flowchart TD
+    ASTRA["ASTRA / EXECUTIVE ORCHESTRATOR"]
+    P["NCA PLANNER"]
+    C["NCA CODER"]
+    B["NCA BUILDER"]
+    T["NCA TESTER"]
+    D["NCA DEBUGGER"]
+    Q["INDEPENDENT NCA QA"]
+    E[("EVIDENCE LEDGER")]
+    H["HUMAN APPROVAL"]
+
+    ASTRA --> P
+    P --> C
+    C --> B
+    B --> T
+    T -->|Failure| D
+    D --> C
+    T -->|Tests passed| Q
+    Q -->|Rejected| ASTRA
+    Q -->|Accepted| H
+    P -.-> E
+    C -.-> E
+    B -.-> E
+    T -.-> E
+    Q -.-> E
+    H -.-> E
+
+    classDef lead fill:#164e63,stroke:#22d3ee,color:#fff
+    classDef review fill:#14532d,stroke:#4ade80,color:#fff
+    class ASTRA lead
+    class Q,H review
+```
+
+Agent names denote engineering roles. Runtime availability, AI Passport and capability bindings must be verified before assigning work.
+
+---
+
+## 03 — Task Lifecycle State Machine
+
+A task must progress through controlled, auditable transitions.
+
+```mermaid
+stateDiagram-v2
+    [*] --> CREATED
+    CREATED --> VALIDATED
+    VALIDATED --> PLANNED
+    PLANNED --> AUTHORIZED
+    AUTHORIZED --> RUNNING
+    RUNNING --> BUILDING
+    BUILDING --> TESTING
+    TESTING --> DEBUGGING: Failure within retry budget
+    DEBUGGING --> BUILDING: Revised source
+    TESTING --> QA: Tests passed
+    QA --> APPROVAL_REQUIRED: Independent QA passed
+    QA --> BLOCKED: QA rejected
+    APPROVAL_REQUIRED --> READY: Authorized approval
+    READY --> RELEASED
+    VALIDATED --> BLOCKED: Policy denied
+    BUILDING --> FAILED: Unrecoverable failure
+    TESTING --> FAILED: Retry budget exhausted
+    RELEASED --> [*]
+    FAILED --> [*]
+    BLOCKED --> [*]
+```
+
+**Compatibility requirement:** Existing worker v10 database states must be explicitly mapped. Do not change production state values without migration review and tests.
+
+---
+
+## 04 — Secure Build and Test Pipeline
+
+AI-generated source is untrusted until inspected and executed inside an authorized sandbox.
+
+```mermaid
+flowchart LR
+    SOURCE["GENERATED SOURCE"]
+    CHECK["STATIC VALIDATION"]
+    POLICY{"SECURITY POLICY"}
+    DEP["DEPENDENCY CHECK"]
+    BOX["ISOLATED SANDBOX"]
+    BUILD["REPRODUCIBLE BUILD"]
+    TEST["AUTOMATED TESTS"]
+    QA["INDEPENDENT QA"]
+    PACK["SIGNED / HASHED ARTIFACT"]
+    FAIL["BLOCK + EVIDENCE"]
+
+    SOURCE --> CHECK --> POLICY
+    POLICY -->|Allow| DEP
+    POLICY -->|Deny| FAIL
+    DEP -->|Pass| BOX
+    DEP -->|Fail| FAIL
+    BOX --> BUILD --> TEST
+    TEST -->|Pass| QA
+    TEST -->|Fail| FAIL
+    QA -->|Pass| PACK
+    QA -->|Fail| FAIL
+
+    classDef secure fill:#14532d,stroke:#4ade80,color:#fff
+    classDef blocked fill:#7f1d1d,stroke:#f87171,color:#fff
+    class PACK secure
+    class FAIL blocked
+```
+
+Sandbox requirements:
+- Non-root execution
+- CPU, RAM, disk and runtime limits
+- Restricted network access
+- No access to production credentials
+- Read-only base environment
+- Controlled artifact export
+- Audit logging and cleanup
+
+---
+
+## 05 — Zero Trust Security Boundaries
+
+Identity, capability and approval are separate authorization concepts.
+
+```mermaid
+flowchart TB
+    REQ["AGENT ACTION REQUEST"]
+    ID{"VALID IDENTITY?"}
+    CAP{"CAPABILITY GRANTED?"}
+    SCOPE{"RESOURCE IN SCOPE?"}
+    RISK{"RISK ACCEPTABLE?"}
+    APPROVAL{"HUMAN APPROVAL REQUIRED?"}
+    AUTH{"APPROVAL VERIFIED?"}
+    EXEC["BOUNDED EXECUTION"]
+    DENY["DENY BY DEFAULT"]
+    LOG[("AUDIT LEDGER")]
+
+    REQ --> ID
+    ID -->|Yes| CAP
+    ID -->|No| DENY
+    CAP -->|Yes| SCOPE
+    CAP -->|No| DENY
+    SCOPE -->|Yes| RISK
+    SCOPE -->|No| DENY
+    RISK -->|Yes| APPROVAL
+    RISK -->|No| DENY
+    APPROVAL -->|No| EXEC
+    APPROVAL -->|Yes| AUTH
+    AUTH -->|Approved| EXEC
+    AUTH -->|Denied| DENY
+    EXEC --> LOG
+    DENY --> LOG
+
+    classDef success fill:#14532d,stroke:#4ade80,color:#fff
+    classDef denied fill:#7f1d1d,stroke:#f87171,color:#fff
+    class EXEC success
+    class DENY denied
+```
+
+Core principles:
+- Identity is not authority.
+- Capability is not approval.
+- Intelligence is not privilege.
+- Failure to verify means denial.
+- No unauthorized production deployment.
+- No autonomous financial operations.
+
+---
+
+## 06 — 60-Day Engineering Roadmap
+
+The roadmap focuses on delivering one verified vertical workflow before broadening the product.
+
+```mermaid
+gantt
+    title CONSTRUCTOR AI — 60-Day Engineering Target
+    dateFormat YYYY-MM-DD
+    axisFormat %d %b
+    section Foundation
+    Source recovery and integration audit :a1, 2026-10-14, 7d
+    section Execution
+    Safe artifact generation and sandbox :a2, 2026-10-21, 10d
+    section First Product
+    Task Manager end-to-end MVP :a3, 2026-10-31, 11d
+    section Automation
+    Authorized NCA and independent QA :a4, 2026-11-11, 10d
+    section Product Expansion
+    Editor preview export and multi-file :a5, 2026-11-21, 14d
+    section Release Readiness
+    Regression security and acceptance :a6, 2026-12-05, 9d
+    Release target :milestone, 2026-12-14, 0d
+```
+
+Dates are engineering targets, not completion claims.
+
+---
+
+## 07 — Evidence and Acceptance Model
+
+Every release candidate must be traceable through:
+
+```text
+MISSION_ID
+   |
+   +-- TASK_ID
+         |
+         +-- AUTHORIZED_AGENT_ID
+         +-- SOURCE_REVISION
+         +-- BUILD_RESULT
+         +-- TEST_RESULTS
+         +-- SECURITY_CHECKS
+         +-- INDEPENDENT_QA
+         +-- APPROVAL_RECORD
+         +-- ARTIFACT_HASH
+         +-- RELEASE_STATUS
+```
+
+A feature may be labeled VERIFIED only when the necessary tests and evidence are available.
+
+### First Reference Product: Task Manager
+
+The initial application must pass:
+CREATE / READ / UPDATE / DELETE / COMPLETE / PERSISTENCE / BUILD / SECURITY / INDEPENDENT_QA / END_TO_END.
+
+No mocked results may be substituted for actual test execution.
+
+---
+
+## 08 — Product Promise
+
+**From an idea to verified software.**
+
+CONSTRUCTOR AI is being developed to make professional software engineering more accessible through orchestrated AI agents, isolated execution, reproducible testing and accountable human oversight.
+
+**Founder:** Alexander Romaskevich  
+**Ecosystem:** IMPERIAL Core  
+**Public Signature:** RomaskevicH
+
+Copyright © 2026 Alexander Romaskevich. All rights reserved.
+
+*Architecture is the plan. Execution is the proof.*
