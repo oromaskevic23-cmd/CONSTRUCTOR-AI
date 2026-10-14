@@ -1,0 +1,51 @@
+name: constructor-ai-taskmanager-ci
+
+on:
+  push:
+    branches: [main, feature/task-manager-poc]
+  pull_request:
+    branches: [main]
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    services: {}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check
+        run: npm run lint
+
+      - name: Run tests
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      - name: Build Docker image
+        run: |
+          docker build -t constructor-ai-task-manager .
+
+      - name: Docker smoke test
+        run: |
+          docker run -d -e DATABASE_PATH=/data/db.sqlite --name constructor-ai-task-manager -p 3000:3000 constructor-ai-task-manager
+          sleep 2
+          curl --fail http://localhost:3000/health
+          docker stop constructor-ai-task-manager
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: coverage
+          if-no-files-found: warn
