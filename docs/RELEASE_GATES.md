@@ -14,6 +14,12 @@
 
 **Fail closed:** never publish a “verified autonomous app” when Gate 5 has not passed.
 
+## Gate 3a — AI plan-only adapter
+
+Validated LLM response contracts and short-lived local HMAC permits are now implemented as source and covered by tests. They prove input validation and local permission logic only. Mock transport cannot verify external provider authentication, inference cost, real AI output quality or deployment. Live Groq invocation is intentionally blocked when `GROQ_API_KEY`, `GROQ_MODEL` or `PLAN_AUTH_KEY` is absent.
+
+Explicit status: **E2 source and E3 test evidence when CI succeeds; NOT E5 model-integrated runtime.** No arbitrary code execution or release path has been authorized.
+
 ## Rollback
 
 Revert or deploy a previously verified commit SHA, and re-execute the full check suite. Browser-only localStorage data may be incompatible between future releases; preserve data migration design before changing storage schema. Production rollback is not implemented by this reference repo.

@@ -5,6 +5,11 @@ const required=[
   "package.json","index.html","styles.css","src/tasks.js","src/app.js",
   "test/tasks.test.js","test/server.test.js","tools/serve.mjs",
   "SECURITY.md","docs/VERIFIED_ENGINEERING_STANDARD.md",
+  "engineering/draft-contract.mjs","engineering/groq-gateway.mjs",
+  "engineering/local-permit.mjs","engineering/plan-only.mjs",
+  "tools/generate-plan.mjs","test/plan-contract.test.js","test/groq-gateway.test.js",
+  "test/local-permit.test.js","test/cli.test.js",
+  "docs/AI_MODEL_GATEWAY.md",
   ".github/workflows/ci.yml"
 ];
 const records=[];

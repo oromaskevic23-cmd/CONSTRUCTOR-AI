@@ -5,9 +5,9 @@
 **Founder / Chief Systems Architect:** Alexander Romaskevich · **RomaskevicH**  
 **IMPERIAL Core intelligence:** **VELEON** · **HANTER** for mission coordination  
 **Project status:** Active engineering · Free-only prototype · **NOT a verified autonomous software factory**  
-**Reference release:** `0.1.0` source-only (browser Task Manager)
+**Reference release:** `0.2.0` (Task Manager source + gated plan-only adapter; AI inference not yet independently verified)
 
-> **Evidence boundary:** This repository now contains a real, dependency-free **Task Manager reference application** and an automated CI workflow. They do **not** establish working LLM inference, secure execution of arbitrary generated code, customer-ready hosting, full end-to-end browser tests or a production CONSTRUCTOR AI v1.0. GitHub Actions checks must be read from actual run status; source files alone are not a passing CI attestation.
+> **Evidence boundary:** This repository now contains a real, dependency-free **Task Manager reference application** and an automated CI workflow. They do **not** establish live provider inference, secure execution of arbitrary generated code, customer-ready hosting, full end-to-end browser tests or a production CONSTRUCTOR AI v1.0. GitHub Actions checks must be read from actual run status; source files alone are not a passing CI attestation.
 
 ## Run the reference app
 
@@ -25,6 +25,18 @@ npm test            # Node built-in domain tests + HTTP smoke tests
 npm run check       # JavaScript syntax checks
 npm run verify      # Checks + tests + SHA-256 source inventory
 ```
+
+## AI planning gateway v0.2 — secure, plan-only prototype
+
+The repository now includes a **fixed-origin Groq adapter and constrained, validated proposal contract**, intentionally separate from the browser Task Manager. No server secrets are exposed to the frontend. The draft gateway **never executes generated source, modifies the repository, provisions infrastructure or releases software**.
+
+- Source: [engineering/groq-gateway.mjs](engineering/groq-gateway.mjs), [engineering/draft-contract.mjs](engineering/draft-contract.mjs).
+- Local permit gate: [engineering/local-permit.mjs](engineering/local-permit.mjs); short-lived, single-use HMAC permit for **planning only**. This is **NOT** an operational distributed AI Passport or a proof of human identity.
+- Runner: [engineering/plan-only.mjs](engineering/plan-only.mjs); CLI: [tools/generate-plan.mjs](tools/generate-plan.mjs).
+- Negative-path unit tests: [test/plan-contract.test.js](test/plan-contract.test.js), [test/groq-gateway.test.js](test/groq-gateway.test.js), [test/local-permit.test.js](test/local-permit.test.js), [test/cli.test.js](test/cli.test.js).
+- Detailed scope / commands: [AI Model Gateway](docs/AI_MODEL_GATEWAY.md).
+
+**All provider tests run with an injected mock transport. They are not evidence of a live Groq call.** A legitimate server-side `GROQ_API_KEY`, model ID and local `PLAN_AUTH_KEY` must be explicitly configured to try the real provider. Until then, live inference remains **BLOCKED / NOT VERIFIED**. API quota/cost policies must be reviewed by the owner before the first real call.
 
 ## Engineering evidence map
 
@@ -46,7 +58,7 @@ Never treat an architectural intention as an implemented or tested feature. **NO
 2. **Dependency-free reference:** local verification at zero model/API cost.
 3. **Automated checks:** PR and main-branch test workflow, with source-digest artifact.
 4. **Zero Trust:** untrusted generated code cannot run in this reference; no model credentials in browser.
-5. **Signed-permit design:** architecture requires scoped authorization; this demo does **not** claim those controls are implemented.
+5. **Scoped local draft permit:** tested HMAC gate implemented for plan-only requests; production-grade distributed Agent Passport and privileged approvals remain future work.
 6. **Independent QA target:** coder and verifier duties separated in future platform builds.
 7. **Human release gate:** no production deployment/financial activity without explicit owner approval.
 8. **Evidence tiers:** E0–E6 and truthful status labels.
