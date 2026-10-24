@@ -4,7 +4,7 @@ import {generateGroqDraft,ModelGatewayError} from "../engineering/groq-gateway.m
 import {issueLocalDraftPermit} from "../engineering/local-permit.mjs";
 import {runPlanOnlyMission} from "../engineering/plan-only.mjs";
 
-const key = "gsk_TEST_ONLY_VALID_LENGTH_NOT_REAL_TOKEN_1234";
+const key = "gsk_" + "a".repeat(42); // Synthetic mock only; never a real provider credential.
 const model = "openai/gpt-oss-20b";
 const mission = {id:"mission-123",goal:"Make a small offline task app",allowModel:true};
 const draft = {schema:"constructor_draft_v1",summary:"Generate a task tracker",steps:[{id:"step-1",action:"Design local state",acceptance:"Can add and list tasks"}],files:[{path:"src/main.js",content:"export const task = true;"}]};
