@@ -20,6 +20,10 @@ Validated LLM response contracts and short-lived local HMAC permits are now impl
 
 Explicit status: **E2 source and E3 test evidence when CI succeeds; NOT E5 model-integrated runtime.** No arbitrary code execution or release path has been authorized.
 
+## Gate 3b — Quarantine-only packaging (v0.3)
+
+AI-drafted source can be saved without running it. The package includes file SHA-256 checks, a checksum of the manifest and an independent read-back consistency verifier. Static flags can require further QA or block possible secrets; they do not prove safety. Mock provider integration tests do **not** establish real Groq inference or true AI-generated application delivery. All release decisions remain DENIED. Production-ready signatures, hardened isolation and independent audit are NOT IMPLEMENTED.
+
 ## Rollback
 
 Revert or deploy a previously verified commit SHA, and re-execute the full check suite. Browser-only localStorage data may be incompatible between future releases; preserve data migration design before changing storage schema. Production rollback is not implemented by this reference repo.

@@ -10,6 +10,9 @@ const required=[
   "tools/generate-plan.mjs","test/plan-contract.test.js","test/groq-gateway.test.js",
   "test/local-permit.test.js","test/cli.test.js",
   "docs/AI_MODEL_GATEWAY.md",
+  "engineering/static-review.mjs","engineering/proof-bundle.mjs",
+  "tools/verify-proof.mjs","test/proof-bundle.test.js",
+  "test/offline-integration.test.js","docs/PROOF_QUARANTINE.md",
   ".github/workflows/ci.yml"
 ];
 const records=[];

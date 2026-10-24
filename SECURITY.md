@@ -16,3 +16,7 @@ Use a **private GitHub Security Advisory** where enabled on this repository, or 
 - Do not claim this repository is penetration-tested or Enterprise-certified absent independent assessment.
 
 **Incident response:** revoke exposed keys through their issuer, contain affected systems, record evidence without secrets, repair vulnerability, run independent regression checks, release only with owner authorization.
+
+## Non-executing artifact quarantine v0.3
+
+The proof-bundle stage writes generated text into fresh private directories and checks SHA-256 integrity. It **is not a sandbox or a signed attestation**. Static heuristics do not establish code safety, and anyone with write access can alter both files and their unsigned manifest. Never import, compile, run, serve, deploy or release an untrusted draft. Use only a trusted operator-owned local output directory, not a shared or attacker-writable filesystem.
