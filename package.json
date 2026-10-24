@@ -1,0 +1,16 @@
+{
+  "name": "constructor-ai-verified-reference",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Dependency-free Task Manager reference with auditable tests. Not the autonomous CONSTRUCTOR AI platform.",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node tools/serve.mjs",
+    "check": "node --check src/tasks.js && node --check src/app.js && node --check tools/serve.mjs && node --check tools/verify.mjs",
+    "test": "node --test",
+    "verify": "npm run check && npm test && node tools/verify.mjs"
+  }
+}

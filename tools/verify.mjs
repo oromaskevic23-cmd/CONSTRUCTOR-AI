@@ -1,0 +1,21 @@
+// Non-authoritative local source inventory; independent QA and production gates remain separate.
+import {readFile, stat} from "node:fs/promises";
+import {createHash} from "node:crypto";
+const required=[
+  "package.json","index.html","styles.css","src/tasks.js","src/app.js",
+  "test/tasks.test.js","test/server.test.js","tools/serve.mjs",
+  "SECURITY.md","docs/VERIFIED_ENGINEERING_STANDARD.md",
+  ".github/workflows/ci.yml"
+];
+const records=[];
+for (const path of required) {
+  const statInfo=await stat(new URL("../"+path,import.meta.url));
+  if(!statInfo.isFile())throw new Error("Not a file: "+path);
+  const bytes=await readFile(new URL("../"+path,import.meta.url));
+  records.push({path,sha256:createHash("sha256").update(bytes).digest("hex"),size:bytes.length});
+}
+const app=await readFile(new URL("../src/app.js",import.meta.url),"utf8");
+if(/\.innerHTML\s*=|\beval\s*\(|new\s+Function\s*\(/.test(app))throw new Error("Unsafe dynamic DOM/code execution");
+const html=await readFile(new URL("../index.html",import.meta.url),"utf8");
+if(!html.includes("Content-Security-Policy")||!html.includes('type="module"'))throw new Error("Expected security headers/assets missing");
+process.stdout.write(JSON.stringify({kind:"constructor-ai-reference-source-inventory",status:"SOURCE_ONLY_NOT_PRODUCTION",count:records.length,files:records},null,2)+"\n");

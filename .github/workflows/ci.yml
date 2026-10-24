@@ -1,0 +1,33 @@
+name: Verified Reference CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+concurrency:
+  group: verified-reference-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout reviewed revision
+        uses: actions/checkout@v4
+      - name: Use Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Check syntax
+        run: npm run check
+      - name: Unit tests and HTTP smoke
+        run: npm test
+      - name: Source integrity inventory
+        run: node tools/verify.mjs > verification-inventory.json
+      - name: Publish verification evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: verified-reference-${{ github.sha }}
+          path: verification-inventory.json
+          retention-days: 30

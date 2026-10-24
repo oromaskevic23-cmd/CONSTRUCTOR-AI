@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta name="description" content="CONSTRUCTOR AI — a locally running, dependency-free Task Manager reference app. This is not the full autonomous platform.">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>Task Manager — CONSTRUCTOR AI Verified Reference</title>
+  <link rel="stylesheet" href="./styles.css">
+  <script type="module" src="./src/app.js"></script>
+</head>
+<body>
+  <div class="layout">
+    <header class="topbar">
+      <div class="brand">◈ <span>CONSTRUCTOR <strong>AI</strong></span></div>
+      <a href="https://github.com/oromaskevic23-cmd/CONSTRUCTOR-AI" rel="noopener noreferrer">Source & evidence ↗</a>
+    </header>
+    <main>
+      <div class="intro">
+        <div class="eyebrow">IMPERIAL CORE / VERIFIED ENGINEERING REFERENCE / LOCAL-ONLY</div>
+        <h1>Build thoughtfully.<br><span>Verify everything.</span></h1>
+        <p>This is a real, standalone Task Manager reference — <strong>not</strong> evidence of autonomous AI-generated apps, production infrastructure or a deployed CONSTRUCTOR AI platform.</p>
+      </div>
+      <section class="panel" aria-labelledby="new-task">
+        <div class="section-heading"><h2 id="new-task">Your workspace</h2><span class="chip">PRIVATE TO THIS BROWSER</span></div>
+        <form id="task-form" autocomplete="off">
+          <label for="title">Task name <span aria-hidden="true">*</span></label>
+          <input id="title" name="title" required maxlength="120" placeholder="What needs to be done?">
+          <label for="description">Details (optional)</label>
+          <textarea id="description" name="description" maxlength="500" rows="3" placeholder="Add context or acceptance criteria…"></textarea>
+          <div class="form-actions">
+            <button class="primary" id="submit-task" type="submit">Create task</button>
+            <button class="secondary" id="cancel-edit" type="button" hidden>Cancel editing</button>
+          </div>
+        </form>
+        <p id="message" role="status" aria-live="polite" class="status"></p>
+      </section>
+      <section class="panel" aria-labelledby="task-heading">
+        <div class="section-heading"><h2 id="task-heading">Tasks</h2><div id="filters" class="filters" role="group" aria-label="Task filters">
+          <button type="button" data-filter="all" aria-pressed="true">All</button>
+          <button type="button" data-filter="active" aria-pressed="false">Active</button>
+          <button type="button" data-filter="completed" aria-pressed="false">Completed</button>
+        </div></div>
+        <div class="stats" aria-label="Task statistics">
+          <div><strong id="count-total">0</strong><span>Total</span></div>
+          <div><strong id="count-active">0</strong><span>Active</span></div>
+          <div><strong id="count-completed">0</strong><span>Completed</span></div>
+        </div>
+        <ul id="task-list" class="task-list" aria-label="Task list"></ul>
+      </section>
+    </main>
+    <footer><strong>CONSTRUCTOR AI</strong> · IMPERIAL Core · Alexander Romaskevich / RomaskevicH<br>Free, offline-capable after initial page load. LocalStorage only. Independent end-to-end browser testing pending.</footer>
+  </div>
+</body>
+</html>
