@@ -1,3 +1,7 @@
+> **Enterprise readiness notice — 24 October 2026.** This public repository currently holds `README.md` and Enterprise policy documents, **not an independently verifiable executable product tree, automated test suite or CI run**. Locally reported prototypes and builds must be substantiated by real source, reproducible tests and release artifacts before being represented as deployed capabilities. All historical feature claims below should be read as proposals unless linked to independent evidence. [Repository-by-repository audit](https://github.com/oromaskevic23-cmd/IMPERIAL-Core-US-HoldCo-Founder-Control-Blueprint/blob/main/docs/ENTERPRISE_PORTFOLIO_AUDIT.md).
+
+---
+
 # CONSTRUCTOR-AI
  
 CONSTRUCTOR AI — Autonomous Software Engineering Platform by IMPERIAL Core. Transform ideas into working applications through AI-powered planning, coding, building, testing, debugging and independent QA. Founded by Alexander Romaskevich | RomaskevicH.
