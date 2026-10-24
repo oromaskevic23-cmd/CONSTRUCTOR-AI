@@ -74,6 +74,8 @@ This diagram is a **design target**. The Task Manager demo exercises only the lo
 
 ## Documents
 
+- [Real GitHub CI PASS evidence for the first reference](docs/VERIFIED_CI_RUN_2026-10-24.md)
+- [Competitive parity and five-year engineering moat](docs/COMPETITIVE_PARITY.md)
 - [Architecture, boundaries and explicit integration contracts](docs/PLATFORM_ARCHITECTURE.md)
 - [Beyond Enterprise / Verified Engineering standard](docs/VERIFIED_ENGINEERING_STANDARD.md)
 - [Release and evidence gates](docs/RELEASE_GATES.md)
