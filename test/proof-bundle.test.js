@@ -66,8 +66,15 @@ test("quarantine never executes dangerous strings inside generated source",async
 test("detects tampering with a previously written source file",async t=>{
   const directory=await root(t);
   const {bundle_path}=await quarantineDraft({result:fakeResult(),outputRoot:directory});
-  await writeFile(join(bundle_path,"src/task.js"),"export const label = 'altered';\n");
+  await writeFile(join(bundle_path,"src/task.js"),"export const label = 'evil reference';\n");
   await assert.rejects(verifyProofBundle(bundle_path),/ARTIFACT_DIGEST_MISMATCH/);
+});
+
+test("rejects edited files whose lengths differ before digest comparison",async t=>{
+  const directory=await root(t);
+  const {bundle_path}=await quarantineDraft({result:fakeResult(),outputRoot:directory});
+  await writeFile(join(bundle_path,"src/task.js"),"short");
+  await assert.rejects(verifyProofBundle(bundle_path),/ARTIFACT_TYPE_OR_SIZE_MISMATCH/);
 });
 
 test("detects manifest edits even when the files were not touched",async t=>{
