@@ -9,7 +9,7 @@
   },
   "scripts": {
     "start": "node tools/serve.mjs",
-    "check": "node --check src/tasks.js && node --check src/app.js && node --check tools/serve.mjs && node --check tools/verify.mjs && node --check engineering/draft-contract.mjs && node --check engineering/groq-gateway.mjs && node --check engineering/local-permit.mjs && node --check engineering/plan-only.mjs && node --check tools/generate-plan.mjs && node --check engineering/static-review.mjs && node --check engineering/proof-bundle.mjs && node --check tools/verify-proof.mjs && node --check engineering/intent-proof-graph.mjs && node --check tools/intent-proof-demo.mjs && node --check engineering/proof-witness.mjs && node --check tools/proof-passport-demo.mjs && node --check engineering/isolated-executor.mjs && node --check tools/isolated-execution-demo.mjs && node --check engineering/qa-chain.mjs && node --check tools/independent-qa-ci.mjs && node --check tools/verify-qa-ci.mjs && node --check engineering/local-model-admission.mjs && python3 -c 'import ast,pathlib;ast.parse(pathlib.Path(\"tools/run-local-qwen.py\").read_text())' && node --check engineering/vm-trust-boundary.mjs",
+    "check": "node --check src/tasks.js && node --check src/app.js && node --check tools/serve.mjs && node --check tools/verify.mjs && node --check engineering/draft-contract.mjs && node --check engineering/groq-gateway.mjs && node --check engineering/local-permit.mjs && node --check engineering/plan-only.mjs && node --check tools/generate-plan.mjs && node --check engineering/static-review.mjs && node --check engineering/proof-bundle.mjs && node --check tools/verify-proof.mjs && node --check engineering/intent-proof-graph.mjs && node --check tools/intent-proof-demo.mjs && node --check engineering/proof-witness.mjs && node --check tools/proof-passport-demo.mjs && node --check engineering/isolated-executor.mjs && node --check tools/isolated-execution-demo.mjs && node --check engineering/qa-chain.mjs && node --check tools/independent-qa-ci.mjs && node --check tools/verify-qa-ci.mjs && node --check engineering/local-model-admission.mjs && python3 -c 'import ast,pathlib;ast.parse(pathlib.Path(\"tools/run-local-qwen.py\").read_text())' && node --check engineering/vm-trust-boundary.mjs && node --check tools/admit-local-model.mjs",
     "test": "node --test",
     "verify": "npm run check && npm test && node tools/verify.mjs",
     "plan": "node tools/generate-plan.mjs",
@@ -18,6 +18,7 @@
     "proof:passport:demo": "node tools/proof-passport-demo.mjs",
     "isolated:demo": "node tools/isolated-execution-demo.mjs",
     "qa:independent": "node tools/independent-qa-ci.mjs",
-    "qa:audit": "node tools/verify-qa-ci.mjs"
+    "qa:audit": "node tools/verify-qa-ci.mjs",
+    "llm:admit": "node tools/admit-local-model.mjs"
   }
 }
