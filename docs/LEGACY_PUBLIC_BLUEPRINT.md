@@ -15,7 +15,7 @@ CONSTRUCTOR AI
 ### From an idea to working software.
 **Autonomous Software Engineering Platform by IMPERIAL Core**
 
-**Founder & Chief Systems Architect:** Alexander Romaskevich  
+**Founder & Architect / Final Architectural Decision Authority:** Alexander Romaskevich  
 **Official Signature:** RomaskevicH  
 **Development Status:** Active Development  
 **Target v1.0 Release:** December 14, 2026
@@ -129,7 +129,7 @@ The project aims to make professional software engineering more accessible while
 
 **Product:** CONSTRUCTOR AI
 **Ecosystem:** IMPERIAL Core
-**Founder & Chief Systems Architect:** Alexander Romaskevich
+**Founder & Architect / Final Architectural Decision Authority:** Alexander Romaskevich
 **Public Signature:** RomaskevicH
 **Document Version:** 1.0-draft
 **Status:** Engineering Specification — Not a Production Certification
@@ -490,7 +490,7 @@ Build with intelligence. Verify with evidence. Keep humans in control.
 
 > **Architecture as Code · Engineering Blueprint v1.0**
 >
-> IMPERIAL Core | Founder & Chief Systems Architect: Alexander Romaskevich | RomaskevicH
+> IMPERIAL Core | Founder & Architect / Final Architectural Decision Authority: Alexander Romaskevich | RomaskevicH
 
 **Status:** Target architecture / implementation in progress  
 **Release target:** 14 December 2026  
@@ -798,7 +798,7 @@ Copyright © 2026 Alexander Romaskevich. All rights reserved.
 
 **An IMPERIAL Core Product**
 
-**Founder & Chief Systems Architect:** Alexander Romaskevich  
+**Founder & Architect / Final Architectural Decision Authority:** Alexander Romaskevich  
 **Public Signature:** RomaskevicH  
 **Stage:** Active Engineering Development  
 **Target v1.0:** December 14, 2026
@@ -1136,7 +1136,7 @@ Funding terms, valuations and investor returns must not be represented as establ
 ## 14. Founder & Long-Term Vision
 
 **Alexander Romaskevich**  
-Founder • Owner • CEO • Chief Systems Architect  
+Founder • Owner • CEO • Architect / Final Architectural Decision Authority  
 **RomaskevicH**
 
 CONSTRUCTOR AI is part of the IMPERIAL Core vision: building practical AI systems that extend human capability, improve access to technology and preserve human authority over consequential decisions.
