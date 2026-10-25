@@ -8,6 +8,8 @@
 >
 > **New QA milestone:** [Three-Stage Independent CI QA](docs/INDEPENDENT_CI_QA.md) — separate signed builder, Docker QA and proof-audit jobs on GitHub, with Sigstore/OIDC artifact provenance independently checked. Verified on a synthetic test, without human identity attestation or release authority.
 >
+> **Next verified contracts, not yet live:** [Real LLM and Protected VM Gates](docs/REAL_LLM_VM_GATES.md) — pinned local GGUF inference adapter, strict draft admission and externally pinned VM-operator claim verification. Neither actual model inference nor hardened guest execution has been demonstrated yet.
+>
 > **Start here:** [Investor & Technical Brief](docs/INVESTOR_TECHNICAL_BRIEF.md) · [ProofGraph Protocol](docs/PROOFGRAPH_PROTOCOL.md) · [Independent Technical Diligence](docs/TECHNICAL_DILIGENCE.md) · [ProofGraph code](engineering/intent-proof-graph.mjs) · [Witness code](engineering/proof-witness.mjs) · [Review PR #5](https://github.com/oromaskevic23-cmd/CONSTRUCTOR-AI/pull/5).
 
 **Founder • Owner • CEO:** Alexander Romaskevich · **RomaskevicH**  

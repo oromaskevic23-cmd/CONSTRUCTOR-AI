@@ -73,6 +73,10 @@ The strategic moat is **verification integrated into the normal builder experien
 
 **Differentiator acceptance conditions** are in [the competitive parity matrix](COMPETITIVE_PARITY.md). Until a public, comparable task benchmark has been run with external evaluators, no claim that CONSTRUCTOR AI is superior to Cursor, Replit, Lovable, Bolt, Codex, Copilot, Windsurf or Devin is warranted.
 
+## Real-model / VM acceptance — security-first next step
+
+The repo now includes a [free local Qwen GGUF adapter and VM trust admission guide](REAL_LLM_VM_GATES.md). The local model runner hashes exact GGUF weights and refuses to execute generated files. The VM receipt validator requires externally enrolled Ed25519 operator trust plus byte/mission/time binding; **it does not boot or remotely attest a guest VM**. CI exercises these gates with synthetic fixtures only. An actual real-LLM generated app built in a hardened VM and verified by external QA remains **NOT VERIFIED**.
+
 ## Product and commercial stage
 
 **Current:** tested reference engineering. **Not verified:** end-to-end AI-written multi-file applications, independent executed QA, hardened build sandbox, remote autonomous agents, 24/7 hosting, users, paying customers, bank-settled revenue or sales pipeline.

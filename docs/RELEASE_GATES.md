@@ -34,6 +34,10 @@ This does **not** satisfy Gate 5: no real LLM-generated application was built an
 
 New review-branch modules [QA chain](../engineering/qa-chain.mjs) and [independent CI QA runbook](INDEPENDENT_CI_QA.md) now demonstrate **134/134 tests PASS and 4 GitHub Actions jobs SUCCESS** on [run 40193519823](https://github.com/oromaskevic23-cmd/CONSTRUCTOR-AI/actions/runs/40193519823), with signed builder/QA receipts and an independent third verification job. This is *synthetic evidence in separately executed CI stages*. Self-issued keys do not prove reviewer identity or authorization. Actual LLM generated applications, external trust roots and VM guest execution remain **NOT VERIFIED**. Release stays DENIED.
 
+## Gate 3e — Local GGUF and VM receipt contracts (prototype ONLY)
+
+The [real-model / protected VM engineering path](REAL_LLM_VM_GATES.md) adds a model-weight SHA pin, explicitly authorized local inference command, strict source-admission inspection and a pinned-key VM claim verifier. Contract tests are runnable in CI **without a model download or real VM**, so a PASS here is evidence of fail-closed input contracts only. No Gate 5 acceptance or real full-stack AI-generated app is implied. VM operator signatures are distinct from authenticated guest measurements. The owner release gate remains **DENIED**.
+
 ## Rollback
 
 Revert or deploy a previously verified commit SHA, and re-execute the full check suite. Browser-only localStorage data may be incompatible between future releases; preserve data migration design before changing storage schema. Production rollback is not implemented by this reference repo.

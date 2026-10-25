@@ -34,14 +34,14 @@ Codex: https://help.openai.com/en/articles/20001545-using-codex-cloud ; https://
 
 | Engineering advantage | Proposed unique verification requirement | Current state |
 |---|---|---|
-| **Proof-Carrying Release** | Each artifact bears reproducible tests, source hashes, approval signature and environment provenance | DESIGN ONLY |
-| **Independent multi-agent QA** | Separate agent models/roles independently inspect generated source and test results | DESIGN ONLY |
+| **Proof-Carrying Release** | Each artifact bears reproducible tests, source hashes, approval signature and environment provenance | Review-stage ProofGraph, Ed25519 witnesses, Sigstore-bound CI artifacts TESTED; owner release signature NOT IMPLEMENTED |
+| **Independent multi-agent QA** | Separate agent models/roles independently inspect generated source and test results | Distinct CI Docker QA and Sigstore/OIDC-attested proof audit TESTED on a synthetic sample; model diversity / human QA NOT VERIFIED |
 | **Time-Machine Replay** | Deterministic re-run of tasks, snapshots, diffs and full rollback verification | DESIGN ONLY |
 | **Architecture Twin** | Living traceable contract linking requirements ↔ interfaces ↔ tests ↔ runtime evidence | DESIGN ONLY |
 | **Context & Cost Shield** | Deterministic minimal context, denied secret paths, measured token/latency budget | DESIGN ONLY here |
 | **Zero-Trust Agent Passport** | Revocable scoped cryptographic permits, replay-resistant and audited operations | DESIGN ONLY here |
 | **Federated NCA Teams** | Portable general agent identity with task-specific professions, independent runtime domains | DESIGN ONLY |
-| **Provider-agnostic Model Gateway** | At least two tested model adapters, safe fallbacks, permission-checked model routing | DESIGN ONLY |
+| **Provider-agnostic Model Gateway** | At least two tested model adapters, safe fallbacks, permission-checked model routing | Groq mock contract + local Qwen GGUF observation gate implemented; two LIVE model adapters NOT VERIFIED |
 
 **The differentiators above are proposed architectural targets.** Previous separately reported local implementations do not count as verified features in this repo unless their source, tests and evidence are attached and independently checked.
 

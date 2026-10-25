@@ -50,6 +50,10 @@ The [signed QA-chain run 40193519823](https://github.com/oromaskevic23-cmd/CONST
 6. Send a spoofed `owner_approved: true` field: reject noncanonical input.
 7. Show an independently reviewed customer application with real signed logs: **not yet possible under this reference**.
 
+## Experimental model and VM gates — do not overstate
+
+[Technical requirements and strictly opt-in commands](REAL_LLM_VM_GATES.md). The Qwen adapter and externally pinned VM operator-claim verifier are present with negative-path tests. No real model weight was run in the evidenced CI jobs; no separate hardened VM guest was booted. Synthetic admission and operator-signature fixture tests cannot be used to claim full app-generation acceptance.
+
 ## Planned milestone ladder — NOT shipped
 
 B1 real model inference → B2 authorized isolated executor → B3 independent signed QA / trusted proof bytes → B4 owner-signed release permit & durable audit → B5 complete Task Manager, CRM and Dashboard acceptance → B6 real-world pilots, paid customer acceptance, verified settlement and production operations.
