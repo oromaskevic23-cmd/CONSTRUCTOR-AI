@@ -1,6 +1,6 @@
 # Contributing — CONSTRUCTOR AI
 
-**Owner / Chief Systems Architect:** Alexander Romaskevich (RomaskevicH). Development is founder-led with LLM assistance; tool-generated code and third-party dependencies require review and provenance records.
+**Owner / Architect / Final Architectural Decision Authority:** Alexander Romaskevich (RomaskevicH). Development is founder-led with LLM assistance; tool-generated code and third-party dependencies require review and provenance records.
 
 ## Required changes
 

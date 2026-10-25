@@ -2,7 +2,8 @@
 
 **Build software. Verify everything. Keep humans in control.**
 
-**Founder / Chief Systems Architect:** Alexander Romaskevich · **RomaskevicH**  
+**Founder • Owner • CEO:** Alexander Romaskevich · **RomaskevicH**  
+**Authority:** Architect / Final Architectural Decision Authority · Ukraine  
 **IMPERIAL Core intelligence:** **VELEON** · **HANTER** for mission coordination  
 **Project status:** Active engineering · Free-only prototype · **NOT a verified autonomous software factory**  
 **Reference release:** `0.3.0` (Task Manager + gated planning + quarantine of untrusted draft files; real inference not yet verified)
@@ -124,3 +125,9 @@ To call the full platform milestone verified, independently demonstrate and reta
 **No fake readiness percentage or production claim.** Upgrade status only after the corresponding commands run in their real environments.
 
 © 2026 Alexander Romaskevich · RomaskevicH. No software license grant is implied by repository visibility. Historical upstream attribution and other legal rights remain applicable.
+
+## Founder profile and public milestone — 25 October 2026
+
+[Canonical founder identity](https://github.com/oromaskevic23-cmd/IMPERIAL-Core-Public/blob/main/docs/FOUNDER_IDENTITY.md) · [IMPERIAL Core portfolio](https://github.com/oromaskevic23-cmd/IMPERIAL-Core-Public/blob/main/docs/PORTFOLIO.md).
+
+**68/68 PASS** observed in [CI job](https://github.com/oromaskevic23-cmd/CONSTRUCTOR-AI/actions/runs/40131861437/job/120985060759) for [commit `23d25fa`](https://github.com/oromaskevic23-cmd/CONSTRUCTOR-AI/commit/23d25fa41287001c3529dad23571e67c04ddb74a) in [open PR #1](https://github.com/oromaskevic23-cmd/CONSTRUCTOR-AI/pull/1). This is unmerged PR evidence, not the default-branch test count or a production release. Model endpoints are mocked. HANTER is AI Command Center / Chief Systems, under the founder's final architectural decisions.
