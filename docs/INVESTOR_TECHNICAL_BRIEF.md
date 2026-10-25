@@ -23,6 +23,7 @@ This is a *proposed product differentiator*. Other software development platform
 | Short-lived local HMAC plan permit | [Local permit](../engineering/local-permit.mjs) | Local replay / expiry checks | Not an owner identity attestation |
 | Proof-carrying quarantine | [Proof bundle](../engineering/proof-bundle.mjs) | SHA-256 source consistency and tamper rejection | No code execution, no signed provenance |
 | **New: Intent → Evidence Graph** | [Graph evaluator](../engineering/intent-proof-graph.mjs) · [tests](../test/intent-proof-graph.test.js) | Deterministic requirement coverage, visible gaps, fail-closed release | Evidence labels and SHA references are untrusted |
+| **New: Bounded Docker Execution Receipt** | [Isolated runner](../engineering/isolated-executor.mjs) · [real-container demo](../tools/isolated-execution-demo.mjs) · [CI](../.github/workflows/ci.yml) | Actual GitHub Actions Docker test of synthetic JavaScript, with no-network, non-root, read-only mount and runtime probes; bytes and exit code bound to ProofGraph SOURCE/TEST claims | Docker shares host kernel; **not** hardened VM isolation, signed provenance, independent QA or a real-model app build |
 | **New: Pinned Proof Witness** | [Ed25519 witness verifier](../engineering/proof-witness.mjs) · [tests](../test/proof-witness.test.js) | Exact graph / requirement / digest binding, two externally pinned signing roles, nonces | Key separation ≠ independent QA execution or human identity; replay store memory-only. Optional verified bytes are caller-supplied and not trusted provenance |
 
 Two new engineering components on [review PR #5](https://github.com/oromaskevic23-cmd/CONSTRUCTOR-AI/pull/5) are authored as dedicated modules, not imported as a library wrapper. Their novelty claim is **an independently implemented, concrete composition inside CONSTRUCTOR AI**, not proof of unique invention, patentability or a defensible five-year monopoly.
@@ -53,6 +54,8 @@ Requirements: Node.js 22 or later. The repository's reference has no external ru
 npm run verify
 npm run proof:graph:demo
 npm run proof:passport:demo
+# With locally provisioned Docker: set CONSTRUCTOR_DOCKER_IMAGE_ID and run:
+npm run isolated:demo
 npm start
 ```
 

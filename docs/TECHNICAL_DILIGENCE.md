@@ -13,9 +13,15 @@ node --version     # 22+
 npm run verify
 npm run proof:graph:demo
 npm run proof:passport:demo
+# Requires reviewed local Docker image ID:
+npm run isolated:demo
 ```
 
 Compare the checked-out HEAD SHA with [PR #5](https://github.com/oromaskevic23-cmd/CONSTRUCTOR-AI/pull/5) and the [PR CI run list](https://github.com/oromaskevic23-cmd/CONSTRUCTOR-AI/actions). If the branch is modified after a cited test, rerun CI and cite the new exact SHA. No customer credentials or external model key is required.
+
+## Additional real-container engineering evidence
+
+[GitHub Actions run 40192567513](https://github.com/oromaskevic23-cmd/CONSTRUCTOR-AI/actions/runs/40192567513) on `aeb7451c728dddc09442fb21b7083683fbc66b5a` completed successfully: **117/117 Node tests PASS** and separate **docker-isolation SUCCESS**. The actual container test executed a synthetic arithmetic check and checked runtime restrictions: non-root UID, root/source write failures, missing Docker socket and blocked outbound network. The Actions artifact `isolated-execution-evidence.json` records the local immutable image ID, process exit code, output SHA-256, graph digest, missing QA and release DENIED. It is bounded execution evidence, **not a privileged-host-independent attestation or hostile-code VM certification**.
 
 ## Diligence layers
 
@@ -26,6 +32,7 @@ Compare the checked-out HEAD SHA with [PR #5](https://github.com/oromaskevic23-c
 | Quarantined source | [Artifact verifier](../engineering/proof-bundle.mjs) and tamper tests | Executable sandbox, authentic origin |
 | Acceptance-to-proof traceability | [ProofGraph](../engineering/intent-proof-graph.mjs) and adversarial tests | Evidence is genuine or independently reviewed |
 | Cryptographically bound witness | [Proof Witness](../engineering/proof-witness.mjs), Ed25519 tests | Separate human QA, owner identity or durable replay protection |
+| Actual bounded Docker test | [Isolated executor](../engineering/isolated-executor.mjs), [real Docker CI](../.github/workflows/ci.yml) | VM-grade hardened sandbox, durable signed logs or independent QA |
 | Release approval | All new components return DENIED | Owner-authorized production shipping |
 | Public adoption / business | No verified customer metrics in this repository | Market traction, net revenue, legal incorporation |
 
