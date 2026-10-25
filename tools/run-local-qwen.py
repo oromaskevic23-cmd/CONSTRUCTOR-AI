@@ -48,7 +48,7 @@ def main():
     result = llm.create_chat_completion(
         messages=[{"role": "system", "content": SYSTEM},
                   {"role": "user", "content": "Generate this minimal software: " + args.goal}],
-        temperature=0.1, max_tokens=768
+        temperature=0.1, max_tokens=768, response_format={"type": "json_object"}
     )
     choices = result.get("choices", [])
     if len(choices) != 1 or not isinstance(choices[0].get("message", {}).get("content"), str):
