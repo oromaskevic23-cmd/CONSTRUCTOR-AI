@@ -56,10 +56,86 @@ jobs:
       - name: Execute genuine network-disabled Docker test and record ProofGraph evidence
         env:
           CONSTRUCTOR_EVIDENCE_OUTPUT: isolated-execution-evidence.json
+          CONSTRUCTOR_QA_BUILD_OUTPUT: ci-builder-evidence.json
         run: npm run isolated:demo
       - name: Publish bounded runner evidence
         uses: actions/upload-artifact@v4
         with:
           name: isolated-execution-${{ github.sha }}
           path: isolated-execution-evidence.json
+          retention-days: 14
+
+      - name: Publish signed builder receipt for independent QA
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-builder-evidence
+          path: ci-builder-evidence.json
+          if-no-files-found: error
+          retention-days: 14
+
+  independent-qa:
+    needs: docker-isolation
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout review revision
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Use Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Download exact builder execution receipt from this workflow
+        uses: actions/download-artifact@v4
+        with:
+          name: ci-builder-evidence
+          path: .
+      - name: Resolve immutable local Docker image ID
+        shell: bash
+        run: |
+          docker pull node:22-alpine
+          IMAGE_ID="$(docker image inspect --format '{{.Id}}' node:22-alpine)"
+          [[ "$IMAGE_ID" =~ ^sha256:[a-f0-9]{64}$ ]]
+          echo "CONSTRUCTOR_DOCKER_IMAGE_ID=$IMAGE_ID" >> "$GITHUB_ENV"
+      - name: Independently replay source with QA-owned test and sign own execution log
+        run: npm run qa:independent
+      - name: Preserve signed QA chain
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-qa-chain
+          path: ci-qa-chain.json
+          if-no-files-found: error
+          retention-days: 14
+
+  proof-audit:
+    needs: independent-qa
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout exact reviewed source
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Use Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Retrieve signed QA evidence from this workflow
+        uses: actions/download-artifact@v4
+        with:
+          name: ci-qa-chain
+          path: .
+      - name: Independently check entire signature and SHA-256 lineage
+        run: npm run qa:audit
+      - name: Publish independently checked final QA verdict
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-qa-verdict
+          path: ci-qa-verdict.json
+          if-no-files-found: error
           retention-days: 14
