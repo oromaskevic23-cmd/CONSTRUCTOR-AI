@@ -35,6 +35,11 @@ jobs:
           retention-days: 30
 
   docker-isolation:
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+      artifact-metadata: write
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -65,6 +70,10 @@ jobs:
           path: isolated-execution-evidence.json
           retention-days: 14
 
+      - name: Attest builder receipt with GitHub OIDC / Sigstore provenance
+        uses: actions/attest@v4
+        with:
+          subject-path: ci-builder-evidence.json
       - name: Publish signed builder receipt for independent QA
         uses: actions/upload-artifact@v4
         with:
@@ -79,6 +88,9 @@ jobs:
     timeout-minutes: 10
     permissions:
       contents: read
+      id-token: write
+      attestations: write
+      artifact-metadata: write
     steps:
       - name: Checkout review revision
         uses: actions/checkout@v4
@@ -102,6 +114,10 @@ jobs:
           echo "CONSTRUCTOR_DOCKER_IMAGE_ID=$IMAGE_ID" >> "$GITHUB_ENV"
       - name: Independently replay source with QA-owned test and sign own execution log
         run: npm run qa:independent
+      - name: Attest independently rerun QA receipt with GitHub OIDC / Sigstore
+        uses: actions/attest@v4
+        with:
+          subject-path: ci-qa-chain.json
       - name: Preserve signed QA chain
         uses: actions/upload-artifact@v4
         with:
@@ -116,6 +132,7 @@ jobs:
     timeout-minutes: 5
     permissions:
       contents: read
+      attestations: read
     steps:
       - name: Checkout exact reviewed source
         uses: actions/checkout@v4
@@ -130,6 +147,21 @@ jobs:
         with:
           name: ci-qa-chain
           path: .
+      - name: Retrieve builder artifact for externally anchored provenance
+        uses: actions/download-artifact@v4
+        with:
+          name: ci-builder-evidence
+          path: .
+      - name: Verify both artifacts against GitHub OIDC / Sigstore provenance
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          WORKFLOW="github.com/$GITHUB_REPOSITORY/.github/workflows/ci.yml"
+          gh attestation verify ci-builder-evidence.json --repo "$GITHUB_REPOSITORY" --signer-workflow "$WORKFLOW" --deny-self-hosted-runners --format json > /dev/null
+          gh attestation verify ci-qa-chain.json --repo "$GITHUB_REPOSITORY" --signer-workflow "$WORKFLOW" --deny-self-hosted-runners --format json > /dev/null
+          echo "PASS: both evidence artifacts have verified GitHub OIDC/Sigstore workflow provenance"
       - name: Independently check entire signature and SHA-256 lineage
         run: npm run qa:audit
       - name: Publish independently checked final QA verdict
