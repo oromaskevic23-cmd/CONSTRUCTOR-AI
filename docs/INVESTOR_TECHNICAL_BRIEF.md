@@ -23,7 +23,7 @@ This is a *proposed product differentiator*. Other software development platform
 | Short-lived local HMAC plan permit | [Local permit](../engineering/local-permit.mjs) | Local replay / expiry checks | Not an owner identity attestation |
 | Proof-carrying quarantine | [Proof bundle](../engineering/proof-bundle.mjs) | SHA-256 source consistency and tamper rejection | No code execution, no signed provenance |
 | **New: Intent → Evidence Graph** | [Graph evaluator](../engineering/intent-proof-graph.mjs) · [tests](../test/intent-proof-graph.test.js) | Deterministic requirement coverage, visible gaps, fail-closed release | Evidence labels and SHA references are untrusted |
-| **New: Pinned Proof Witness** | [Ed25519 witness verifier](../engineering/proof-witness.mjs) · [tests](../test/proof-witness.test.js) | Exact graph / requirement / digest binding, two externally pinned signing roles, nonces | Key separation ≠ independent QA execution or human identity; replay store memory-only |
+| **New: Pinned Proof Witness** | [Ed25519 witness verifier](../engineering/proof-witness.mjs) · [tests](../test/proof-witness.test.js) | Exact graph / requirement / digest binding, two externally pinned signing roles, nonces | Key separation ≠ independent QA execution or human identity; replay store memory-only. Optional verified bytes are caller-supplied and not trusted provenance |
 
 Two new engineering components on [review PR #5](https://github.com/oromaskevic23-cmd/CONSTRUCTOR-AI/pull/5) are authored as dedicated modules, not imported as a library wrapper. Their novelty claim is **an independently implemented, concrete composition inside CONSTRUCTOR AI**, not proof of unique invention, patentability or a defensible five-year monopoly.
 
@@ -52,6 +52,7 @@ Requirements: Node.js 22 or later. The repository's reference has no external ru
 ```bash
 npm run verify
 npm run proof:graph:demo
+npm run proof:passport:demo
 npm start
 ```
 

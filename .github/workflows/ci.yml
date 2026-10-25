@@ -23,6 +23,8 @@ jobs:
         run: npm run check
       - name: Unit tests and HTTP smoke
         run: npm test
+      - name: Exercise synthetic proof-to-release denial
+        run: npm run proof:graph:demo && npm run proof:passport:demo
       - name: Source integrity inventory
         run: node tools/verify.mjs > verification-inventory.json
       - name: Publish verification evidence

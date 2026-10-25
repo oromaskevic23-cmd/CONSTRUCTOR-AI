@@ -12,6 +12,7 @@ git switch review-proofgraph
 node --version     # 22+
 npm run verify
 npm run proof:graph:demo
+npm run proof:passport:demo
 ```
 
 Compare the checked-out HEAD SHA with [PR #5](https://github.com/oromaskevic23-cmd/CONSTRUCTOR-AI/pull/5) and the [PR CI run list](https://github.com/oromaskevic23-cmd/CONSTRUCTOR-AI/actions). If the branch is modified after a cited test, rerun CI and cite the new exact SHA. No customer credentials or external model key is required.
