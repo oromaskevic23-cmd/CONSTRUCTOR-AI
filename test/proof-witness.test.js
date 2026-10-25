@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {generateKeyPairSync,createHash,sign} from "node:crypto";
 import {PROOF_GRAPH_SCHEMA,evaluateIntentProofGraph} from "../engineering/intent-proof-graph.mjs";
-import {PROOF_WITNESS_SCHEMA,witnessSigningPayload,verifyProofWitnesses,
+import {PROOF_WITNESS_SCHEMA,witnessSigningPayload,verifyProofWitnesses,verifyWitnessedArtifactBytes,
   WitnessError} from "../engineering/proof-witness.mjs";
 
 const builder=generateKeyPairSync("ed25519"),qa=generateKeyPairSync("ed25519");
@@ -128,4 +128,58 @@ test("graph missing QA stays blocked, even with valid two signatures",()=>{
  const r=verifyProofWitnesses({...a,witnesses:w});
  assert.equal(r.evidence_review,"BLOCKED_MISSING_OR_FAILED_EVIDENCE");
  assert.equal(r.release,"DENIED");
+});
+
+function fixtureWithActualBytes(){
+ const a=data(),bytesById=new Map();
+ const {signature_b64url:_,...unused}=a.witnesses[0];
+ for(const [i,e] of a.graph.evidence.entries()){
+   const bytes=Buffer.from("SYNTHETIC_ONLY::"+e.id+"::"+e.kind);
+   e.sha256=createHash("sha256").update(bytes).digest("hex");
+   bytesById.set(e.id,bytes);
+ }
+ const ghash=evaluateIntentProofGraph(a.graph).graph_sha256;
+ a.witnesses=a.graph.evidence.map((e,i)=>{
+   const {signature_b64url,...body}=a.witnesses[i];
+   body.graph_sha256=ghash;
+   body.artifact_sha256=e.sha256;
+   return {...body,signature_b64url:sign(null,witnessSigningPayload(body),
+     body.role==="QA"?qa.privateKey:builder.privateKey).toString("base64url")};
+ });
+ return {...a,artifactBytesById:bytesById};
+}
+test("signed graph can check actual caller-presented bytes, not provenance",()=>{
+ const a=fixtureWithActualBytes(),r=verifyWitnessedArtifactBytes(a);
+ assert.equal(r.artifact_byte_integrity,"CALLER_BYTES_MATCH_SHA256");
+ assert.equal(r.byte_provenance,"CALLER_SUPPLIED_UNATTESTED");
+ assert.equal(r.release,"DENIED");
+ assert.equal(a.consumedNonces.size,3);
+});
+test("changed artifact bytes fail before any nonce is consumed",()=>{
+ const a=fixtureWithActualBytes();
+ a.artifactBytesById.set("EVI_QA1",Buffer.from("fake substitute"));
+ assert.throws(()=>verifyWitnessedArtifactBytes(a),
+   e=>e instanceof WitnessError && e.code==="ARTIFACT_BYTES_DIGEST_MISMATCH");
+ assert.equal(a.consumedNonces.size,0);
+});
+test("missing artifact is always blocked",()=>{
+ const a=fixtureWithActualBytes();a.artifactBytesById.delete("EVI_SRC");
+ assert.throws(()=>verifyWitnessedArtifactBytes(a),
+   e=>e instanceof WitnessError && e.code==="ARTIFACT_BYTE_COVERAGE_MISMATCH");
+});
+test("overlarge bytes rejected before signing checks",()=>{
+ const a=fixtureWithActualBytes();a.artifactBytesById.set("EVI_TST",Buffer.alloc(65537));
+ assert.throws(()=>verifyWitnessedArtifactBytes(a),
+   e=>e instanceof WitnessError && e.code==="INVALID_ARTIFACT_BYTES");
+});
+test("extra unbound byte data cannot smuggle a new artifact",()=>{
+ const a=fixtureWithActualBytes();a.artifactBytesById.set("IMPOSTOR",Buffer.from("secret"));
+ assert.throws(()=>verifyWitnessedArtifactBytes(a),
+   e=>e instanceof WitnessError && e.code==="ARTIFACT_BYTE_COVERAGE_MISMATCH");
+});
+test("bytes alone never bypass a mismatched signature",()=>{
+ const a=fixtureWithActualBytes();a.witnesses[1].signature_b64url="A".repeat(86);
+ assert.throws(()=>verifyWitnessedArtifactBytes(a),
+   e=>e instanceof WitnessError && e.code==="INVALID_WITNESS_SIGNATURE");
+ assert.equal(a.consumedNonces.size,0);
 });

@@ -2,7 +2,7 @@
 
 **Build software. Verify everything. Keep humans in control.**
 
-> **Technical thesis — evidence-first software engineering.** CONSTRUCTOR AI is not presented as a renamed AI editor. Its first-party **Intent → Evidence Graph** and **Pinned Ed25519 Proof Witness** link user acceptance clauses to bounded cryptographically signed claims; missing proof remains visible and **release stays DENIED** without independently verified QA and owner authorization. These are implemented, tested *review-stage components*, not a certified production system.
+> **Technical thesis — evidence-first software engineering.** CONSTRUCTOR AI is not presented as a renamed AI editor. Its first-party **Intent → Evidence Graph** and **Pinned Ed25519 Proof Witness + bounded artifact-byte checks** link user acceptance clauses to bounded cryptographically signed claims; missing proof remains visible and **release stays DENIED** without independently verified QA and owner authorization. These are implemented, tested *review-stage components*, not a certified production system.
 >
 > **Start here:** [Investor & Technical Brief](docs/INVESTOR_TECHNICAL_BRIEF.md) · [ProofGraph Protocol](docs/PROOFGRAPH_PROTOCOL.md) · [Independent Technical Diligence](docs/TECHNICAL_DILIGENCE.md) · [ProofGraph code](engineering/intent-proof-graph.mjs) · [Witness code](engineering/proof-witness.mjs) · [Review PR #5](https://github.com/oromaskevic23-cmd/CONSTRUCTOR-AI/pull/5).
 

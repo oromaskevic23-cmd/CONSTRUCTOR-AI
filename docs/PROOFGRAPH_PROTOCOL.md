@@ -56,3 +56,10 @@ npm run verify
 Negative-path suites cover altered SHA, wrong graph, forged approval fields, duplicate IDs/nonces, missing signatures, wrong key, wrong role, expired/future timestamps and failed evidence.
 
 The code is **reference software**, not production cryptographic identity infrastructure. It does not handle key revocation, filesystem races, durability or audit-ledger retention. Use it only for authorized offline engineering until those gaps are closed.
+
+## Optional byte-to-digest verification
+
+`verifyWitnessedArtifactBytes` accepts a bounded `Map<evidence_id, Buffer>` covering **every** graph evidence item and checks SHA-256 of caller-presented bytes *before* verifying signed witnesses or consuming replay nonces. Max 64 KiB per item and 256 KiB total. Missing bytes, extra keys, altered bytes or oversized input fail closed.
+
+This establishes **consistency of the bytes actually presented to the verifier**, not provenance, execution, test authenticity or independent QA. The result reports `artifact_byte_integrity: "CALLER_BYTES_MATCH_SHA256"` alongside `byte_provenance: "CALLER_SUPPLIED_UNATTESTED"` and **release DENIED**. An attacker could invent test logs, create their hashes and sign them with keys they control; externally anchored trust and genuine execution remain unsolved.
+

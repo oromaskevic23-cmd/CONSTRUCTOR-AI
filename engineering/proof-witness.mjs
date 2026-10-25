@@ -120,3 +120,41 @@ export function verifyProofWitnesses({graph,witnesses,trust,now=Date.now(),consu
     replay_protection:"IN_MEMORY_ONLY"
   });
 }
+
+
+/**
+ * Optional tighter gate for caller-presented artifact bytes.
+ * This checks byte-to-digest consistency BEFORE consuming any nonce.
+ * It does NOT validate that the bytes came from a test runner, reviewed source,
+ * independent QA, an immutable workspace or a trusted signing service.
+ */
+export function verifyWitnessedArtifactBytes({graph,witnesses,trust,artifactBytesById,
+  now=Date.now(),consumedNonces}={}) {
+  let assessed;
+  try {assessed=evaluateIntentProofGraph(graph);}
+  catch(err){if(err instanceof IntentProofError)throw new WitnessError("INVALID_GRAPH");throw err;}
+  if(!(artifactBytesById instanceof Map) ||
+     artifactBytesById.size!==graph.evidence.length)
+    throw new WitnessError("ARTIFACT_BYTE_COVERAGE_MISMATCH");
+  let total=0;
+  for(const evidence of graph.evidence){
+    const bytes=artifactBytesById.get(evidence.id);
+    if(!Buffer.isBuffer(bytes) || bytes.length<1 || bytes.length>65536)
+      throw new WitnessError("INVALID_ARTIFACT_BYTES");
+    total+=bytes.length;
+    if(total>262144)throw new WitnessError("ARTIFACT_TOTAL_BUDGET_EXCEEDED");
+    const actual=createHash("sha256").update(bytes).digest("hex");
+    const claimed=Buffer.from(evidence.sha256,"hex");
+    if(!timingSafeEqual(Buffer.from(actual,"hex"),claimed))
+      throw new WitnessError("ARTIFACT_BYTES_DIGEST_MISMATCH");
+  }
+  if(artifactBytesById.size!==new Set(graph.evidence.map(e=>e.id)).size)
+    throw new WitnessError("ARTIFACT_BYTE_COVERAGE_MISMATCH");
+  const signed=verifyProofWitnesses({graph,witnesses,trust,now,consumedNonces});
+  return Object.freeze({...signed,
+    graph_sha256:assessed.graph_sha256,
+    artifact_byte_integrity:"CALLER_BYTES_MATCH_SHA256",
+    byte_provenance:"CALLER_SUPPLIED_UNATTESTED",
+    release:"DENIED"
+  });
+}
