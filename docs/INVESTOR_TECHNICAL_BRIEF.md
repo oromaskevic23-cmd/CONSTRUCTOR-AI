@@ -14,6 +14,12 @@ Code generation is not the same as software acceptance. A repository, confident 
 
 This is a *proposed product differentiator*. Other software development platforms also have tests, secure sandboxes, code review and approvals; we do not claim to have invented these concepts or to outperform incumbents today.
 
+### Newly verified — separate-job signed QA
+
+[GitHub Actions run 40193519823](https://github.com/oromaskevic23-cmd/CONSTRUCTOR-AI/actions/runs/40193519823) at `0f843c5eab80f3a026977f7a87f03ae42921f07b` completed **134/134 Node tests PASS**, a real no-network Docker build, a second **independent CI job with its own Docker test and signed execution logs**, and a third job that validated both stage signatures and bound ProofGraph evidence. This is evidence of reproducible **technical separation** for a synthetic case, not evidence of an external human auditor, real LLM inference, VM-grade hostile-code execution or paid customers.
+
+Read [the signed QA protocol and threat boundary](INDEPENDENT_CI_QA.md). Results remain **REVIEW-READY, NOT RELEASED**.
+
 ## What is genuinely implemented in this repository
 
 | First-party engineering component | Exact executable source | Verified scope | Remaining boundary |

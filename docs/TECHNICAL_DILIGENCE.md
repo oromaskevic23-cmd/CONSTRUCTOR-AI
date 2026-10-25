@@ -19,6 +19,10 @@ npm run isolated:demo
 
 Compare the checked-out HEAD SHA with [PR #5](https://github.com/oromaskevic23-cmd/CONSTRUCTOR-AI/pull/5) and the [PR CI run list](https://github.com/oromaskevic23-cmd/CONSTRUCTOR-AI/actions). If the branch is modified after a cited test, rerun CI and cite the new exact SHA. No customer credentials or external model key is required.
 
+## Independently replayed QA — separate CI process
+
+The [signed QA-chain run 40193519823](https://github.com/oromaskevic23-cmd/CONSTRUCTOR-AI/actions/runs/40193519823) contains four passing jobs, including a separate `independent-qa` Docker execution and `proof-audit` verification. [Reproduce and inspect the receipt chain](INDEPENDENT_CI_QA.md). Signature correctness and role separation are verified; external signer identity and independent human QA are **not**.
+
 ## Additional real-container engineering evidence
 
 [GitHub Actions run 40192567513](https://github.com/oromaskevic23-cmd/CONSTRUCTOR-AI/actions/runs/40192567513) on `aeb7451c728dddc09442fb21b7083683fbc66b5a` completed successfully: **117/117 Node tests PASS** and separate **docker-isolation SUCCESS**. The actual container test executed a synthetic arithmetic check and checked runtime restrictions: non-root UID, root/source write failures, missing Docker socket and blocked outbound network. The Actions artifact `isolated-execution-evidence.json` records the local immutable image ID, process exit code, output SHA-256, graph digest, missing QA and release DENIED. It is bounded execution evidence, **not a privileged-host-independent attestation or hostile-code VM certification**.

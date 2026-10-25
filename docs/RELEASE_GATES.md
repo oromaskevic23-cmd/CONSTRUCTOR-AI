@@ -30,6 +30,10 @@ AI-drafted source can be saved without running it. The package includes file SHA
 
 This does **not** satisfy Gate 5: no real LLM-generated application was built and tested through the complete pipeline, no independent QA executor, owner-signed release permit or VM-grade untrusted-code sandbox has been verified. Docker is a host-kernel-sharing isolation reference; proper production isolation and artifact provenance require additional engineering.
 
+## Gate 3d — Separate signed CI QA (reference accepted; Gate 5 remains blocked)
+
+New review-branch modules [QA chain](../engineering/qa-chain.mjs) and [independent CI QA runbook](INDEPENDENT_CI_QA.md) now demonstrate **134/134 tests PASS and 4 GitHub Actions jobs SUCCESS** on [run 40193519823](https://github.com/oromaskevic23-cmd/CONSTRUCTOR-AI/actions/runs/40193519823), with signed builder/QA receipts and an independent third verification job. This is *synthetic evidence in separately executed CI stages*. Self-issued keys do not prove reviewer identity or authorization. Actual LLM generated applications, external trust roots and VM guest execution remain **NOT VERIFIED**. Release stays DENIED.
+
 ## Rollback
 
 Revert or deploy a previously verified commit SHA, and re-execute the full check suite. Browser-only localStorage data may be incompatible between future releases; preserve data migration design before changing storage schema. Production rollback is not implemented by this reference repo.
