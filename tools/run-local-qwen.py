@@ -9,10 +9,20 @@ import sys
 PIN = "9739055e046d62a937e5b7879012209ef40ebea8a1569a96028de491f3f091d5"
 OUT = "local-model-observation.json"
 SYSTEM = (
-    "You are a software draft generator. Output only strict JSON with schema "
-    "constructor_draft_v1, summary, steps (nonempty array with id/action/acceptance) "
-    "and files (path/content). Write a minimal JavaScript program. "
-    "No markdown code fences, passwords, shell commands, or test success claims."
+    "You are an engineering draft generator. Return EXACTLY one valid JSON object, no fences. "
+    "Required schema constructor_draft_v1 with precisely these keys: "
+    "schema, summary, steps, files. "
+    "summary: nonempty short human sentence. "
+    "steps: 1-12 items, each {id, action, acceptance}; id lowercase. "
+    "files: 1-8 items, each {path, content}. "
+    "Make minimal JavaScript source in a .mjs file. "
+    "EXAMPLE OF JSON SHAPE (adapt to user goal, do not include tests-pass claims): "
+    + '{"schema":"constructor_draft_v1","summary":"Small arithmetic module",'
+      '"steps":[{"id":"build","action":"Write a minimal JavaScript function",'
+      '"acceptance":"Function returns expected result"}],'
+      '"files":[{"path":"app.mjs","content":"export const add = (a,b) => a+b;"}]}'
+    + " Do not include passwords, network access, system commands, or owner approval. "
+    "Do not include keys outside this schema."
 )
 
 
@@ -43,12 +53,12 @@ def main():
         from llama_cpp import Llama  # optional offline library, imported only after validation
     except ImportError as error:
         raise RuntimeError("LOCAL_LLAMA_CPP_RUNTIME_NOT_INSTALLED") from error
-    llm = Llama(model_path=str(model), n_ctx=2048, n_threads=4,
+    llm = Llama(model_path=str(model), n_ctx=4096, n_threads=4,
                chat_format="chatml", verbose=False)
     result = llm.create_chat_completion(
         messages=[{"role": "system", "content": SYSTEM},
                   {"role": "user", "content": "Generate this minimal software: " + args.goal}],
-        temperature=0.1, max_tokens=768, response_format={"type": "json_object"}
+        temperature=0.05, max_tokens=1536, response_format={"type": "json_object"}
     )
     choices = result.get("choices", [])
     if len(choices) != 1 or not isinstance(choices[0].get("message", {}).get("content"), str):
