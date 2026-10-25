@@ -2,6 +2,7 @@
 // No LLM provider, account credentials, external infrastructure or production release.
 import {writeFile} from "node:fs/promises";
 import {runIsolatedProofTest} from "../engineering/isolated-executor.mjs";
+import {builderPayloadFromRun,signCIEnvelope} from "../engineering/qa-chain.mjs";
 const imageId=process.env.CONSTRUCTOR_DOCKER_IMAGE_ID;
 if(!/^sha256:[a-f0-9]{64}$/.test(imageId??"")){
  console.error("BLOCKED: set CONSTRUCTOR_DOCKER_IMAGE_ID to local docker image inspect immutable ID.");
@@ -51,6 +52,15 @@ try{
     result.evaluation.gaps.length!==1)
   throw Error("INVALID_DEMO_VERIFICATION_STATE");
  console.log(JSON.stringify(summary,null,2));
+ if(process.env.CONSTRUCTOR_QA_BUILD_OUTPUT){
+  if(process.env.CONSTRUCTOR_QA_BUILD_OUTPUT!=="ci-builder-evidence.json")
+    throw Error("BUILDER_OUTPUT_NOT_ALLOWLISTED");
+  const packet=signCIEnvelope({role:"BUILDER",
+    payload:builderPayloadFromRun(result,source)});
+  await writeFile("ci-builder-evidence.json",JSON.stringify(packet,null,2)+"\n",
+    {flag:"wx",mode:0o600});
+  console.log("BUILDER SIGNATURE: SELF_ISSUED_EPHEMERAL; independent QA not yet run");
+ }
  if(process.env.CONSTRUCTOR_EVIDENCE_OUTPUT){
   if(process.env.CONSTRUCTOR_EVIDENCE_OUTPUT!=="isolated-execution-evidence.json")
    throw Error("OUTPUT_PATH_NOT_ALLOWLISTED");
