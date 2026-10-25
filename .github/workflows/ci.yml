@@ -33,3 +33,33 @@ jobs:
           name: verified-reference-${{ github.sha }}
           path: verification-inventory.json
           retention-days: 30
+
+  docker-isolation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout exact PR revision
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Use Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Download reference image and resolve immutable local image ID
+        shell: bash
+        run: |
+          docker pull node:22-alpine
+          IMAGE_ID="$(docker image inspect --format '{{.Id}}' node:22-alpine)"
+          [[ "$IMAGE_ID" =~ ^sha256:[a-f0-9]{64}$ ]]
+          echo "CONSTRUCTOR_DOCKER_IMAGE_ID=$IMAGE_ID" >> "$GITHUB_ENV"
+      - name: Execute genuine network-disabled Docker test and record ProofGraph evidence
+        env:
+          CONSTRUCTOR_EVIDENCE_OUTPUT: isolated-execution-evidence.json
+        run: npm run isolated:demo
+      - name: Publish bounded runner evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: isolated-execution-${{ github.sha }}
+          path: isolated-execution-evidence.json
+          retention-days: 14
