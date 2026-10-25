@@ -1,0 +1,46 @@
+name: Experimental software-emulated Linux VM proof
+on:
+  pull_request:
+    paths:
+      - "tools/run-tcg-vm-demo.sh"
+      - ".github/workflows/experimental-vm.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  qemu-tcg-guest:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+      artifact-metadata: write
+    steps:
+      - name: Checkout source without persistent credentials
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Use host Node 22 runtime copied into disposable guest
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install software VM and initramfs construction dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends qemu-system-x86 busybox-static cpio
+      - name: Boot distinct Alpine Linux kernel and run four guest Node tests
+        env:
+          CONSTRUCTOR_VM_EXPERIMENT_APPROVED: YES_SYNTHETIC_ONLY
+        run: bash tools/run-tcg-vm-demo.sh
+      - name: Attest guest serial-log receipt with GitHub OIDC
+        uses: actions/attest@v4
+        with:
+          subject-path: experimental-vm-receipt.json
+      - name: Upload bounded experimental guest receipt
+        uses: actions/upload-artifact@v4
+        with:
+          name: experimental-qemu-guest
+          path: experimental-vm-receipt.json
+          if-no-files-found: error
+          retention-days: 7
