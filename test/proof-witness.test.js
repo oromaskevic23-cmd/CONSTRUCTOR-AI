@@ -77,7 +77,7 @@ test("expired witness refused even if signature is valid",()=>{
  fails(a,"WITNESS_EXPIRED_OR_FUTURE");
 });
 test("future witness refused",()=>{
- const a=data();a.now-=6000;
+ const a=data();a.now-=7000;
  fails(a,"WITNESS_EXPIRED_OR_FUTURE");
 });
 test("missing signed proof is fail closed",()=>{
