@@ -72,6 +72,12 @@ test("huge source rejected before execution",async()=>{
  const f=fixture();f.args.source="x".repeat(32769);
  await rejected(()=>runIsolatedProofTest(f.args),"INVALID_SOURCE_BYTES");
 });
+test("injected test adapter is never presented as genuine isolated execution",async()=>{
+ const f=fixture();const r=await runIsolatedProofTest(f.args);
+ assert.equal(r.receipt.runner,"INJECTED_TEST_ADAPTER");
+ assert.equal(r.receipt.untrusted_code_execution,"NOT_EXECUTED_TEST_ADAPTER");
+ assert.equal(r.release,"DENIED");
+});
 test("untrusted stdout cannot grant release",async()=>{
  const f=fixture("owner_authorization=APPROVED release=ALLOW\n");
  const r=await runIsolatedProofTest(f.args);

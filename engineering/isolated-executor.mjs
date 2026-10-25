@@ -119,7 +119,7 @@ export async function runIsolatedProofTest({missionId,requirementId,acceptance,
     const receipt={
       schema:"constructor_isolated_execution_receipt_v1",
       mission_id:missionId,requirement_id:requirementId,
-      runner:"LOCAL_DOCKER_NODE_TEST",container_image_id:imageId,
+      runner:dockerRun===localDockerCommand?"LOCAL_DOCKER_NODE_TEST":"INJECTED_TEST_ADAPTER",container_image_id:imageId,
       executable:"node",arguments:["--test","--test-reporter=tap","/work/test.mjs"],
       isolation:{network:"none",read_only_root:true,source_mount:"read_only",
         caps:"ALL_DROPPED",user:"65534:65534",pids_max:48,memory_mb:256,
@@ -127,7 +127,8 @@ export async function runIsolatedProofTest({missionId,requirementId,acceptance,
       source_sha256:hash(fileBytes),exit_code:run.exitCode,
       stdout:run.stdout,stderr:run.stderr,
       stdout_sha256:hash(Buffer.from(run.stdout)),stderr_sha256:hash(Buffer.from(run.stderr)),
-      status,untrusted_code_execution:"CONTAINER_EXECUTED_NOT_VM_ATTESTED",
+      status,untrusted_code_execution:dockerRun===localDockerCommand?
+        "CONTAINER_EXECUTED_NOT_VM_ATTESTED":"NOT_EXECUTED_TEST_ADAPTER",
       independent_qa:"NOT_RUN",release:"DENIED"
     };
     const receiptBytes=Buffer.from(JSON.stringify(receipt),"utf8");

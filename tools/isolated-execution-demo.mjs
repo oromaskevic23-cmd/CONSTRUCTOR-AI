@@ -7,8 +7,30 @@ if(!/^sha256:[a-f0-9]{64}$/.test(imageId??"")){
  console.error("BLOCKED: set CONSTRUCTOR_DOCKER_IMAGE_ID to local docker image inspect immutable ID.");
  process.exit(2);
 }
-const source='import test from "node:test";import assert from "node:assert/strict";'+
- 'test("2 + 2",()=>assert.equal(2+2,4));';
+const source=[
+ 'import test from "node:test";',
+ 'import assert from "node:assert/strict";',
+ 'import {writeFile} from "node:fs/promises";',
+ 'import {existsSync} from "node:fs";',
+ 'import {connect} from "node:net";',
+ 'test("real arithmetic execution",()=>assert.equal(2+2,4));',
+ 'test("runs as the expected unprivileged UID",()=>assert.equal(process.getuid(),65534));',
+ 'test("container cannot write to its root or source mount",async()=>{',
+ ' await assert.rejects(writeFile("/root-probe","x"));',
+ ' await assert.rejects(writeFile("/work/test.mjs","modified"));',
+ '});',
+ 'test("host Docker socket is not mounted",()=>{',
+ ' assert.equal(existsSync("/var/run/docker.sock"),false);',
+ '});',
+ 'test("outbound network socket is blocked",async()=>{',
+ ' await new Promise((resolve,reject)=>{',
+ '  const sock=connect({host:"1.1.1.1",port:80,timeout:1000});',
+ '  sock.once("connect",()=>{sock.destroy();reject(Error("UNEXPECTED_NETWORK_ACCESS"));});',
+ '  sock.once("error",()=>resolve());',
+ '  sock.once("timeout",()=>{sock.destroy();reject(Error("NETWORK_DENIAL_NOT_PROVEN"));});',
+ ' });',
+ '});'
+].join("\n");
 try{
  const result=await runIsolatedProofTest({
   missionId:"MISSION-DOCKER-DEMO-001",requirementId:"REQ_ARITH",
