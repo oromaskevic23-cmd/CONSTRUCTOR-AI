@@ -40,6 +40,16 @@ npm run qa:audit
 
 The local commands operate sequentially, so they **do not reproduce job-level independence**. Verify actual independence against the GitHub Actions graph and signed job logs. The artifact files are intentionally generated only after successful execution.
 
+## GitHub OIDC / Sigstore verified artifact provenance — stronger trust root
+
+[GitHub Actions run 40194038803](https://github.com/oromaskevic23-cmd/CONSTRUCTOR-AI/actions/runs/40194038803) completed all **four jobs SUCCESS**, including additional `actions/attest@v4` attestations for `ci-builder-evidence.json` and `ci-qa-chain.json`.
+
+The two artifact SHA-256 digests are each bound to a signed SLSA provenance statement issued using the GitHub Actions workload OIDC token and Sigstore. In the final **separate** audit job, `gh attestation verify` checked both artifacts against the exact public repository, workflow signer's identity and non-self-hosted runner policy; only then did our ProofGraph chain validator accept their contents. The log contains the explicit line **PASS: both evidence artifacts have verified GitHub OIDC/Sigstore workflow provenance**.
+
+This is stronger than the earlier self-issued Ed25519 envelopes alone: attestation certificate identity comes from GitHub/Sigstore, not an arbitrary public key embedded in the payload. **It proves association with the workflow and artifact bytes, not the correctness of tests or human independence.** Because the current workflow source is taken from the PR under test rather than a protected trusted reusable workflow, reviewers must also inspect changes to CI and test scripts before granting high assurance. No source-controlled production secrets are used.
+
+Public attestation availability is documented at https://github.com/actions/attest and verification at https://cli.github.com/manual/gh_attestation_verify.
+
 ## Security limitation — self-issued keys are not trusted identities
 
 The current Ed25519 keypairs are generated inside CI jobs; the bundle carries the public keys itself. **Anyone who can forge the complete chain can generate replacement keypairs and valid signatures.** GitHub runner logs and exact-job artifact origin are the external process evidence; the signatures alone do not prove which organization or human signed. Production requires pre-enrolled and revocable trust roots, workload identity bound to CI OIDC, provenance attestation, durable nonce storage and independently administered QA.

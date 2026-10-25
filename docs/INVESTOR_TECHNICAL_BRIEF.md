@@ -16,7 +16,7 @@ This is a *proposed product differentiator*. Other software development platform
 
 ### Newly verified — separate-job signed QA
 
-[GitHub Actions run 40193519823](https://github.com/oromaskevic23-cmd/CONSTRUCTOR-AI/actions/runs/40193519823) at `0f843c5eab80f3a026977f7a87f03ae42921f07b` completed **134/134 Node tests PASS**, a real no-network Docker build, a second **independent CI job with its own Docker test and signed execution logs**, and a third job that validated both stage signatures and bound ProofGraph evidence. This is evidence of reproducible **technical separation** for a synthetic case, not evidence of an external human auditor, real LLM inference, VM-grade hostile-code execution or paid customers.
+[GitHub Actions run 40193519823](https://github.com/oromaskevic23-cmd/CONSTRUCTOR-AI/actions/runs/40193519823) at `0f843c5eab80f3a026977f7a87f03ae42921f07b` completed **134/134 Node tests PASS**, a real no-network Docker build, a second **independent CI job with its own Docker test and signed execution logs**, and a third job that validated both stage signatures and bound ProofGraph evidence. A later [run 40194038803](https://github.com/oromaskevic23-cmd/CONSTRUCTOR-AI/actions/runs/40194038803) additionally **verified GitHub OIDC/Sigstore provenance for both builder and QA artifacts** before accepting the chain. This is evidence of reproducible **technical separation** for a synthetic case, not evidence of an external human auditor, real LLM inference, VM-grade hostile-code execution or paid customers.
 
 Read [the signed QA protocol and threat boundary](INDEPENDENT_CI_QA.md). Results remain **REVIEW-READY, NOT RELEASED**.
 

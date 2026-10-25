@@ -21,7 +21,7 @@ Compare the checked-out HEAD SHA with [PR #5](https://github.com/oromaskevic23-c
 
 ## Independently replayed QA — separate CI process
 
-The [signed QA-chain run 40193519823](https://github.com/oromaskevic23-cmd/CONSTRUCTOR-AI/actions/runs/40193519823) contains four passing jobs, including a separate `independent-qa` Docker execution and `proof-audit` verification. [Reproduce and inspect the receipt chain](INDEPENDENT_CI_QA.md). Signature correctness and role separation are verified; external signer identity and independent human QA are **not**.
+The [signed QA-chain run 40193519823](https://github.com/oromaskevic23-cmd/CONSTRUCTOR-AI/actions/runs/40193519823) contains four passing jobs, including a separate `independent-qa` Docker execution and `proof-audit` verification. [Reproduce and inspect the receipt chain](INDEPENDENT_CI_QA.md). Signature correctness and role separation are verified. A newer [run 40194038803](https://github.com/oromaskevic23-cmd/CONSTRUCTOR-AI/actions/runs/40194038803) also confirms GitHub OIDC/Sigstore workflow provenance for both artifacts. **The GitHub workflow identity is authenticated; a separate human reviewer or VM guest attestation is not.**
 
 ## Additional real-container engineering evidence
 
