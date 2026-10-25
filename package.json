@@ -9,10 +9,11 @@
   },
   "scripts": {
     "start": "node tools/serve.mjs",
-    "check": "node --check src/tasks.js && node --check src/app.js && node --check tools/serve.mjs && node --check tools/verify.mjs && node --check engineering/draft-contract.mjs && node --check engineering/groq-gateway.mjs && node --check engineering/local-permit.mjs && node --check engineering/plan-only.mjs && node --check tools/generate-plan.mjs && node --check engineering/static-review.mjs && node --check engineering/proof-bundle.mjs && node --check tools/verify-proof.mjs",
+    "check": "node --check src/tasks.js && node --check src/app.js && node --check tools/serve.mjs && node --check tools/verify.mjs && node --check engineering/draft-contract.mjs && node --check engineering/groq-gateway.mjs && node --check engineering/local-permit.mjs && node --check engineering/plan-only.mjs && node --check tools/generate-plan.mjs && node --check engineering/static-review.mjs && node --check engineering/proof-bundle.mjs && node --check tools/verify-proof.mjs && node --check engineering/intent-proof-graph.mjs && node --check tools/intent-proof-demo.mjs",
     "test": "node --test",
     "verify": "npm run check && npm test && node tools/verify.mjs",
     "plan": "node tools/generate-plan.mjs",
-    "proof:verify": "node tools/verify-proof.mjs"
+    "proof:verify": "node tools/verify-proof.mjs",
+    "proof:graph:demo": "node tools/intent-proof-demo.mjs"
   }
 }
