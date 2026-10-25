@@ -171,3 +171,51 @@ jobs:
           path: ci-qa-verdict.json
           if-no-files-found: error
           retention-days: 14
+
+  real-qwen-smoke:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+      artifact-metadata: write
+    steps:
+      - name: Checkout exact PR revision without persistent credentials
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Use Node.js 22 for independent contract admission
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install local llama.cpp Python CPU runtime (free, no provider key)
+        shell: bash
+        run: |
+          python3 -m venv .model-venv
+          .model-venv/bin/python -m pip install --upgrade pip
+          CMAKE_BUILD_PARALLEL_LEVEL=4 .model-venv/bin/python -m pip install llama-cpp-python==0.3.36
+      - name: Download official Qwen2.5-Coder 0.5B GGUF and enforce publisher SHA256
+        shell: bash
+        run: |
+          curl --fail --location --retry 2 --max-time 600 --output qwen.gguf "https://huggingface.co/Qwen/Qwen2.5-Coder-0.5B-Instruct-GGUF/resolve/main/qwen2.5-coder-0.5b-instruct-q4_0.gguf"
+          echo "9739055e046d62a937e5b7879012209ef40ebea8a1569a96028de491f3f091d5  qwen.gguf" | sha256sum --check --status
+      - name: Invoke actual local GGUF inference (strict no-secret synthetic goal)
+        run: |
+          .model-venv/bin/python tools/run-local-qwen.py \
+            --model-file qwen.gguf \
+            --goal "Create a minimal JavaScript arithmetic module with a unit test." \
+            --confirm-real-inference
+      - name: Fail closed unless real model output meets source draft contract
+        run: npm run llm:admit -- --goal "Create a minimal JavaScript arithmetic module with a unit test."
+      - name: Attest admitted local-model observation with GitHub OIDC
+        uses: actions/attest@v4
+        with:
+          subject-path: local-model-observation.json
+      - name: Preserve validated real-model attempt (no model weights)
+        uses: actions/upload-artifact@v4
+        with:
+          name: real-local-qwen-observation
+          path: local-model-observation.json
+          if-no-files-found: error
+          retention-days: 7
