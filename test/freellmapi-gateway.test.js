@@ -109,7 +109,7 @@ test("truncated answers and function/tool calls rejected",async()=>{
   await assert.rejects(generateFreeLLMAPIDraft({...base,fetchImpl:async()=>{
     const payload={choices:[{finish_reason:"stop",message:{
       content:JSON.stringify(draft),tool_calls:[{id:"t1",type:"function"}]}}]};
-    return new Response(JSON.stringify(payload));
+    return new Response(JSON.stringify(payload),{headers:{"content-type":"application/json"}});
   }}),denyCode("PROXY_INCOMPLETE_OR_TOOL_RESPONSE"));
 });
 test("invalid plan JSON is rejected by existing draft contract",async()=>{
