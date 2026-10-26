@@ -28,7 +28,7 @@ function validateReceipt(result) {
       !result.authorization || result.authorization.stage !== "PLAN_ONLY" ||
       result.authorization.action !== "model:generate_draft" ||
       result.authorization.status !== "LOCAL_HMAC_PERMIT_VERIFIED" ||
-      result.model_provider !== "groq" ||
+      !["groq","freellmapi-proxy"].includes(result.model_provider) ||
       typeof result.model !== "string" || result.model.length > 120 ||
       !MISSION.test(result.mission_id ?? "") ||
       !SHA256.test(result.input_sha256 ?? "") ||
