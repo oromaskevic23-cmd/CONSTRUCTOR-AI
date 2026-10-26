@@ -28,7 +28,7 @@ test("full OFFLINE mocked model→permit→draft→quarantine→proof roundtrip"
    return new Response(JSON.stringify({id:"mock-only",choices:[{finish_reason:"stop",message:{role:"assistant",content:JSON.stringify(draft)}}]}),{status:200});
  };
  const plan=await runPlanOnlyMission({mission,permit,permitSecret:secret,
-   consumedNonces:new Set(),apiKey:"gsk_TEST_ONLY_VALID_LENGTH_NOT_REAL_TOKEN_1234",
+   consumedNonces:new Set(),apiKey:"gsk_" + "a".repeat(42) /* Synthetic, non-provider mock key */,
    model:"model-testing-only",fetchImpl:fakeProvider,now:now+1});
  assert.equal(requests,1);
  assert.equal(plan.release,"DENIED");
