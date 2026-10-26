@@ -3,7 +3,7 @@
 **Build software. Verify everything. Keep humans in control.**
 
 **Founder • Owner • CEO:** Alexander Romaskevich · **RomaskevicH**  
-**Authority:** Architect / Final Architectural Decision Authority · Ukraine  
+**Authority:** Architect / Final Architectural Decision Authority  
 **IMPERIAL Core intelligence:** **VELEON** · **HANTER** for mission coordination  
 **Project status:** Active engineering · Free-only prototype · **NOT a verified autonomous software factory**  
 **Reference release:** `0.3.0` (Task Manager + gated planning + quarantine of untrusted draft files; real inference not yet verified)
