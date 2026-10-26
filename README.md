@@ -46,6 +46,14 @@ The repository now includes a **fixed-origin Groq adapter and constrained, valid
 
 **All provider tests run with an injected mock transport. They are not evidence of a live Groq call.** A legitimate server-side `GROQ_API_KEY`, model ID and local `PLAN_AUTH_KEY` must be explicitly configured to try the real provider. Until then, live inference remains **BLOCKED / NOT VERIFIED**. API quota/cost policies must be reviewed by the owner before the first real call.
 
+## FreeLLMAPI adapter — optional, internal FREE_ONLY reference
+
+CONSTRUCTOR AI now includes an **optional** OpenAI-compatible [FreeLLMAPI](https://github.com/tashfeenahmed/freellmapi) client for validated plan-only drafts, selectable via `--provider freellmapi`. **No proxy installation, live inference, customer-ready deployment or free-provider quota is verified.** The original Groq route remains the default.
+
+This adapter requires a separately running, single-user, owner-controlled FreeLLMAPI server and explicit confirmation of non-billable provider routes; it refuses unapproved URLs, tool calls and incomplete responses. Provider quotas and terms still apply. No automatic paid fallback is permitted by CONSTRUCTOR AI; the upstream router's own free-chain configuration must be independently checked.
+
+[Integration, licensing, requirements and activation instructions](docs/FREELLMAPI_INTEGRATION.md) · [Adapter](engineering/freellmapi-gateway.mjs) · [Contract tests](test/freellmapi-gateway.test.js).
+
 ## Proof-carrying quarantine v0.3 — NOT an execution sandbox
 
 CONSTRUCTOR AI now includes a restricted local file packager for **validated, untrusted AI draft text**, with SHA-256 integrity checks and an explicit DENIED release status. It never compiles, runs, hosts or deploys generated code.
