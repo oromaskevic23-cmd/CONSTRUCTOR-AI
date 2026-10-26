@@ -3,13 +3,13 @@
   "version": "0.3.0",
   "private": true,
   "type": "module",
-  "description": "Verified Task Manager, opt-in Groq planning and non-executing SHA-256 draft quarantine. NOT a sandbox.",
+  "description": "Verified Task Manager, opt-in Groq/FreeLLMAPI planning and non-executing SHA-256 quarantine. NOT production inference or sandbox.",
   "engines": {
     "node": ">=22"
   },
   "scripts": {
     "start": "node tools/serve.mjs",
-    "check": "node --check src/tasks.js && node --check src/app.js && node --check tools/serve.mjs && node --check tools/verify.mjs && node --check engineering/draft-contract.mjs && node --check engineering/groq-gateway.mjs && node --check engineering/local-permit.mjs && node --check engineering/plan-only.mjs && node --check tools/generate-plan.mjs && node --check engineering/static-review.mjs && node --check engineering/proof-bundle.mjs && node --check tools/verify-proof.mjs",
+    "check": "node --check src/tasks.js && node --check src/app.js && node --check tools/serve.mjs && node --check tools/verify.mjs && node --check engineering/draft-contract.mjs && node --check engineering/groq-gateway.mjs && node --check engineering/freellmapi-gateway.mjs && node --check engineering/local-permit.mjs && node --check engineering/plan-only.mjs && node --check tools/generate-plan.mjs && node --check engineering/static-review.mjs && node --check engineering/proof-bundle.mjs && node --check tools/verify-proof.mjs",
     "test": "node --test",
     "verify": "npm run check && npm test && node tools/verify.mjs",
     "plan": "node tools/generate-plan.mjs",
