@@ -2,6 +2,16 @@
 
 **Build software. Verify everything. Keep humans in control.**
 
+> **Technical thesis — evidence-first software engineering.** CONSTRUCTOR AI is not presented as a renamed AI editor. Its first-party **Intent → Evidence Graph** and **Pinned Ed25519 Proof Witness + bounded artifact-byte checks** link user acceptance clauses to bounded cryptographically signed claims; missing proof remains visible and **release stays DENIED** without independently verified QA and owner authorization. These are implemented, tested *review-stage components*, not a certified production system.
+>
+> **New isolation milestone:** [Docker execution receipts](docs/ISOLATED_EXECUTION.md) combine actual Node test process results with ProofGraph. This is a bounded Docker reference, not VM-certified sandboxing; independent QA and release remain blocked.
+>
+> **New QA milestone:** [Three-Stage Independent CI QA](docs/INDEPENDENT_CI_QA.md) — separate signed builder, Docker QA and proof-audit jobs on GitHub, with Sigstore/OIDC artifact provenance independently checked. Verified on a synthetic test, without human identity attestation or release authority.
+>
+> **Next verified contracts, not yet live:** [Real LLM and Protected VM Gates](docs/REAL_LLM_VM_GATES.md) — pinned local GGUF inference adapter, strict draft admission and externally pinned VM-operator claim verification. Neither actual model inference nor hardened guest execution has been demonstrated yet.
+>
+> **Start here:** [Investor & Technical Brief](docs/INVESTOR_TECHNICAL_BRIEF.md) · [ProofGraph Protocol](docs/PROOFGRAPH_PROTOCOL.md) · [Independent Technical Diligence](docs/TECHNICAL_DILIGENCE.md) · [ProofGraph code](engineering/intent-proof-graph.mjs) · [Witness code](engineering/proof-witness.mjs) · [Review PR #5](https://github.com/oromaskevic23-cmd/CONSTRUCTOR-AI/pull/5).
+
 **Founder • Owner • CEO:** Alexander Romaskevich · **RomaskevicH**  
 **Authority:** Architect / Final Architectural Decision Authority · Ukraine  
 **IMPERIAL Core intelligence:** **VELEON** · **HANTER** for mission coordination  

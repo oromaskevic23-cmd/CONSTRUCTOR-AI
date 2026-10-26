@@ -23,6 +23,8 @@ jobs:
         run: npm run check
       - name: Unit tests and HTTP smoke
         run: npm test
+      - name: Exercise synthetic proof-to-release denial
+        run: npm run proof:graph:demo && npm run proof:passport:demo
       - name: Source integrity inventory
         run: node tools/verify.mjs > verification-inventory.json
       - name: Publish verification evidence
@@ -31,3 +33,189 @@ jobs:
           name: verified-reference-${{ github.sha }}
           path: verification-inventory.json
           retention-days: 30
+
+  docker-isolation:
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+      artifact-metadata: write
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout exact PR revision
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Use Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Download reference image and resolve immutable local image ID
+        shell: bash
+        run: |
+          docker pull node:22-alpine
+          IMAGE_ID="$(docker image inspect --format '{{.Id}}' node:22-alpine)"
+          [[ "$IMAGE_ID" =~ ^sha256:[a-f0-9]{64}$ ]]
+          echo "CONSTRUCTOR_DOCKER_IMAGE_ID=$IMAGE_ID" >> "$GITHUB_ENV"
+      - name: Execute genuine network-disabled Docker test and record ProofGraph evidence
+        env:
+          CONSTRUCTOR_EVIDENCE_OUTPUT: isolated-execution-evidence.json
+          CONSTRUCTOR_QA_BUILD_OUTPUT: ci-builder-evidence.json
+        run: npm run isolated:demo
+      - name: Publish bounded runner evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: isolated-execution-${{ github.sha }}
+          path: isolated-execution-evidence.json
+          retention-days: 14
+
+      - name: Attest builder receipt with GitHub OIDC / Sigstore provenance
+        uses: actions/attest@v4
+        with:
+          subject-path: ci-builder-evidence.json
+      - name: Publish signed builder receipt for independent QA
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-builder-evidence
+          path: ci-builder-evidence.json
+          if-no-files-found: error
+          retention-days: 14
+
+  independent-qa:
+    needs: docker-isolation
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+      artifact-metadata: write
+    steps:
+      - name: Checkout review revision
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Use Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Download exact builder execution receipt from this workflow
+        uses: actions/download-artifact@v4
+        with:
+          name: ci-builder-evidence
+          path: .
+      - name: Resolve immutable local Docker image ID
+        shell: bash
+        run: |
+          docker pull node:22-alpine
+          IMAGE_ID="$(docker image inspect --format '{{.Id}}' node:22-alpine)"
+          [[ "$IMAGE_ID" =~ ^sha256:[a-f0-9]{64}$ ]]
+          echo "CONSTRUCTOR_DOCKER_IMAGE_ID=$IMAGE_ID" >> "$GITHUB_ENV"
+      - name: Independently replay source with QA-owned test and sign own execution log
+        run: npm run qa:independent
+      - name: Attest independently rerun QA receipt with GitHub OIDC / Sigstore
+        uses: actions/attest@v4
+        with:
+          subject-path: ci-qa-chain.json
+      - name: Preserve signed QA chain
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-qa-chain
+          path: ci-qa-chain.json
+          if-no-files-found: error
+          retention-days: 14
+
+  proof-audit:
+    needs: independent-qa
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      attestations: read
+    steps:
+      - name: Checkout exact reviewed source
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Use Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Retrieve signed QA evidence from this workflow
+        uses: actions/download-artifact@v4
+        with:
+          name: ci-qa-chain
+          path: .
+      - name: Retrieve builder artifact for externally anchored provenance
+        uses: actions/download-artifact@v4
+        with:
+          name: ci-builder-evidence
+          path: .
+      - name: Verify both artifacts against GitHub OIDC / Sigstore provenance
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          WORKFLOW="github.com/$GITHUB_REPOSITORY/.github/workflows/ci.yml"
+          gh attestation verify ci-builder-evidence.json --repo "$GITHUB_REPOSITORY" --signer-workflow "$WORKFLOW" --deny-self-hosted-runners --format json > /dev/null
+          gh attestation verify ci-qa-chain.json --repo "$GITHUB_REPOSITORY" --signer-workflow "$WORKFLOW" --deny-self-hosted-runners --format json > /dev/null
+          echo "PASS: both evidence artifacts have verified GitHub OIDC/Sigstore workflow provenance"
+      - name: Independently check entire signature and SHA-256 lineage
+        run: npm run qa:audit
+      - name: Publish independently checked final QA verdict
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-qa-verdict
+          path: ci-qa-verdict.json
+          if-no-files-found: error
+          retention-days: 14
+
+  real-qwen-smoke:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+      artifact-metadata: write
+    steps:
+      - name: Checkout exact PR revision without persistent credentials
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Use Node.js 22 for independent contract admission
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install local llama.cpp Python CPU runtime (free, no provider key)
+        shell: bash
+        run: |
+          python3 -m venv .model-venv
+          .model-venv/bin/python -m pip install --upgrade pip
+          CMAKE_BUILD_PARALLEL_LEVEL=4 .model-venv/bin/python -m pip install llama-cpp-python==0.3.36
+      - name: Download official Qwen2.5-Coder 0.5B GGUF and enforce publisher SHA256
+        shell: bash
+        run: |
+          curl --fail --location --retry 2 --max-time 600 --output qwen.gguf "https://huggingface.co/Qwen/Qwen2.5-Coder-0.5B-Instruct-GGUF/resolve/main/qwen2.5-coder-0.5b-instruct-q4_0.gguf"
+          echo "9739055e046d62a937e5b7879012209ef40ebea8a1569a96028de491f3f091d5  qwen.gguf" | sha256sum --check --status
+      - name: Invoke actual local GGUF inference (strict no-secret synthetic goal)
+        run: |
+          .model-venv/bin/python tools/run-local-qwen.py \
+            --model-file qwen.gguf \
+            --goal "Create a minimal JavaScript arithmetic module with a unit test." \
+            --confirm-real-inference
+      - name: Fail closed unless real model output meets source draft contract
+        run: npm run llm:admit -- --goal "Create a minimal JavaScript arithmetic module with a unit test."
+      - name: Attest admitted local-model observation with GitHub OIDC
+        uses: actions/attest@v4
+        with:
+          subject-path: local-model-observation.json
+      - name: Preserve validated real-model attempt (no model weights)
+        uses: actions/upload-artifact@v4
+        with:
+          name: real-local-qwen-observation
+          path: local-model-observation.json
+          if-no-files-found: error
+          retention-days: 7
