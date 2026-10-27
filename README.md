@@ -4,7 +4,7 @@
 
 **Founder • Owner • CEO:** Alexander Romaskevich · **RomaskevicH**  
 **Authority:** Architect / Final Architectural Decision Authority  
-**IMPERIAL Core intelligence:** **VELEON** · **HANTER** for mission coordination  
+**IMPERIAL Core intelligence:** **VELION ⚡️** · **HANTER** for mission coordination  
 **Project status:** Active engineering · Free-only prototype · **NOT a verified autonomous software factory**  
 **Reference release:** `0.3.0` (Task Manager + gated planning + quarantine of untrusted draft files; real inference not yet verified)
 
@@ -93,7 +93,7 @@ Never treat an architectural intention as an implemented or tested feature. **NO
 ```mermaid
 flowchart LR
   User["User requirements"] --> Lock["IntentLock"]
-  Lock --> Plan["HANTER / VELEON planning"]
+  Lock --> Plan["HANTER / VELION ⚡️ planning"]
   Plan --> Agent["Universal NCA engineering roles"]
   Agent --> Gate["AI Passport / Guardian Core / Approval Gateway"]
   Gate --> Sandbox["Isolated build sandbox (future)"]
