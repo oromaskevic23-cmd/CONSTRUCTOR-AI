@@ -14,5 +14,8 @@
     "verify": "npm run check && npm test && node tools/verify.mjs",
     "plan": "node tools/generate-plan.mjs",
     "proof:verify": "node tools/verify-proof.mjs"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.0.0"
   }
 }
