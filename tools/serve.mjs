@@ -10,7 +10,8 @@ const routes = new Map([
   ["/index.html", ["index.html", "text/html; charset=utf-8"]],
   ["/styles.css", ["styles.css", "text/css; charset=utf-8"]],
   ["/src/app.js", ["src/app.js", "text/javascript; charset=utf-8"]],
-  ["/src/tasks.js", ["src/tasks.js", "text/javascript; charset=utf-8"]]
+  ["/src/tasks.js", ["src/tasks.js", "text/javascript; charset=utf-8"]],
+  ["/src/ai-auth.js", ["src/ai-auth.js", "text/javascript; charset=utf-8"]]
 ]);
 
 export function createAppServer() {
@@ -18,7 +19,7 @@ export function createAppServer() {
     res.setHeader("X-Content-Type-Options", "nosniff");
     res.setHeader("Referrer-Policy", "no-referrer");
     res.setHeader("Cache-Control", "no-store");
-    res.setHeader("Content-Security-Policy", "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'");
+    res.setHeader("Content-Security-Policy", "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src https://flqxwhibxnyujynmopmr.supabase.co; object-src 'none'; base-uri 'none'; form-action 'none'");
     if (!["GET", "HEAD"].includes(req.method)) {
       res.writeHead(405, {"Allow": "GET, HEAD"}); res.end("Method not allowed"); return;
     }
