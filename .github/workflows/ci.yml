@@ -19,6 +19,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "22"
+      - name: Install declared dependencies
+        run: npm install --no-package-lock --ignore-scripts
       - name: Check syntax
         run: npm run check
       - name: Unit tests and HTTP smoke
