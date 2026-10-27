@@ -5,10 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="dark">
   <meta name="description" content="CONSTRUCTOR AI — a locally running, dependency-free Task Manager reference app. This is not the full autonomous platform.">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src https://flqxwhibxnyujynmopmr.supabase.co; object-src 'none'; base-uri 'none'; form-action 'none'">
   <title>Task Manager — CONSTRUCTOR AI Verified Reference</title>
   <link rel="stylesheet" href="./styles.css">
   <script type="module" src="./src/app.js"></script>
+  <script type="module" src="./src/ai-auth.js"></script>
 </head>
 <body>
   <div class="layout">
@@ -22,6 +23,22 @@
         <h1>Build thoughtfully.<br><span>Verify everything.</span></h1>
         <p>This is a real, standalone Task Manager reference — <strong>not</strong> evidence of autonomous AI-generated apps, production infrastructure or a deployed CONSTRUCTOR AI platform.</p>
       </div>
+      <section class="panel" aria-labelledby="ai-title">
+        <h2 id="ai-title">CONSTRUCTOR AI · Groq</h2>
+        <p>Здравствуйте! Что вы хотите создать?</p>
+        <form id="ai-login" autocomplete="on">
+          <label for="ai-email">Supabase email</label><input id="ai-email" type="email" autocomplete="username" required>
+          <label for="ai-password">Password</label><input id="ai-password" type="password" autocomplete="current-password" required>
+          <button class="primary" type="submit">Войти</button>
+          <button id="ai-logout" class="secondary" type="button" disabled>Выйти</button>
+        </form>
+        <p id="ai-status" role="status" aria-live="polite">Войдите в существующий аккаунт Supabase Auth.</p>
+        <label for="ai-prompt">Задание модели</label>
+        <textarea id="ai-prompt" maxlength="1200" rows="4" placeholder="Создай CRM для малого бизнеса с клиентами и сделками"></textarea>
+        <button id="ai-generate" class="primary" type="button" disabled>Генерировать через Groq</button>
+        <pre id="ai-output" style="white-space:pre-wrap;overflow-wrap:anywhere" aria-live="polite"></pre>
+        <p>Генерация возвращает черновик. Исполнение, QA и публикация не выполняются автоматически.</p>
+      </section>
       <section class="panel" aria-labelledby="new-task">
         <div class="section-heading"><h2 id="new-task">Your workspace</h2><span class="chip">PRIVATE TO THIS BROWSER</span></div>
         <form id="task-form" autocomplete="off">
