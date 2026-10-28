@@ -1,7 +1,7 @@
 # CONSTRUCTOR AI — Architecture and Security Boundary v0.1
 
 **Status:** Mixed evidence: reference source E2; platform components E0/E1 until independently verified.  
-**Author attribution:** Alexander Romaskevich (RomaskevicH). **Canonical intelligence name: VELEON.**
+**Author attribution:** Alexander Romaskevich (RomaskevicH). **Canonical intelligence name: VELION.**
 
 ## 1. Actual contents and runtime diagram
 
@@ -24,7 +24,7 @@ flowchart TD
 ```mermaid
 flowchart LR
   U["User"] --> I["IntentLock"]
-  I --> H["HANTER / VELEON advisory"]
+  I --> H["HANTER / VELION advisory"]
   H --> P["Universal NCA planner & coder"]
   P --> A["AI Passport / Signed Agent Permit"]
   A --> G["Guardian Core / Approval Gateway"]
