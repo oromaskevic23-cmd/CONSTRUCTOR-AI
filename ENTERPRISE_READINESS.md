@@ -37,7 +37,7 @@
 
 **Digital corporation principle:** IMPERIAL Core is the founder-led architectural vision of a **digital corporation of Universal Nano Core Agents (NCA)**. Professional skills are mission-scoped. Scale **1 → 1,000,000,000 universal NCA identities** is a **future engineering objective**, not a verified deployment. One human founder uses LLM assistance. Canonical intelligence component: **VELION**.
 
-**Control invariants:** Identity ≠ Authority · Capability ≠ Approval · Zero Trust · Deny by Default · Fail Closed. Corporate shares (10M proposed authorization) are not tokens or NCA identities.
+**Control invariants:** Identity ≠ Authority · Capability ≠ Approval · Zero Trust · Deny by Default · Fail Closed.
 
 **References:** [Canonical IMPERIAL Core architecture](https://github.com/oromaskevic23-cmd/IMPERIAL-Core-US-HoldCo-Founder-Control-Blueprint/blob/main/ARCHITECTURE.md) · [Governance](https://github.com/oromaskevic23-cmd/IMPERIAL-Core-US-HoldCo-Founder-Control-Blueprint/blob/main/docs/GOVERNANCE.md).
 
