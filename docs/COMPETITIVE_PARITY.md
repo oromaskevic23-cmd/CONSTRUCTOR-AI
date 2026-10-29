@@ -66,7 +66,7 @@ Codex: https://help.openai.com/en/articles/20001545-using-codex-cloud ; https://
 
 ## One-screen experience
 
-Begin with a simple user prompt: **“Здравствуйте! Какую программу создать?”** Let the user describe a project. Keep rich engineering controls behind an optional verification inspector; do not hide genuine errors or human approval requests.
+Begin with a simple user prompt: **“What would you like to build?”** Let the user describe a project. Keep rich engineering controls behind an optional verification inspector; do not hide genuine errors or human approval requests.
 
 **Product motto:** Build software. Verify everything.  
 **Evidence principle:** No evidence → no superiority claim.  
