@@ -9,7 +9,7 @@ test("local reference server serves only allowlisted assets with security header
   await once(server,"listening");
   t.after(()=>server.close());
   const origin="http://127.0.0.1:"+server.address().port;
-  for(const url of ["/","/index.html","/styles.css","/src/app.js","/src/tasks.js"]){
+  for(const url of ["/","/index.html","/styles.css","/src/app.js","/src/tasks.js","/studio","/studio.html","/studio.css","/src/project-domain.mjs","/src/project-runtime.mjs","/src/project-export.mjs","/src/project.css","/src/zip.mjs","/src/studio.mjs"]){
     const res=await fetch(origin+url);
     assert.equal(res.status,200,"asset "+url);
     assert.equal(res.headers.get("x-content-type-options"),"nosniff");

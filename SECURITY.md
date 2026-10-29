@@ -1,6 +1,6 @@
 # Security Policy — CONSTRUCTOR AI
 
-**Reference application status:** Free local-only Task Manager; do not expose the included loopback Node server as a public service or run arbitrary generated code in it.
+**Reference application status:** Local-only reference and built-in Template Studio; do not expose the included loopback Node server as a public service or run arbitrary generated code in it.
 
 ## Reporting security problems
 
@@ -20,3 +20,7 @@ Use a **private GitHub Security Advisory** where enabled on this repository, or 
 ## Non-executing artifact quarantine v0.3
 
 The proof-bundle stage writes generated text into fresh private directories and checks SHA-256 integrity. It **is not a sandbox or a signed attestation**. Static heuristics do not establish code safety, and anyone with write access can alter both files and their unsigned manifest. Never import, compile, run, serve, deploy or release an untrusted draft. Use only a trusted operator-owned local output directory, not a shared or attacker-writable filesystem.
+
+## Template Studio v0.4
+
+Only reviewed built-in application code runs in the preview. Project name and accent are validated; names enter the DOM as text and HTML export is escaped. Export hashes prove byte consistency, not authorship or safety. Generated projects must not contain secrets or real customer data in their source. The local server binds only to loopback and serves allowlisted assets. Dependency installation disables lifecycle scripts.

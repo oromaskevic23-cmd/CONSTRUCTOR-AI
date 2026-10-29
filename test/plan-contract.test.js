@@ -42,7 +42,7 @@ test("rejects excessive response and file content",()=>{
   assert.throws(()=>parse({...sample(),files:Array.from({length:9},(_,i)=>({path:"file"+i+".js",content:"hi"}))}),/8/);
 });
 test("rejects oversized cumulative UTF-8 bytes",()=>{
-  assert.throws(()=>parse({...sample(),files:[{path:"a.js",content:"Ж".repeat(17000)},{path:"b.js",content:"test"}]}),/budget/);
+  assert.throws(()=>parse({...sample(),files:[{path:"a.js",content:"\u0416".repeat(17000)},{path:"b.js",content:"test"}]}),/budget/);
 });
 test("validates mission and requires explicit inference authorization",()=>{
   assert.deepEqual(validateMission({id:"valid-123",goal:"Build a task tracker",allowModel:true}),{id:"valid-123",goal:"Build a task tracker",allowModel:true});

@@ -2,6 +2,7 @@
 import {readFile, stat} from "node:fs/promises";
 import {createHash} from "node:crypto";
 const required=[
+  "package-lock.json","studio.html","studio.css","src/project-domain.mjs","src/project-runtime.mjs","src/project-export.mjs","src/project.css","src/zip.mjs","src/studio.mjs","test/project-domain.test.mjs","test/project-export.test.mjs",
   "package.json","index.html","styles.css","src/tasks.js","src/app.js",
   "test/tasks.test.js","test/server.test.js","tools/serve.mjs",
   "SECURITY.md","docs/VERIFIED_ENGINEERING_STANDARD.md",

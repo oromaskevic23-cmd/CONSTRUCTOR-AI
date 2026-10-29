@@ -6,9 +6,19 @@
 **Authority:** Architect / Final Architectural Decision Authority  
 **IMPERIAL Core intelligence:** **VELION ⚡️** · **HANTER** for mission coordination  
 **Project status:** Active engineering · Free-only prototype · **NOT a verified autonomous software factory**  
-**Reference release:** `0.3.0` (Task Manager + gated planning + quarantine of untrusted draft files; real inference not yet verified)
+**Reference release:** `0.4.0` — Template Studio, three exportable local applications, gated planning and draft quarantine.
 
-> **Evidence boundary:** This repository now contains a real, dependency-free **Task Manager reference application** and an automated CI workflow. They do **not** establish live provider inference, secure execution of arbitrary generated code, customer-ready hosting, full end-to-end browser tests or a production CONSTRUCTOR AI v1.0. GitHub Actions checks must be read from actual run status; source files alone are not a passing CI attestation.
+Create and export a **Task Manager, Business CRM or Business Dashboard** from reviewed built-in templates. The studio includes interactive previews, editable project source, tests and SHA-256 file manifests. It does not yet turn arbitrary prompts into verified production applications.
+
+## Template Studio
+
+[Open the live Template Studio](https://oromaskevic23-cmd.github.io/IMPERIAL-Core-Public/reference/constructor-ai/studio/studio.html).
+
+For local development, install the locked dependencies with `npm ci --ignore-scripts`, run `npm run verify`, then `npm start` and open **http://127.0.0.1:4173/studio**. Dependency versions and CI actions are pinned for reproducibility.
+
+Choose an application type, project name and accent, build a preview and download the ZIP. The exported project is dependency-free: unzip it, run `npm run verify`, `npm test` and `npm start`. Exported apps are local, single-user tools with browser storage; customer authentication, shared databases, arbitrary model-generated code and production hosting remain separate work.
+
+See [Template Studio scope and acceptance](docs/TEMPLATE_STUDIO.md) and [commercial release gates](docs/COMMERCIAL_READINESS.md).
 
 ## Official IMPERIAL Core web identity
 
@@ -19,9 +29,10 @@ Alexander Romaskevich · RomaskevicH — founder-declared Architect, Owner and C
 
 ## Run the reference app
 
-Requires **Node.js 22 or later**. No credentials, external model keys, paid services or dependency downloads needed.
+Requires **Node.js 22 or later**. No credentials, model keys or paid services are needed for the local UI. Repository tests require the locked dependencies; exported applications require none.
 
 ```bash
+npm ci --ignore-scripts
 npm run verify
 npm start
 ```

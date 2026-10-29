@@ -1,21 +1,21 @@
 {
   "name": "constructor-ai-verified-reference",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": true,
   "type": "module",
-  "description": "Verified Task Manager, opt-in Groq planning and non-executing SHA-256 draft quarantine. NOT a sandbox.",
+  "description": "CONSTRUCTOR AI local Template Studio, editable app export and governed model-planning prototype.",
   "engines": {
     "node": ">=22"
   },
   "scripts": {
     "start": "node tools/serve.mjs",
-    "check": "node --check src/tasks.js && node --check src/app.js && node --check tools/serve.mjs && node --check tools/verify.mjs && node --check engineering/draft-contract.mjs && node --check engineering/groq-gateway.mjs && node --check engineering/local-permit.mjs && node --check engineering/plan-only.mjs && node --check tools/generate-plan.mjs && node --check engineering/static-review.mjs && node --check engineering/proof-bundle.mjs && node --check tools/verify-proof.mjs && node --check engineering/velion-proposal-client.mjs && node --check tools/velion-bridge-smoke.mjs",
+    "check": "node --check src/tasks.js && node --check src/app.js && node --check tools/serve.mjs && node --check tools/verify.mjs && node --check engineering/draft-contract.mjs && node --check engineering/groq-gateway.mjs && node --check engineering/local-permit.mjs && node --check engineering/plan-only.mjs && node --check tools/generate-plan.mjs && node --check engineering/static-review.mjs && node --check engineering/proof-bundle.mjs && node --check tools/verify-proof.mjs && node --check engineering/velion-proposal-client.mjs && node --check tools/velion-bridge-smoke.mjs && node --check src/project-domain.mjs && node --check src/project-runtime.mjs && node --check src/project-export.mjs && node --check src/zip.mjs && node --check src/studio.mjs",
     "test": "node --test",
     "verify": "npm run check && npm test && node tools/verify.mjs",
     "plan": "node tools/generate-plan.mjs",
     "proof:verify": "node tools/verify-proof.mjs"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.0.0"
+    "@supabase/supabase-js": "2.118.0"
   }
 }
