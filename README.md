@@ -12,7 +12,7 @@ Create and export a **Task Manager, Business CRM or Business Dashboard** from re
 
 ## Template Studio
 
-[Open the live Template Studio](https://oromaskevic23-cmd.github.io/IMPERIAL-Core-Public/reference/constructor-ai/studio/studio.html).
+[Open the live Template Studio](https://oromaskevic23-cmd.github.io/Capital--Core-Public/reference/constructor-ai/studio/studio.html).
 
 For local development, install the locked dependencies with `npm ci --ignore-scripts`, run `npm run verify`, then `npm start` and open **http://127.0.0.1:4173/studio**. Dependency versions and CI actions are pinned for reproducibility.
 
@@ -22,7 +22,7 @@ See [Template Studio scope and acceptance](docs/TEMPLATE_STUDIO.md) and [commerc
 
 ## Official IMPERIAL Core web identity
 
-**[Alexander Romaskevich — official founder site](https://oromaskevic23-cmd.github.io/oromaskevic23-cmd/)** · **[IMPERIAL Core — official ecosystem site](https://oromaskevic23-cmd.github.io/IMPERIAL-Core-Public/)**
+**[Alexander Romaskevich — official founder site](https://oromaskevic23-cmd.github.io/oromaskevic23-cmd/)** · **[IMPERIAL Core — official ecosystem site](https://oromaskevic23-cmd.github.io/Capital--Core-Public/)**
 
 Alexander Romaskevich · RomaskevicH — founder-declared Architect, Owner and CEO of IMPERIAL Core. Both owner-maintained GitHub Pages sites provide 10 language versions. Their visibility on the public web is established; Google Search Console verification and indexing are separate, not claimed by these links.
 
@@ -146,6 +146,6 @@ To call the full platform milestone verified, independently demonstrate and reta
 
 ## Founder profile and public milestone — 25 October 2026
 
-[Canonical founder identity](https://github.com/oromaskevic23-cmd/IMPERIAL-Core-Public/blob/main/docs/FOUNDER_IDENTITY.md) · [IMPERIAL Core portfolio](https://github.com/oromaskevic23-cmd/IMPERIAL-Core-Public/blob/main/docs/PORTFOLIO.md).
+[Canonical founder identity](https://github.com/oromaskevic23-cmd/Capital--Core-Public/blob/main/docs/FOUNDER_IDENTITY.md) · [IMPERIAL Core portfolio](https://github.com/oromaskevic23-cmd/Capital--Core-Public/blob/main/docs/PORTFOLIO.md).
 
 **68/68 PASS** observed in [CI job](https://github.com/oromaskevic23-cmd/CONSTRUCTOR-AI/actions/runs/40131861437/job/120985060759) for [commit `23d25fa`](https://github.com/oromaskevic23-cmd/CONSTRUCTOR-AI/commit/23d25fa41287001c3529dad23571e67c04ddb74a) in [open PR #1](https://github.com/oromaskevic23-cmd/CONSTRUCTOR-AI/pull/1). This is unmerged PR evidence, not the default-branch test count or a production release. Model endpoints are mocked. HANTER is AI Command Center / Chief Systems, under the founder's final architectural decisions.
