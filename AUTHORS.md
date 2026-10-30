@@ -1,6 +1,6 @@
 # CONSTRUCTOR-AI — Founder, Project Authorship and Source Provenance
 
-**Project creator / founding architect:** Ромаскевич Александр Николаевич  
+**Project creator / founding architect:** Alexander Nikolaevich Romaskevich  
 **International name:** Alexander Nikolaevich Romaskevich  
 **GitHub and public signature:** [RomaskevicH](https://github.com/oromaskevic23-cmd)  
 **Role:** Founder • Owner • CEO • Chief Systems Architect of IMPERIAL Core  
@@ -29,7 +29,7 @@ Architecture is not evidence of production deployment. Technical capabilities an
 For **original IMPERIAL Core source modules maintained in this repository**, use:
 
 ```text
-Project author and founding architect: Ромаскевич Александр Николаевич
+Project author and founding architect: Alexander Nikolaevich Romaskevich
 International: Alexander Nikolaevich Romaskevich (RomaskevicH)
 GitHub: https://github.com/oromaskevic23-cmd
 Individual code contributions and licenses: see Git history and existing notices.
