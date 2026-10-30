@@ -1,0 +1,102 @@
+name: CONSTRUCTOR AI — isolated offline CRM product build and independent QA
+on:
+  pull_request:
+    paths:
+      - 'src/project-**'
+      - 'src/project.css'
+      - 'tools/build-offline-client-crm.mjs'
+      - 'tools/qa-offline-client-crm.mjs'
+      - 'docs/OFFLINE_CLIENT_CRM_RELEASE.md'
+      - '.github/workflows/offline-client-crm.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'src/project-**'
+      - 'src/project.css'
+      - 'tools/build-offline-client-crm.mjs'
+      - 'tools/qa-offline-client-crm.mjs'
+      - 'docs/OFFLINE_CLIENT_CRM_RELEASE.md'
+      - '.github/workflows/offline-client-crm.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+env:
+  NODE_SANDBOX: node@sha256:fe4f6d74e20370acb04ad889077d14d0f64a9c8ea6a42bc60cddf1e844699914
+jobs:
+  product-build-and-sandbox-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout exact reviewed source without persisted credentials
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Fetch pinned Node container image (no application credentials)
+        run: docker pull "$NODE_SANDBOX"
+      - name: Create ephemeral output location
+        run: |
+          mkdir -p "$RUNNER_TEMP/offline-crm-build"
+          chmod 0777 "$RUNNER_TEMP/offline-crm-build"
+      - name: Build a real CRM in a no-network, low-privilege, read-only container
+        run: |
+          docker run --rm --pull=never --network=none --read-only \
+            --cap-drop=ALL --security-opt=no-new-privileges --pids-limit=64 \
+            --memory=256m --cpus=1 --user=65534:65534 \
+            --tmpfs /tmp:rw,noexec,nosuid,size=33554432 \
+            --mount "type=bind,src=$GITHUB_WORKSPACE,dst=/source,readonly" \
+            --mount "type=bind,src=$RUNNER_TEMP/offline-crm-build,dst=/output" \
+            -e IMPERIAL_ISOLATED_TEST=yes \
+            "$NODE_SANDBOX" node /source/tools/build-offline-client-crm.mjs /output/offline-client-crm
+      - name: Run product integrity checks and behavioral tests inside sandbox
+        run: |
+          docker run --rm --pull=never --network=none --read-only \
+            --cap-drop=ALL --security-opt=no-new-privileges --pids-limit=64 \
+            --memory=256m --cpus=1 --user=65534:65534 \
+            --tmpfs /tmp:rw,noexec,nosuid,size=33554432 \
+            --mount "type=bind,src=$RUNNER_TEMP/offline-crm-build/offline-client-crm,dst=/work,readonly" \
+            --workdir /work \
+            "$NODE_SANDBOX" sh -c 'node verify.mjs && node --test test/app.test.mjs'
+      - name: Publish finished offline CRM and build proof
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: constructor-offline-client-crm-${{ github.sha }}
+          path: ${{ runner.temp }}/offline-crm-build/
+          retention-days: 14
+          if-no-files-found: error
+  independently-verified-qa:
+    needs: product-build-and-sandbox-test
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout QA implementation without persisted credentials
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Download tested product output from independent build job
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: constructor-offline-client-crm-${{ github.sha }}
+          path: ${{ runner.temp }}/offline-crm-qa-input
+      - name: Prepare independent QA output
+        run: |
+          mkdir -p "$RUNNER_TEMP/offline-crm-qa-report"
+          chmod 0777 "$RUNNER_TEMP/offline-crm-qa-report"
+          docker pull "$NODE_SANDBOX"
+      - name: Independently check manifest, domain behavior, security and HTTP server
+        run: |
+          docker run --rm --pull=never --network=none --read-only \
+            --cap-drop=ALL --security-opt=no-new-privileges --pids-limit=64 \
+            --memory=256m --cpus=1 --user=65534:65534 \
+            --tmpfs /tmp:rw,noexec,nosuid,size=33554432 \
+            --mount "type=bind,src=$GITHUB_WORKSPACE,dst=/source,readonly" \
+            --mount "type=bind,src=$RUNNER_TEMP/offline-crm-qa-input/offline-client-crm,dst=/product,readonly" \
+            --mount "type=bind,src=$RUNNER_TEMP/offline-crm-qa-report,dst=/qaout" \
+            "$NODE_SANDBOX" node /source/tools/qa-offline-client-crm.mjs /product /qaout/qa.json
+      - name: Publish independent QA findings
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: constructor-offline-client-crm-qa-${{ github.sha }}
+          path: ${{ runner.temp }}/offline-crm-qa-report/
+          retention-days: 14
+          if-no-files-found: warn
