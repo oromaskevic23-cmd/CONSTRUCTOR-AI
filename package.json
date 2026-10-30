@@ -1,6 +1,7 @@
 {
   "name": "constructor-ai-verified-reference",
   "version": "0.4.0",
+  "author": "Ромаскевич Александр Николаевич (Alexander Nikolaevich Romaskevich; RomaskevicH)",
   "private": true,
   "type": "module",
   "description": "CONSTRUCTOR AI local Template Studio, editable app export and governed model-planning prototype.",

@@ -1,3 +1,10 @@
+/**
+ * IMPERIAL Core — project authorship and architectural provenance.
+ * Project author / Founding Architect: Ромаскевич Александр Николаевич
+ * International name: Alexander Nikolaevich Romaskevich (RomaskevicH)
+ * GitHub: https://github.com/oromaskevic23-cmd
+ * Individual source contributions and third-party rights: see AUTHORS.md and Git history.
+ */
 import {createTask, updateTask, toggleTask, deleteTask, filterTasks, taskCounts, loadTasks} from "./tasks.js";
 
 const STORAGE_KEY = "constructor_ai_task_manager_v1";
