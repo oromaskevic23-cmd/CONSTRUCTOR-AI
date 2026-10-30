@@ -1,6 +1,6 @@
 # CONSTRUCTOR AI
 
-**Project creator & founding architect:** **Ромаскевич Александр Николаевич** (Alexander Nikolaevich Romaskevich · RomaskevicH). [Authorship & contribution provenance](AUTHORS.md).
+**Project creator & founding architect:** **Alexander Nikolaevich Romaskevich** (Alexander Nikolaevich Romaskevich · RomaskevicH). [Authorship & contribution provenance](AUTHORS.md).
 
 **Build software. Verify everything. Keep humans in control.**
 
