@@ -191,7 +191,7 @@ def main() -> None:
     if os.environ.get("CONSTRUCTOR_SYNTHETIC_BROWSER_CONSENT")!="ONE_TIME_FREE_CI_EXPERIMENT":
         raise AppBuildDenied("EXPLICIT_SYNTHETIC_BROWSER_CONSENT_REQUIRED")
     playwright_image=os.environ.get("CONSTRUCTOR_BROWSER_IMAGE","")
-    if not re.fullmatch(r"mcr\.microsoft\.com/playwright:v1\.56\.1-noble@sha256:[a-f0-9]{64}",playwright_image):
+    if not re.fullmatch(r"mcr\.microsoft\.com/playwright@sha256:[a-f0-9]{64}",playwright_image):
         raise AppBuildDenied("PLAYWRIGHT_IMAGE_MUST_BE_DIGEST_PINNED")
     qa_modules=Path(os.environ.get("CONSTRUCTOR_QA_MODULES",""))
     if not qa_modules.is_dir() or qa_modules.is_symlink():
