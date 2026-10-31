@@ -140,6 +140,15 @@ This diagram is a **design target**. The Task Manager demo exercises only the lo
 - [Enterprise commit standard](ENTERPRISE_COMMIT_STANDARD.md)
 - [Earlier complete public architecture / diagrams / investor proposals — archival reference](docs/LEGACY_PUBLIC_BLUEPRINT.md)
 
+## First verified real LLM-to-Docker engineering microcomponent — 31 October 2026
+
+**Verified bounded result:** Qwen2.5-Coder 7B performed **one genuine local generation** of a synthetic JavaScript invoice-calculation module. The generated source passed `node --check` and **10/10 independently pre-authored Node.js tests** inside a restricted, network-disabled Docker container. SHA-256 source and exact model/QA receipts were retained in GitHub Actions evidence.
+
+- [GitHub Actions PASS — run 41196573884](https://github.com/oromaskevic23-cmd/CONSTRUCTOR-AI/actions/runs/41196573884) · [merged code and workflow PR #22](https://github.com/oromaskevic23-cmd/CONSTRUCTOR-AI/pull/22).
+- [Archived original generated source](evidence/llm_generated/20261031_invoice_total_qwen7b.mjs) · [permanent engineering evidence and known gaps](docs/VERIFIED_REAL_LLM_MICROCOMPONENT_20261031.md).
+- Two earlier, smaller models produced genuine **failed** experiments; they were not counted as passing results. The source is **not a complete or professional invoice product**, and the current tests do not cover inherited property / non-plain object edge cases.
+- No production release, continuously running AI worker, verified multi-file app creation, independent human QA or commercial access has been authorized. The milestone for a complete autonomous application below remains **pending**.
+
 ## Milestone B — FIRST verified AI-generated application (still pending)
 
 To call the full platform milestone verified, independently demonstrate and retain evidence for:
