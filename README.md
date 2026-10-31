@@ -47,6 +47,14 @@ npm run check       # JavaScript syntax checks
 npm run verify      # Checks + tests + SHA-256 source inventory
 ```
 
+## Third-party IP policy — NVIDIA BioNeMo (reference-only)
+
+CONSTRUCTOR AI retains its original **proprietary source license** for material it actually owns. NVIDIA BioNeMo Agent Toolkit is identified as a **separate third-party project**, not an IMPERIAL Core product or official partnership. Its source scripts generally use Apache-2.0; its skills/documentation use CC-BY-4.0 with attribution. NIM runtimes, individual AI models, datasets and NVIDIA trademarks require **separate** permissions. The BioNeMo reference is **not** evidence of installed models, live science agents or commercial authorization.
+
+- [Upstream rights and clean-room integration policy](docs/BIONEMO_IP_POLICY.md) · [third-party rights manifest](governance/THIRD_PARTY_RIGHTS.json) · [automated fail-closed metadata tests](test/ip-rights-gate.test.mjs).
+- Run `npm run ip:verify`; it is also part of the standard `npm run verify`. This is a **limited static metadata guard**, not proof of infringement-free code or a substitute for legal counsel and supplier terms.
+- **Not permitted without separate review:** using NVIDIA logos or implying sponsorship, copying or redistributing protected vendor material, bundling unlicensed model weights, or training VELION on model outputs where the specific model terms forbid it.
+
 ## Verified Context & Cost Shield — local engineering pilot
 
 CONSTRUCTOR AI now includes a deterministic, **read-only local source-context selector** with strict source-byte limits, content SHA-256, source-drift re-verification, conservative secret-like content exclusions and 14 adversarial tests.
