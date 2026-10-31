@@ -16,6 +16,9 @@ const required=[
   "test/offline-integration.test.js","docs/PROOF_QUARANTINE.md",
   "engineering/context-shield.mjs","test/context-shield.test.mjs",
   "docs/CONTEXT_SHIELD_SPRINT_20261031.md",
+  "governance/THIRD_PARTY_RIGHTS.json","governance/LICENSE_INVENTORY.md",
+  "docs/BIONEMO_IP_POLICY.md","tools/ip-rights-gate.mjs",
+  "test/ip-rights-gate.test.mjs",".github/workflows/ip-rights.yml",
   ".github/workflows/ci.yml"
 ];
 const records=[];

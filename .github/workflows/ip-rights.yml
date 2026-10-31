@@ -1,0 +1,39 @@
+name: Third-party IP and NVIDIA BioNeMo rights policy gate
+
+on:
+  pull_request:
+    paths:
+      - 'governance/THIRD_PARTY_RIGHTS.json'
+      - 'governance/LICENSE_INVENTORY.md'
+      - 'docs/BIONEMO_IP_POLICY.md'
+      - 'tools/ip-rights-gate.mjs'
+      - 'test/ip-rights-gate.test.mjs'
+      - 'LICENSE'
+      - 'package.json'
+      - '.github/workflows/ip-rights.yml'
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  offline-rights-gate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - name: Checkout without persisted credentials
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Use Node.js 22
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+      - name: Validate source and rights gate syntax
+        run: node --check tools/ip-rights-gate.mjs && node --check test/ip-rights-gate.test.mjs
+      - name: Test copyright and trademark policy negative controls
+        run: node --test test/ip-rights-gate.test.mjs
+      - name: Verify repository rights manifest and prohibited artifacts
+        run: node tools/ip-rights-gate.mjs

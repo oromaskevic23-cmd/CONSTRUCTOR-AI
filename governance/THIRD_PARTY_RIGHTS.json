@@ -1,0 +1,117 @@
+{
+  "schema": "imperial.constructor.third_party_rights.v1",
+  "policy": "DENY_BY_DEFAULT",
+  "as_of": "2026-10-31",
+  "scope": "CONSTRUCTOR-AI public repository — preliminary reviewed references, not a legal title opinion",
+  "entries": [
+    {
+      "id": "nvidia-bionemo-agent-code",
+      "name": "NVIDIA BioNeMo Agent Toolkit — scripts and build code",
+      "category": "SOURCE_CODE",
+      "url": "https://github.com/NVIDIA-BioNeMo/bionemo-agent-toolkit",
+      "license": "Apache-2.0 (upstream code scope; inspect individual component)",
+      "license_url": "https://github.com/NVIDIA-BioNeMo/bionemo-agent-toolkit/blob/main/LICENSE",
+      "upstream_notice_url": "https://github.com/NVIDIA-BioNeMo/bionemo-agent-toolkit/blob/main/NOTICE",
+      "status": "REFERENCE_ONLY",
+      "copied_into_repository": false,
+      "redistribution_authorized": false,
+      "commercial_use_approved": false,
+      "training_velion_approved": false,
+      "brand_assets_approved": false,
+      "required_before_integration": [
+        "Review exact component/commit and dependencies",
+        "Preserve upstream Apache license and required NOTICE if redistributing",
+        "Mark any modified upstream files",
+        "Verify separate runtime/model terms"
+      ],
+      "notes": "Source Apache-2.0 does not license NIM containers, model weights, trademarks or third-party bundles."
+    },
+    {
+      "id": "nvidia-bionemo-agent-skills",
+      "name": "NVIDIA BioNeMo Agent Toolkit — skills and documentation",
+      "category": "DOCUMENTATION_AND_SKILLS",
+      "url": "https://github.com/NVIDIA-BioNeMo/bionemo-agent-toolkit",
+      "license": "CC-BY-4.0 (upstream skills/docs scope; per-file review required)",
+      "license_url": "https://github.com/NVIDIA-BioNeMo/bionemo-agent-toolkit/blob/main/LICENSE-CC-BY-4.0",
+      "upstream_notice_url": "https://github.com/NVIDIA-BioNeMo/bionemo-agent-toolkit/blob/main/NOTICE",
+      "status": "REFERENCE_ONLY",
+      "copied_into_repository": false,
+      "redistribution_authorized": false,
+      "commercial_use_approved": false,
+      "training_velion_approved": false,
+      "brand_assets_approved": false,
+      "required_before_integration": [
+        "Preserve creator/copyright/license/source attribution",
+        "Indicate any modifications when adapted or shared",
+        "Do not impose conflicting third-party restrictions",
+        "Check third-party skill data and bundled files separately"
+      ],
+      "notes": "No upstream SKILL.md or readme content is copied into CONSTRUCTOR AI."
+    },
+    {
+      "id": "nvidia-nim-runtime",
+      "name": "NVIDIA NIM inference runtime containers and hosted API",
+      "category": "RUNTIME",
+      "url": "https://www.nvidia.com/en-us/agreements/enterprise-software/nvidia-software-licensing-overview-and-faq/",
+      "license": "Vendor service/runtime terms vary by access mode and SKU",
+      "license_url": "https://www.nvidia.com/en-us/agreements/enterprise-software/nvidia-software-licensing-overview-and-faq/",
+      "upstream_notice_url": null,
+      "status": "BLOCKED_PENDING_REVIEW",
+      "copied_into_repository": false,
+      "redistribution_authorized": false,
+      "commercial_use_approved": false,
+      "training_velion_approved": false,
+      "brand_assets_approved": false,
+      "required_before_integration": [
+        "Verify access entitlement and permitted deployment mode",
+        "Check API usage quota and data/privacy terms",
+        "Document SKU-specific NIM terms and third-party content",
+        "Confirm separate model-card license and commercial permissions"
+      ],
+      "notes": "No NVIDIA credentials, containers, inference requests, NIM models or weights have been installed by this integration."
+    },
+    {
+      "id": "nvidia-model-weights",
+      "name": "Individual NVIDIA and third-party biological model weights",
+      "category": "MODEL_WEIGHTS",
+      "url": "https://github.com/NVIDIA-BioNeMo",
+      "license": "MODEL_SPECIFIC_NOT_DETERMINED",
+      "license_url": "https://www.nvidia.com/en-us/agreements/enterprise-software/nvidia-software-licensing-overview-and-faq/",
+      "upstream_notice_url": null,
+      "status": "BLOCKED_PENDING_REVIEW",
+      "copied_into_repository": false,
+      "redistribution_authorized": false,
+      "commercial_use_approved": false,
+      "training_velion_approved": false,
+      "brand_assets_approved": false,
+      "required_before_integration": [
+        "Identify exact model publisher/revision and model card",
+        "Check restrictions on outputs, derivative models and training",
+        "Obtain documented permission for any VELION distillation/training",
+        "Validate dataset, privacy, and output intellectual property rights"
+      ],
+      "notes": "Some NVIDIA Community Model License variants prohibit using their models or outputs to improve other AI models without authorization; evaluate per model, not as a universal prohibition."
+    },
+    {
+      "id": "nvidia-trademarks",
+      "name": "NVIDIA logo, brands and product trademarks",
+      "category": "TRADEMARK",
+      "url": "https://www.nvidia.com/en-gb/about-nvidia/legal-info/logo-brand-usage/",
+      "license": "NO_LOGO_LICENSE",
+      "license_url": "https://www.nvidia.com/en-gb/about-nvidia/legal-info/logo-brand-usage/",
+      "upstream_notice_url": null,
+      "status": "BLOCKED_PENDING_REVIEW",
+      "copied_into_repository": false,
+      "redistribution_authorized": false,
+      "commercial_use_approved": false,
+      "training_velion_approved": false,
+      "brand_assets_approved": false,
+      "required_before_integration": [
+        "Written permission before using NVIDIA logos or co-branded artwork",
+        "Use names only for accurate factual compatibility references",
+        "Never imply official endorsement or partnership"
+      ],
+      "notes": "CONSTRUCTOR AI does not claim to be an NVIDIA product, authorized partner, or certified integration."
+    }
+  ]
+}
