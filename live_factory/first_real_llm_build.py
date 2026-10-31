@@ -69,7 +69,7 @@ def generate(attempt: int) -> tuple[bytes, dict]:
     request = json.dumps({
         "model": MODEL, "prompt": request_prompt, "stream": False,
         "format": "json",
-        "options": {"temperature": 0, "seed": 20261031, "num_ctx": 4096, "num_predict": 1300}
+        "options": {"temperature": 0, "seed": 20261031 + attempt, "num_ctx": 4096, "num_predict": 1300}
     }, separators=(",", ":")).encode()
     req = urllib.request.Request(
         API, data=request, method="POST",
@@ -127,7 +127,8 @@ def main() -> None:
         raise BoundedBuildError("PINNED_SANDBOX_IMAGE_DIGEST_REQUIRED")
     qa_source = (Path(__file__).parent.parent / "live_qa" / "invoice-acceptance.mjs").read_bytes()
     root = Path(os.environ.get("RUNNER_TEMP", tempfile.gettempdir())) / "constructor-llm-evidence"
-    root.mkdir(mode=0o700, exist_ok=True)
+    root.mkdir(mode=0o755, exist_ok=True)
+    root.chmod(0o755)
     report = {
         "schema": "constructor.ai.live_llm_sandbox_proof.v1",
         "mission": "SYNTHETIC_INVOICE_MICROCOMPONENT_ONLY",
