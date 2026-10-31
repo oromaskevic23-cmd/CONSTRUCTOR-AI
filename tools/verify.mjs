@@ -14,6 +14,8 @@ const required=[
   "engineering/static-review.mjs","engineering/proof-bundle.mjs",
   "tools/verify-proof.mjs","test/proof-bundle.test.js",
   "test/offline-integration.test.js","docs/PROOF_QUARANTINE.md",
+  "engineering/context-shield.mjs","test/context-shield.test.mjs",
+  "docs/CONTEXT_SHIELD_SPRINT_20261031.md",
   ".github/workflows/ci.yml"
 ];
 const records=[];
