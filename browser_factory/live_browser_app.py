@@ -34,11 +34,11 @@ CHECKS = (
     "no remote network requests",
 )
 DENIED_JS = re.compile(
-    r"\b(?:import|export|require|eval|Function|fetch|XMLHttpRequest|"
+    r"\b(?:import|export|require|eval|fetch|XMLHttpRequest|"
     r"WebSocket|Worker|navigator|process|globalThis|document\.write|"
     r"innerHTML|outerHTML|insertAdjacentHTML|localStorage|sessionStorage|"
     r"indexedDB|setTimeout|setInterval)\b|"
-    r"<script|__proto__|constructor\s*\[", re.I
+    r"<script|__proto__|constructor\s*\[|new\s+Function\s*\(", re.I
 )
 DENIED_HTML = re.compile(
     r"<iframe|<object|<embed|<base|<form|on(?:click|load|error|input|submit)\s*=|"
@@ -69,7 +69,7 @@ def model_prompt(attempt: int, former: dict | None, failures: tuple[str,...]) ->
         "No other keys, no markdown, no commentary.\n"
         "Build an attractive SMALL OFFLINE browser Invoice Lab application. "
         "No frameworks, imports, CDN, npm, fetch, storage, external links, "
-        "inline JS, inline event handlers or remote resources.\n"
+        "inline JS, inline event handlers, <form>, or remote resources.\n"
         "HTML must include: accessible heading Invoice Lab; "
         "<label for=\"qty\">Quantity</label><input id=\"qty\" type=\"number\">; "
         "<label for=\"unitCents\">Unit cents</label> and number input with that id; "
