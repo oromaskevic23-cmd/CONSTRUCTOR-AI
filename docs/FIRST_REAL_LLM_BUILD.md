@@ -12,7 +12,7 @@ This is a **microcomponent**, not a complete business CRM, IDE, autonomous full-
 
 ## Implementation and trust boundaries
 
-- [Generator](../live_factory/first_real_llm_build.py): sends a fixed public task to local Ollama at **127.0.0.1**, using the third-party model **qwen2.5-coder:1.5b-instruct**. The model is used as an available backend for CONSTRUCTOR AI / future VELION routing, **not** claimed as proprietary VELION weights.
+- [Generator](../live_factory/first_real_llm_build.py): sends a fixed public task to local Ollama at **127.0.0.1**, using the third-party model **qwen2.5-coder:3b-instruct**. The model is used as an available backend for CONSTRUCTOR AI / future VELION routing, **not** claimed as proprietary VELION weights.
 - LLM must return JSON with exactly a source field. Only model-provided source is accepted; there is no pre-written source fallback, hidden replacement, or claiming a mocked response as genuine inference.
 - Static source-policy preflight denies explicit filesystem/network/process imports and other risky patterns before staging; **regex matching is not a hardened security sandbox**.
 - [Independent QA](../live_qa/invoice-acceptance.mjs): ten authored checks, not included in inference prompt, covering exact integer arithmetic, empty inputs, immutability, invalid inputs and unsafe integer overflow.
@@ -49,3 +49,6 @@ Evolve from one fixed artifact to a real verified engineering mission: IntentLoc
 Preserve AI Passport, Enterprise Skills, Audit Ledger, Owner Kill Switch, Zero Trust, Public/Private Boundary and CRYPTO IMPERIAL Ecosystem Boundary. No human final approval can be simulated with a boolean. No payment or customer account can be enabled by this test.
 
 **Build software. Verify everything.**
+## Model quality checkpoint (31 October 2026)
+
+The first actual experiment with Qwen2.5-Coder **1.5B** was honestly recorded as **NOT VERIFIED**: real inference and Docker ran, but 10/10 QA did not pass despite attempted repair. See [failed exact-run evidence](https://github.com/oromaskevic23-cmd/CONSTRUCTOR-AI/actions/runs/41196133405). No application was released. The same independent QA requirements remain unchanged for the 3B follow-up; the implementation does not substitute handcrafted working source on failures.
