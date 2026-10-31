@@ -17,10 +17,10 @@ API = "http://127.0.0.1:11434/api/generate"
 OBJECTIVE = "Implement a dependency-free JavaScript invoice calculator on public synthetic data."
 MAX_ATTEMPTS = 3
 UNSAFE = re.compile(
-    r"\b(?:import|require|process|eval|Function|fetch|XMLHttpRequest|"
+    r"\b(?:import|require|process|eval|fetch|XMLHttpRequest|"
     r"WebSocket|Worker|globalThis|Deno|Bun|setTimeout|setInterval|"
     r"child_process|exec|spawn|fs|net|http|https)\b|"
-    r"__proto__|constructor\s*\[|<script|[\x60]", re.I
+    r"__proto__|constructor\s*\[|new\s+Function\s*\(|<script|[\x60]", re.I
 )
 EXPORT = re.compile(r"\bexport\s+function\s+invoiceTotalCents\s*\(")
 SHA = re.compile(r"^[0-9a-f]{64}$")
