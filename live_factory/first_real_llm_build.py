@@ -31,11 +31,15 @@ class BoundedBuildError(RuntimeError):
 def checksum(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
-def prompt(attempt: int) -> str:
+def prompt(attempt: int, previous_source: str = "") -> str:
     feedback = "" if attempt == 1 else (
-        "\nThe previous version failed the independent acceptance suite. "
-        "Repair input validation, exact arithmetic, integer overflow and "
-        "immutability. Do not invent APIs or bypass tests."
+        "\nREPAIR MODE: The code below is your previous generated source. "
+        "Independent QA reported wrong exception classes for malformed data "
+        "and missing overflow checks. Rewrite the entire module correctly. "
+        "Invalid field types, missing fields and nonintegers MUST throw "
+        "TypeError; invalid ranges and overflow MUST throw RangeError. "
+        "Check safe-integer product AND running sum each iteration. "
+        "Previous generated source:\n" + previous_source[:5000] + "\n"
     )
     return (
         "SYNTHETIC TRAINING ONLY. Write a complete JavaScript ES module, not an "
@@ -44,10 +48,13 @@ def prompt(attempt: int) -> str:
         "Implement: export function invoiceTotalCents(items)\n"
         "1. items must be an Array. Each element must be a plain object with "
         "own fields qty and unitCents. Both must satisfy Number.isSafeInteger.\n"
-        "2. qty must be >= 1 and unitCents >= 0. Invalid types and nonintegers "
-        "throw TypeError; zero/negative qty or negative unitCents throw RangeError.\n"
+        "2. qty must be >= 1 and unitCents >= 0. Invalid types, missing fields, "
+        "objects masquerading as numbers, and non-integer values MUST throw TypeError, "
+        "not RangeError. Only numeric out-of-range values throw RangeError.\n"
         "3. Return exact integer total of qty * unitCents for all items. [] -> 0.\n"
-        "4. If a product or running sum is not Number.isSafeInteger, throw RangeError.\n"
+        "4. At EVERY iteration compute product = qty * unitCents. BEFORE adding it "
+        "check Number.isSafeInteger(product), and AFTER adding check "
+        "Number.isSafeInteger(total); throw RangeError if either fails.\n"
         "5. Never mutate input. Do not use imports, filesystem, network, process, "
         "eval, external packages, globals or extra exports.\n"
         "Output is untrusted and is executed only in restricted offline Docker "
@@ -64,11 +71,15 @@ def validate_candidate(raw: object) -> bytes:
         raise BoundedBuildError("CANDIDATE_ENCODING_POLICY_REJECTED")
     return raw.encode("utf-8")
 
-def generate(attempt: int) -> tuple[bytes, dict]:
-    request_prompt = prompt(attempt)
+def generate(attempt: int, previous_source: str = "") -> tuple[bytes, dict]:
+    request_prompt = prompt(attempt, previous_source)
     request = json.dumps({
         "model": MODEL, "prompt": request_prompt, "stream": False,
-        "format": "json",
+        "format": {
+            "type":"object",
+            "properties":{"source":{"type":"string","minLength":80,"maxLength":6000}},
+            "required":["source"],"additionalProperties":False
+        },
         "options": {"temperature": 0, "seed": 20261031 + attempt, "num_ctx": 4096, "num_predict": 1300}
     }, separators=(",", ":")).encode()
     req = urllib.request.Request(
@@ -145,13 +156,15 @@ def main() -> None:
         "production_authorized":False, "commercial_access":False,
     }
     complete=False
+    previous_source=""
     try:
         for i in range(1,MAX_ATTEMPTS+1):
             entry={"attempt":i,"stage":"INFERENCE_REQUESTED"}
             report["attempts"].append(entry)
             try:
-                candidate,receipt=generate(i)
+                candidate,receipt=generate(i, previous_source)
                 report["real_llm_calls"] += 1
+                previous_source=candidate.decode("utf-8")
                 entry["generation"]=receipt
                 case_dir=root/("attempt-"+str(i))
                 case_dir.mkdir(mode=0o755,exist_ok=False)
