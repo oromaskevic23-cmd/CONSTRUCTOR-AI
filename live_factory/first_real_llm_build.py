@@ -12,7 +12,7 @@ import subprocess
 import tempfile
 import urllib.request
 
-MODEL = "qwen2.5-coder:1.5b-instruct"
+MODEL = "qwen2.5-coder:3b-instruct"
 API = "http://127.0.0.1:11434/api/generate"
 OBJECTIVE = "Implement a dependency-free JavaScript invoice calculator on public synthetic data."
 MAX_ATTEMPTS = 3
@@ -52,9 +52,9 @@ def prompt(attempt: int, previous_source: str = "") -> str:
         "objects masquerading as numbers, and non-integer values MUST throw TypeError, "
         "not RangeError. Only numeric out-of-range values throw RangeError.\n"
         "3. Return exact integer total of qty * unitCents for all items. [] -> 0.\n"
-        "4. At EVERY iteration compute product = qty * unitCents. BEFORE adding it "
-        "check Number.isSafeInteger(product), and AFTER adding check "
-        "Number.isSafeInteger(total); throw RangeError if either fails.\n"
+        "4. At EVERY iteration compute product=qty*unitCents. Explicitly write the "
+        "two safety checks: if (!Number.isSafeInteger(product)) throw new RangeError; "
+        "then total+=product; if (!Number.isSafeInteger(total)) throw new RangeError.\n"
         "5. Never mutate input. Do not use imports, filesystem, network, process, "
         "eval, external packages, globals or extra exports.\n"
         "Output is untrusted and is executed only in restricted offline Docker "
