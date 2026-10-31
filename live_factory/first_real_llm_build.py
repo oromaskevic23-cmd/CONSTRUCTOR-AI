@@ -126,7 +126,7 @@ def main() -> None:
     if not image.startswith("node@sha256:") or not SHA.fullmatch(image.removeprefix("node@sha256:")):
         raise BoundedBuildError("PINNED_SANDBOX_IMAGE_DIGEST_REQUIRED")
     qa_source = (Path(__file__).parent.parent / "live_qa" / "invoice-acceptance.mjs").read_bytes()
-    root = Path(os.environ.get("RUNNER_TEMP", tempfile.gettempdir())) / "constructor-llm-evidence"
+    root = Path(tempfile.gettempdir()) / "constructor-llm-evidence"
     root.mkdir(mode=0o755, exist_ok=True)
     root.chmod(0o755)
     report = {
