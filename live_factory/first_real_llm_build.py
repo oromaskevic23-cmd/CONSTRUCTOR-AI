@@ -12,10 +12,23 @@ import subprocess
 import tempfile
 import urllib.request
 
-MODEL = "qwen2.5-coder:3b-instruct"
+MODEL = "qwen2.5-coder:7b-instruct"
 API = "http://127.0.0.1:11434/api/generate"
 OBJECTIVE = "Implement a dependency-free JavaScript invoice calculator on public synthetic data."
 MAX_ATTEMPTS = 3
+QA_FAILURE_NAMES = (
+    "empty synthetic invoice returns integer zero",
+    "two invoice line items sum in exact integer cents",
+    "zero price accepted, quantity stays positive",
+    "large safe integer preserved without floating currency",
+    "input state remains unchanged, including nested line object",
+    "reject non-array input with TypeError",
+    "reject malformed objects and invalid numeric types with TypeError",
+    "reject invalid quantity and negative price with RangeError",
+    "reject unsafe single product arithmetic with RangeError",
+    "reject unsafe aggregate totals even if products individually safe",
+)
+
 UNSAFE = re.compile(
     r"\b(?:import|require|process|eval|fetch|XMLHttpRequest|"
     r"WebSocket|Worker|globalThis|Deno|Bun|setTimeout|setInterval|"
@@ -31,7 +44,7 @@ class BoundedBuildError(RuntimeError):
 def checksum(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
-def prompt(attempt: int, previous_source: str = "") -> str:
+def prompt(attempt: int, previous_source: str = "", failures: tuple[str,...] = ()) -> str:
     feedback = "" if attempt == 1 else (
         "\nREPAIR MODE: The code below is your previous generated source. "
         "Independent QA reported wrong exception classes for malformed data "
@@ -39,6 +52,7 @@ def prompt(attempt: int, previous_source: str = "") -> str:
         "Invalid field types, missing fields and nonintegers MUST throw "
         "TypeError; invalid ranges and overflow MUST throw RangeError. "
         "Check safe-integer product AND running sum each iteration. "
+        "Failed QA test names (trusted, from known test list): " + ", ".join(failures) + "\n" +
         "Previous generated source:\n" + previous_source[:5000] + "\n"
     )
     return (
@@ -71,8 +85,8 @@ def validate_candidate(raw: object) -> bytes:
         raise BoundedBuildError("CANDIDATE_ENCODING_POLICY_REJECTED")
     return raw.encode("utf-8")
 
-def generate(attempt: int, previous_source: str = "") -> tuple[bytes, dict]:
-    request_prompt = prompt(attempt, previous_source)
+def generate(attempt: int, previous_source: str = "", failures: tuple[str,...] = ()) -> tuple[bytes, dict]:
+    request_prompt = prompt(attempt, previous_source, failures)
     request = json.dumps({
         "model": MODEL, "prompt": request_prompt, "stream": False,
         "format": {
@@ -124,7 +138,9 @@ def execute_restricted_docker(attempt_root: Path, image: str) -> dict:
         cmd, timeout=70, capture_output=True, text=True, check=False,
         env={"PATH": os.environ.get("PATH","/usr/bin:/bin")}
     )
+    failures = [name for name in QA_FAILURE_NAMES if ("✖ " + name) in run.stdout]
     return {
+        "failed_qa_tests": failures,
         "exit_code": run.returncode, "passed": run.returncode == 0,
         "log_sha256": checksum((run.stdout+run.stderr).encode()),
         "stdout_tail": run.stdout[-2500:], "stderr_tail": run.stderr[-500:],
@@ -157,12 +173,13 @@ def main() -> None:
     }
     complete=False
     previous_source=""
+    previous_failures=()
     try:
         for i in range(1,MAX_ATTEMPTS+1):
             entry={"attempt":i,"stage":"INFERENCE_REQUESTED"}
             report["attempts"].append(entry)
             try:
-                candidate,receipt=generate(i, previous_source)
+                candidate,receipt=generate(i, previous_source, previous_failures)
                 report["real_llm_calls"] += 1
                 previous_source=candidate.decode("utf-8")
                 entry["generation"]=receipt
@@ -175,6 +192,7 @@ def main() -> None:
                 result=execute_restricted_docker(case_dir,image)
                 report["verified_sandbox_runs"] += 1
                 entry["sandbox"]=result
+                previous_failures=tuple(result["failed_qa_tests"])
                 entry["stage"]="QA_PASS" if result["passed"] else "QA_FAIL"
                 if result["passed"]:
                     complete=True
