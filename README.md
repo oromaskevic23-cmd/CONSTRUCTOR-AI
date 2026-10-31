@@ -47,6 +47,14 @@ npm run check       # JavaScript syntax checks
 npm run verify      # Checks + tests + SHA-256 source inventory
 ```
 
+## Verified Context & Cost Shield — local engineering pilot
+
+CONSTRUCTOR AI now includes a deterministic, **read-only local source-context selector** with strict source-byte limits, content SHA-256, source-drift re-verification, conservative secret-like content exclusions and 14 adversarial tests.
+
+- [Context Shield implementation](engineering/context-shield.mjs) · [Tests](test/context-shield.test.mjs) · [Engineering documentation](docs/CONTEXT_SHIELD_SPRINT_20261031.md) · [Dedicated GitHub Actions](.github/workflows/context-shield.yml).
+- This is **not** semantic memory, live VELION model integration, accurate token measurement, full DLP, prompt-injection resistance, an isolated coding agent or a production release. The source data is explicitly **untrusted**. No commercial privileges are issued.
+- Existing model-planning and quarantined-draft gates remain unchanged. The objective is reproducible context selection as a foundation for later verified coding and independent QA.
+
 ## AI planning gateway v0.2 — secure, plan-only prototype
 
 The repository now includes a **fixed-origin Groq adapter and constrained, validated proposal contract**, intentionally separate from the browser Task Manager. No server secrets are exposed to the frontend. The draft gateway **never executes generated source, modifies the repository, provisions infrastructure or releases software**.
