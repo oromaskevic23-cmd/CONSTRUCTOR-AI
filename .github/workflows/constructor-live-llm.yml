@@ -71,7 +71,7 @@ jobs:
             sleep 1
           done
           curl --noproxy '*' -fsS 'http://127.0.0.1:11434/api/tags' >/dev/null
-          timeout 480 "$RUNNER_TEMP/ollama-bin/bin/ollama" pull qwen2.5-coder:3b-instruct
+          timeout 480 "$RUNNER_TEMP/ollama-bin/bin/ollama" pull qwen2.5-coder:7b-instruct
           "$RUNNER_TEMP/ollama-bin/bin/ollama" list
       - name: Real LLM generation and no-network Docker execution plus independent QA
         shell: bash
