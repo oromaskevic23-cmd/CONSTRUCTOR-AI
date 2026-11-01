@@ -41,7 +41,13 @@ Open http://127.0.0.1:4174 in a browser. Use only **one local app server at a ti
 7. Reload and confirm persistence in the same browser's localStorage (unless storage is disabled); preview mode intentionally uses temporary memory.
 8. Modify a source file inside an extracted application and run npm run verify: integrity checking must fail. Re-extract the original ZIP before continuing.
 
-The repository automated suite covers record operations, invalid backups, generated tests, ZIP safety, server routes and integrity tampering. CI separately extracts all three actual ZIPs into clean directories and executes each app's own integrity check and tests. **This is not a real-browser E2E suite**; the human browser checklist remains a separate gate.
+The repository automated suite covers record operations, invalid backups, generated tests, ZIP safety, server routes and integrity tampering. CI separately extracts all three ZIPs into clean directories and executes each application's own integrity check and tests.
+
+### Automated real-browser gate
+
+The independent Chromium workflow at .github/workflows/flagship-browser.yml launches the actual Studio in a real Chromium browser, downloads one ZIP for each template, verifies extracted integrity and automated tests, and drives create/edit/status/search/delete, backup export, malformed/cross-template rejection, cancel/restore and reload persistence in each exported application. It uses a pinned ephemeral Playwright 1.64.1 installation (not a runtime product dependency), real browser binaries and synthetic local data only.
+
+**Boundary:** Automated Chromium E2E evidence is not a human audit, penetration test, production deployment or multi-browser compatibility proof. Retain a separate human acceptance step for visual, accessibility, and mobile behavior. A newly added workflow is not labeled PASS until its actual GitHub Actions run succeeds for a specified source commit.
 
 ## Evidence and failure policy
 
