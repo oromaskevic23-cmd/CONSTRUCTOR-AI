@@ -25,11 +25,15 @@ jobs:
         run: npm run check
       - name: Unit tests and HTTP smoke
         run: npm test
+      - name: Build three portable flagship acceptance ZIPs
+        run: node tools/build-acceptance.mjs acceptance-output
       - name: Source integrity inventory
         run: node tools/verify.mjs > verification-inventory.json
       - name: Publish verification evidence
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: verified-reference-${{ github.sha }}
-          path: verification-inventory.json
+          path: |
+            verification-inventory.json
+            acceptance-output/
           retention-days: 30
