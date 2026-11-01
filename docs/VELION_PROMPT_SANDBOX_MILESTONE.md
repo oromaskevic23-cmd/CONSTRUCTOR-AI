@@ -25,7 +25,7 @@ mkdir -p /tmp/constructor-safe-output
 node tools/prepare-synthetic-task-build.mjs /tmp/constructor-safe-output
 ~~~
 
-The command only stages synthetic source, never executes it on the host. The GitHub Actions prompt-sandbox-qa workflow performs Docker execution and independent QA, and emits a scoped task-qa-proof.json with release DENIED.
+The command only stages synthetic source, never executes it on the host. The GitHub Actions prompt-sandbox-qa workflow performs Docker execution and independent QA, and emits a scoped task-qa-proof.json with release DENIED. Trusted operators can use the exact same guarded Docker entrypoint: bash tools/run-isolated-task-qa.sh STAGED_DIR EXISTING_EVIDENCE_DIR. Preload the pinned Node Docker image first; the script fails closed if it is missing. Do not execute app.mjs directly on the host.
 
 ## Optional local model inference — no automated execution
 
