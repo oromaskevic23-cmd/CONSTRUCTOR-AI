@@ -14,6 +14,7 @@ Clone the repository at an immutable commit SHA and record that SHA. No AI token
 npm ci --ignore-scripts --no-audit --no-fund
 npm run verify
 node tools/build-acceptance.mjs acceptance-output
+node tools/verify-acceptance.mjs acceptance-output
 cat acceptance-output/acceptance-manifest.json
 ~~~
 
@@ -40,7 +41,7 @@ Open http://127.0.0.1:4174 in a browser. Use only **one local app server at a ti
 7. Reload and confirm persistence in the same browser's localStorage (unless storage is disabled); preview mode intentionally uses temporary memory.
 8. Modify a source file inside an extracted application and run npm run verify: integrity checking must fail. Re-extract the original ZIP before continuing.
 
-The repository automated suite covers record operations, invalid backups, generated tests, ZIP safety, server routes and integrity tampering. **This is not a real-browser E2E suite**; the human browser checklist remains a separate gate.
+The repository automated suite covers record operations, invalid backups, generated tests, ZIP safety, server routes and integrity tampering. CI separately extracts all three actual ZIPs into clean directories and executes each app's own integrity check and tests. **This is not a real-browser E2E suite**; the human browser checklist remains a separate gate.
 
 ## Evidence and failure policy
 
