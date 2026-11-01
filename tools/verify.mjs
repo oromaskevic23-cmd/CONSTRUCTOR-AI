@@ -5,7 +5,7 @@ const required=[
   "engineering/velion-task-generator.mjs","engineering/task-build-quarantine.mjs",
   "engineering/task-approval-gateway.mjs","engineering/task-review-export.mjs",
   "tools/prepare-synthetic-task-build.mjs","tools/local-velion-task-build.mjs",
-  "tools/verify-task-sandbox-qa.mjs","tools/export-approved-task-review.mjs","qa/independent-task-suite.mjs",
+  "tools/verify-task-sandbox-qa.mjs","tools/run-isolated-task-qa.sh","tools/export-approved-task-review.mjs","qa/independent-task-suite.mjs",
   "test/velion-task-build.test.mjs","test/task-review-export.test.mjs","docs/VELION_PROMPT_SANDBOX_MILESTONE.md",
   ".github/workflows/prompt-sandbox-qa.yml",
   "package-lock.json","studio.html","studio.css","src/project-domain.mjs","src/project-runtime.mjs","src/project-backup.mjs","src/project-export.mjs","src/project.css","src/zip.mjs","src/studio.mjs","test/project-domain.test.mjs","test/project-export.test.mjs","test/project-backup.test.mjs",
