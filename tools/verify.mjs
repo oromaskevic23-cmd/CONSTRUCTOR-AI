@@ -2,6 +2,12 @@
 import {readFile, stat} from "node:fs/promises";
 import {createHash} from "node:crypto";
 const required=[
+  "engineering/velion-task-generator.mjs","engineering/task-build-quarantine.mjs",
+  "engineering/task-approval-gateway.mjs",
+  "tools/prepare-synthetic-task-build.mjs","tools/local-velion-task-build.mjs",
+  "tools/verify-task-sandbox-qa.mjs","qa/independent-task-suite.mjs",
+  "test/velion-task-build.test.mjs","docs/VELION_PROMPT_SANDBOX_MILESTONE.md",
+  ".github/workflows/prompt-sandbox-qa.yml",
   "package-lock.json","studio.html","studio.css","src/project-domain.mjs","src/project-runtime.mjs","src/project-backup.mjs","src/project-export.mjs","src/project.css","src/zip.mjs","src/studio.mjs","test/project-domain.test.mjs","test/project-export.test.mjs","test/project-backup.test.mjs",
   "package.json","index.html","styles.css","src/tasks.js","src/app.js",
   "test/tasks.test.js","test/server.test.js","tools/serve.mjs",
