@@ -8,7 +8,7 @@ The founder's current direction is to develop CONSTRUCTOR AI, use it to build re
 | Arbitrary AI application generation | Not verified | Real authorized model response through a complete, tested application workflow |
 | Isolated execution | Not implemented in this product | Host isolation, resource limits, secrets protection and adversarial tests |
 | Customer accounts and tenant separation | Not delivered by the template studio | Authentication, authorization and cross-tenant negative tests |
-| Data recovery | Local JSON export and validated replace-import with explicit confirmation (proposed PR); no cloud copies | Independent recovery, corruption and browser acceptance tests; production backup/recovery strategy |
+| Data recovery | Local JSON export and validated replace-import with explicit confirmation (flagship engineering increment); no cloud copies | Independent recovery, corruption and browser acceptance tests; production backup/recovery strategy |
 | Build reproducibility | Exact dependency and lockfile pins | Clean CI installation and recorded commit-specific results |
 | IP and licenses | Review required | Contributor and dependency inventory; actual rights to commercialize each component |
 | Independent security assessment | Not completed | Findings, fixes and independent verification |
