@@ -9,7 +9,7 @@ const sources=Object.fromEntries(await Promise.all(SOURCE_PATHS.map(async p=>[p,
 for(const template of ['tasks','crm','dashboard']) test(`${template}: exported project passes its own tests and integrity check`,async t=>{
   const project=await buildProject({template,name:'My business'},sources);const dir=await mkdtemp(join(tmpdir(),'constructor-export-'));t.after(()=>rm(dir,{recursive:true,force:true}));
   for(const f of project.files){const p=join(dir,f.path);await mkdir(dirname(p),{recursive:true});await writeFile(p,f.content);}
-  for(const args of [['verify.mjs'],['--test','test/app.test.mjs']]){const r=spawnSync(process.execPath,args,{cwd:dir,encoding:'utf8',timeout:10000});assert.equal(r.status,0,r.stderr+r.stdout);}
+  for(const args of [['verify.mjs'],['--test']]){const r=spawnSync(process.execPath,args,{cwd:dir,encoding:'utf8',timeout:10000});assert.equal(r.status,0,r.stderr+r.stdout);}
   await writeFile(join(dir,'app.mjs'),'tampered');assert.notEqual(spawnSync(process.execPath,['verify.mjs'],{cwd:dir,timeout:10000}).status,0);
 });
 test('export escapes HTML while preserving user text as JavaScript string data',async()=>{
