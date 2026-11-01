@@ -13,6 +13,7 @@ const routes = new Map([
   ["/studio.css", ["studio.css", "text/css; charset=utf-8"]],
   ["/src/project-domain.mjs", ["src/project-domain.mjs", "text/javascript; charset=utf-8"]],
   ["/src/project-runtime.mjs", ["src/project-runtime.mjs", "text/javascript; charset=utf-8"]],
+  ["/src/project-backup.mjs", ["src/project-backup.mjs", "text/javascript; charset=utf-8"]],
   ["/src/project-export.mjs", ["src/project-export.mjs", "text/javascript; charset=utf-8"]],
   ["/src/project.css", ["src/project.css", "text/css; charset=utf-8"]],
   ["/src/zip.mjs", ["src/zip.mjs", "text/javascript; charset=utf-8"]],
