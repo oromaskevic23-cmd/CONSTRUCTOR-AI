@@ -35,7 +35,7 @@ node tools/build-acceptance.mjs acceptance-output
 node tools/verify-acceptance.mjs acceptance-output
 ~~~
 
-Each ZIP contains an offline local app that can be extracted and checked with npm run verify, npm test, npm start using Node.js 22+. The CI workflow publishes ZIPs plus acceptance-manifest.json tied to the tested revision when GitHub Actions succeeds. **Human browser acceptance remains required**, as the current automated suite is not a browser E2E test. Full prompt-to-production generation and commercial readiness remain unverified.
+Each ZIP contains an offline local app that can be extracted and checked with npm run verify, npm test, npm start using Node.js 22+. The CI workflow publishes ZIPs plus acceptance-manifest.json tied to the tested revision when GitHub Actions succeeds. **Real Chromium E2E is implemented and passed:** the [browser workflow](https://github.com/oromaskevic23-cmd/CONSTRUCTOR-AI/actions/runs/41327399818) exercises Studio ZIP downloads plus CRUD, search, status updates, JSON recovery, rejection and persistence in all three exported apps. The [read-only public delivery gate](https://github.com/oromaskevic23-cmd/CONSTRUCTOR-AI/actions/runs/41327878532) independently retrieved the published GitHub Pages demo and verified all nine shipped asset hashes against the source-bound manifest. A human visual/accessibility review and cross-browser compatibility assessment remain separate. Full prompt-to-production generation and commercial readiness remain unverified.
 
 
 ## Official IMPERIAL Core web identity
