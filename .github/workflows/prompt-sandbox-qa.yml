@@ -40,33 +40,11 @@ jobs:
           STAGE="$(node -p 'JSON.parse(require("fs").readFileSync(process.argv[1],"utf8")).stage' "$RUNNER_TEMP/fixture-result.json")"
           test -d "$STAGE"
           echo "stage=$STAGE" >> "$GITHUB_OUTPUT"
-      - name: Syntax check in restricted disposable no-network Docker
+      - name: Execute canonical no-network Docker checks and independent QA
         shell: bash
         run: |
           set -euo pipefail
-          docker run --rm --pull=never --network=none --read-only \
-            --user "$(id -u):$(id -g)" --cap-drop=ALL --security-opt=no-new-privileges \
-            --pids-limit=64 --memory=256m --cpus=1 \
-            --tmpfs /tmp:rw,noexec,nosuid,size=33554432 \
-            --mount "type=bind,src=${{ steps.stage.outputs.stage }},dst=/work,readonly" \
-            "$NODE_SANDBOX" node --check /work/app.mjs
-      - name: Model-authored tests AND independent hidden QA in separate container
-        shell: bash
-        run: |
-          set -euo pipefail
-          docker run --rm --pull=never --network=none --read-only \
-            --user "$(id -u):$(id -g)" --cap-drop=ALL --security-opt=no-new-privileges \
-            --pids-limit=64 --memory=256m --cpus=1 \
-            --tmpfs /tmp:rw,noexec,nosuid,size=33554432 \
-            --mount "type=bind,src=${{ steps.stage.outputs.stage }},dst=/work,readonly" \
-            --mount "type=bind,src=$GITHUB_WORKSPACE/qa,dst=/qa,readonly" \
-            "$NODE_SANDBOX" node --test /work/test/app.test.mjs /qa/independent-task-suite.mjs | tee "$RUNNER_TEMP/independent-qa.log"
-      - name: Recheck source hashes and collect scoped QA proof; release denied
-        shell: bash
-        run: |
-          set -euo pipefail
-          node tools/verify-task-sandbox-qa.mjs \
-            "${{ steps.stage.outputs.stage }}" "$RUNNER_TEMP/independent-qa.log" "$RUNNER_TEMP/task-qa-proof.json"
+          bash tools/run-isolated-task-qa.sh "${{ steps.stage.outputs.stage }}" "$RUNNER_TEMP"
           node -e 'let q=require(process.argv[1]);if(q.release!=="DENIED"||q.approval!=="NOT_GRANTED")process.exit(1)' "$RUNNER_TEMP/task-qa-proof.json"
       - name: Preserve test evidence
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
