@@ -49,6 +49,10 @@ The independent Chromium workflow at .github/workflows/flagship-browser.yml laun
 
 **Boundary:** Automated Chromium E2E evidence is not a human audit, penetration test, production deployment or multi-browser compatibility proof. Retain a separate human acceptance step for visual, accessibility, and mobile behavior. A newly added workflow is not labeled PASS until its actual GitHub Actions run succeeds for a specified source commit.
 
+## Public GitHub Pages delivery gate
+
+The separate public-delivery workflow checks the actual public GitHub Pages URL over HTTPS, verifies all nine published assets against the source-bound SHA-256 deployment manifest, rejects stale links or missing backup support, and retains a downloadable JSON evidence artifact. The pinned source revision must be disclosed: the public deployment is not automatically identical to every later main-branch commit. A successful source CI alone never establishes successful public delivery. This gate is read-only and runs only when explicitly triggered by GitHub workflows, not as autonomous monitoring.
+
 ## Evidence and failure policy
 
 - Bind each result to the exact source commit and acceptance-manifest.json.
