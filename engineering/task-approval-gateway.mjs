@@ -12,7 +12,7 @@ export function verifyTaskOwnerApproval({approval,ownerPublicKeyPem,qaProof,cons
  if(key.asymmetricKeyType!=='ed25519')throw Error('OWNER_KEY_MUST_BE_ED25519');
  if(!(consumedNonces instanceof Set))throw Error('PERSISTENT_REPLAY_STORE_REQUIRED');
  if(!approval||typeof approval!=='object'||Array.isArray(approval)||
-   Object.keys(approval).sort().join('|')!=='action|expiresAt|issuedAt|missionId|nonce|qaLogSha256|stageManifestSha256|signature|signer|version')throw Error('APPROVAL_FORMAT_INVALID');
+   Object.keys(approval).sort().join('|')!=='action|expiresAt|issuedAt|missionId|nonce|qaLogSha256|signature|signer|stageManifestSha256|version')throw Error('APPROVAL_FORMAT_INVALID');
  const {signature,...message}=approval;
  if(message.version!=='constructor_owner_local_export_v1'||message.signer!=='OWNER'||
     message.action!=='export:local-review-only'||!ID.test(message.missionId??'')||
