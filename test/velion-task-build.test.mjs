@@ -17,11 +17,11 @@ const draft={schema:'constructor_draft_v1',summary:'Synthetic task manager',
 function call({now=Date.now(),input=draft,model='fixture:task-v1',fetchImpl}={}){
  const permit=issueLocalDraftPermit({missionId:mission.id,secret,now});
  return requestVelionTaskDraft({mission,permit,permitSecret:secret,model,now,consumedNonces:new Set(),
-   fetchImpl:fetchImpl||async(url,request)=>{
+   fetchImpl:fetchImpl||(async(url,request)=>{
      assert.equal(url,'http://127.0.0.1:11434/api/generate');
      assert.equal(request.redirect,'error');
      return new Response(JSON.stringify({done:true,model,response:JSON.stringify(input)}),{status:200});
-   }});
+   })});
 }
 test('VELION local adapter returns validated UNTRUSTED source only',async()=>{
  const result=await call();
