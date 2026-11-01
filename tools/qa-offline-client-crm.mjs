@@ -25,8 +25,8 @@ await step('manifest_independent_hash_review',async()=>{
  const manifest=JSON.parse(await readFile(filename('manifest.json'),'utf8'));
  assert.equal(manifest.schema,'constructor-template-export-v1');
  assert.equal(manifest.template,'crm');
- assert.equal(manifest.files.length,10);
- const expected=new Set(['index.html','app.mjs','project-domain.mjs','project-runtime.mjs','styles.css','package.json','serve.mjs','verify.mjs','test/app.test.mjs','README.md']);
+ assert.equal(manifest.files.length,12);
+ const expected=new Set(['index.html','app.mjs','project-domain.mjs','project-runtime.mjs','project-backup.mjs','styles.css','package.json','serve.mjs','verify.mjs','test/app.test.mjs','test/backup.test.mjs','README.md']);
  for(const file of manifest.files){
    assert(expected.delete(file.path),'UNEXPECTED_OR_DUPLICATE_MANIFEST_PATH');
    const path=filename(file.path);
@@ -39,8 +39,8 @@ await step('manifest_independent_hash_review',async()=>{
  }
  assert.equal(expected.size,0,'MISSING_PRODUCT_FILE');
  const files=await readdir(root);
- assert.equal(files.length,11,'EXTRA_ROOT_FILES');
- return '10 file hashes independently verified; product manifest separate';
+ assert.equal(files.length,12,'EXTRA_ROOT_FILES');
+ return '12 file hashes independently verified; product manifest separate';
 });
 await step('functional_crm_behavior',async()=>{
  const domain=await import(pathToFileURL(filename('project-domain.mjs')).href);
@@ -62,6 +62,18 @@ await step('functional_crm_behavior',async()=>{
  assert.throws(()=>domain.saveRecord([], {...a,value:-1},template));
  assert.throws(()=>domain.saveRecord([], {...a,title:'<XSS>\0'},template));
  return 'create, update-stage, totals, delete, invalid-value and invalid-title checks';
+});
+await step('independent_backup_recovery_validation',async()=>{
+ const backup=await import(pathToFileURL(filename('project-backup.mjs')).href);
+ const data=[{id:'lead-1',title:'Client',detail:'Prospect',value:25.5,status:'New'}];
+ const json=backup.serializeBackup(data,'crm');
+ assert.deepEqual(backup.parseBackup(json,'crm'),data);
+ assert.throws(()=>backup.parseBackup(json,'tasks'));
+ assert.throws(()=>backup.parseBackup('{','crm'));
+ const malformed=JSON.stringify({schema:'constructor-records-v1',template:'crm',records:[...data,...data]});
+ assert.throws(()=>backup.parseBackup(malformed,'crm'));
+ assert.deepEqual(data,[{id:'lead-1',title:'Client',detail:'Prospect',value:25.5,status:'New'}]);
+ return 'independent exported-backup roundtrip, mismatch, corruption and duplicate-ID negative paths';
 });
 await step('browser_artifact_security_review',async()=>{
  const html=await readFile(filename('index.html'),'utf8');
