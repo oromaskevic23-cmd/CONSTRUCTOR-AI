@@ -12,6 +12,12 @@
 
 Create and export a **Task Manager, Business CRM or Business Dashboard** from reviewed built-in templates. The studio includes interactive previews, editable project source, tests and SHA-256 file manifests. It does not yet turn arbitrary prompts into verified production applications.
 
+## VELION — prompt-generated code pilot (bounded, not production)
+
+A new [engineering milestone](docs/VELION_PROMPT_SANDBOX_MILESTONE.md) implements a restricted first path beyond fixed templates: an explicitly authorized local VELION/Ollama request for a Task Manager module, typed model output, SHA-256 quarantine, non-network Docker execution, separately authored QA tests and a verification-only Ed25519 Owner Approval Gateway. The sandbox CI uses a **synthetic model fixture**, not real model inference; real-model end-to-end acceptance and real Owner Ed25519 enrollment remain unverified. No automatic production release, commercial account access or cloud deployment is granted.
+
+[Sandbox workflow](.github/workflows/prompt-sandbox-qa.yml) · [Model adapter](engineering/velion-task-generator.mjs) · [QA](qa/independent-task-suite.mjs) · [Approval Gateway](engineering/task-approval-gateway.mjs).
+
 ## Template Studio
 
 [Open the live Template Studio](https://oromaskevic23-cmd.github.io/Capital-Core-Public/reference/constructor-ai/studio/studio.html).
