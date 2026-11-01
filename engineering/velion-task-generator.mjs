@@ -27,7 +27,7 @@ export async function requestVelionTaskDraft({mission,permit,permitSecret,consum
   if(!/\btask[\s-]*manager\b|менеджер\s+задач|управлени[ея]\s+задач/i.test(m.goal)){
     throw new TaskGenerationError('ONLY_TASK_MANAGER_V1_SUPPORTED');
   }
-  if(typeof model!=='string'||!MODEL.test(model)||model.includes('..')){
+  if(typeof model!=='string'||!MODEL.test(model)||model.includes('..')||model.includes('://')){
     throw new TaskGenerationError('LOCAL_MODEL_IDENTIFIER_INVALID');
   }
   if(typeof fetchImpl!=='function')throw new TaskGenerationError('FETCH_REQUIRED');
