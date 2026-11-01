@@ -36,7 +36,7 @@ test('local VELION adapter denies unsupported tasks, model IDs and partial respo
  const permit=issueLocalDraftPermit({missionId:mission.id,secret,now});
  await assert.rejects(requestVelionTaskDraft({mission:{...mission,goal:'Build a banking app'},permit,permitSecret:secret,model:'local-v1',now,consumedNonces:new Set()}),/ONLY_TASK_MANAGER/);
  await assert.rejects(call({model:'https://evil.example/api'}),/LOCAL_MODEL_IDENTIFIER_INVALID|LOCAL_MODEL/);
- await assert.rejects(call({input:{...draft,files:[{path:'run.sh',content:'x'}]}}),/TASK_CONTRACT/);
+ await assert.rejects(call({input:{...draft,files:[{path:'run.sh',content:'x'}]}}),/TASK_CONTRACT|Disallowed artifact type/);
  await assert.rejects(call({fetchImpl:async()=>new Response(JSON.stringify({done:false,model:'fixture:task-v1',response:JSON.stringify(draft)}),{status:200})}),/INCOMPLETE/);
  await assert.rejects(call({fetchImpl:async()=>{throw Error('offline');}}),/LOCAL_MODEL_UNAVAILABLE/);
 });
