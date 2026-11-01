@@ -14,7 +14,7 @@ The manifest is unsigned. It does not establish legal ownership, a trusted relea
 
 ## Data and execution
 
-Preview records use temporary memory. Exported apps start empty and persist records in that browser's localStorage. Export data downloads a JSON backup; import, team synchronization, authentication and server storage are not implemented in this increment. The downloaded ZIP contains application source, not preview customer records.
+Preview records use temporary memory. Exported apps start empty and persist records in that browser's localStorage. Export data downloads a JSON backup. Restore JSON backup validates the strict schema, template type, all record fields, duplicate identities and a 256 KiB size limit before requesting explicit confirmation to replace the current workspace. A rejection or cancellation preserves the existing records. Neither cloud backup, team synchronization, authentication nor server storage is implemented. The downloaded ZIP contains application source, not preview customer records.
 
 The local static server uses 127.0.0.1. Neither the studio nor its exports execute arbitrary model-generated code. Existing provider planning and quarantine modules retain their own explicit authorization boundaries.
 
