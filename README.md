@@ -32,6 +32,7 @@ An independent engineer can reproduce the product and assemble all three ZIPs us
 npm ci --ignore-scripts --no-audit --no-fund
 npm run verify
 node tools/build-acceptance.mjs acceptance-output
+node tools/verify-acceptance.mjs acceptance-output
 ~~~
 
 Each ZIP contains an offline local app that can be extracted and checked with npm run verify, npm test, npm start using Node.js 22+. The CI workflow publishes ZIPs plus acceptance-manifest.json tied to the tested revision when GitHub Actions succeeds. **Human browser acceptance remains required**, as the current automated suite is not a browser E2E test. Full prompt-to-production generation and commercial readiness remain unverified.
