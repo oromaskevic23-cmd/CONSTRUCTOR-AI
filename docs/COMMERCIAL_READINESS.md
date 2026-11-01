@@ -5,8 +5,8 @@ The founder's current direction is to develop CONSTRUCTOR AI, use it to build re
 | Gate | Current state | Evidence required before a commercial claim |
 |---|---|---|
 | Local template builder | Implemented in 0.4 | Repeatable export, data operations and integrity tests |
-| Arbitrary AI application generation | Not verified | Real authorized model response through a complete, tested application workflow |
-| Isolated execution | Not implemented in this product | Host isolation, resource limits, secrets protection and adversarial tests |
+| Arbitrary AI application generation | Not verified. A bounded new local VELION/Ollama Task Manager code-generation pilot and synthetic Docker execution/QA path are introduced; no general-purpose, independently verified real-model full cycle. | Real authorized model response through an end-to-end application workflow, isolated QA, genuine Owner approval and explicit release scope |
+| Isolated execution | A separate disposable offline Docker CI sandbox is added for synthetic generated Task Manager code; not a production host or general-purpose isolation guarantee | Host isolation, resource limits, secrets protection, adversarial tests and target-production attestation |
 | Customer accounts and tenant separation | Not delivered by the template studio | Authentication, authorization and cross-tenant negative tests |
 | Data recovery | Local JSON export and validated replace-import with explicit confirmation (flagship engineering increment); no cloud copies | Independent recovery, corruption and browser acceptance tests; production backup/recovery strategy |
 | Build reproducibility | Exact dependency and lockfile pins | Clean CI installation and recorded commit-specific results |
