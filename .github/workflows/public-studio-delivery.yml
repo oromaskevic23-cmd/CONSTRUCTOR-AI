@@ -1,0 +1,33 @@
+name: CONSTRUCTOR AI — Public GitHub Pages Delivery Evidence
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: constructor-public-delivery-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  verify-site:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - name: Checkout source verifier
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Node.js 22
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "22"
+      - name: Verify live HTTP source hashes and no stale public assets
+        run: node tools/verify-public-studio.mjs
+      - name: Publish public-delivery proof
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: verified-public-studio-${{ github.sha }}
+          path: studio-deployment-evidence.json
+          retention-days: 30
+          if-no-files-found: error
