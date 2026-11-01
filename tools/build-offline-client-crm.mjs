@@ -21,10 +21,11 @@ const product=await buildProject({
   name:'Offline Client Pipeline',
   accent:'#3469db'
 },sources);
-if (product.config.template!=='crm'||product.files.length!==11) throw Error('UNEXPECTED_TEMPLATE_CONTRACT');
+const expectedFiles=['index.html','app.mjs','project-domain.mjs','project-runtime.mjs','project-backup.mjs','styles.css','package.json','serve.mjs','verify.mjs','test/app.test.mjs','test/backup.test.mjs','README.md','manifest.json'].sort();
+if (product.config.template!=='crm' || product.files.map(file=>file.path).sort().join('|')!==expectedFiles.join('|')) throw Error('UNEXPECTED_TEMPLATE_CONTRACT');
 await mkdir(destination,{recursive:false,mode:0o755});
 for(const file of product.files){
-  if(!/^(test\/app\.test\.mjs|[A-Za-z0-9-]+\.(?:mjs|json|html|css|md))$/.test(file.path))throw Error('OUTPUT_PATH_DENIED');
+  if(!/^(test\/(?:app|backup)\.test\.mjs|[A-Za-z0-9-]+\.(?:mjs|json|html|css|md))$/.test(file.path))throw Error('OUTPUT_PATH_DENIED');
   const dest=resolve(destination,file.path);
   if(!(dest.startsWith(destination+sep)))throw Error('OUTPUT_ESCAPE_DENIED');
   await mkdir(dirname(dest),{recursive:true});

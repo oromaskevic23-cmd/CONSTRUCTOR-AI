@@ -2,13 +2,13 @@
 import {readFile, stat} from "node:fs/promises";
 import {createHash} from "node:crypto";
 const required=[
-  "package-lock.json","studio.html","studio.css","src/project-domain.mjs","src/project-runtime.mjs","src/project-export.mjs","src/project.css","src/zip.mjs","src/studio.mjs","test/project-domain.test.mjs","test/project-export.test.mjs",
+  "package-lock.json","studio.html","studio.css","src/project-domain.mjs","src/project-runtime.mjs","src/project-backup.mjs","src/project-export.mjs","src/project.css","src/zip.mjs","src/studio.mjs","test/project-domain.test.mjs","test/project-export.test.mjs","test/project-backup.test.mjs",
   "package.json","index.html","styles.css","src/tasks.js","src/app.js",
   "test/tasks.test.js","test/server.test.js","tools/serve.mjs",
   "SECURITY.md","docs/VERIFIED_ENGINEERING_STANDARD.md",
   "engineering/draft-contract.mjs","engineering/groq-gateway.mjs",
   "engineering/local-permit.mjs","engineering/plan-only.mjs",
-  "tools/generate-plan.mjs","test/plan-contract.test.js","test/groq-gateway.test.js",
+  "tools/generate-plan.mjs","tools/build-acceptance.mjs","tools/verify-acceptance.mjs","docs/FLAGSHIP_ACCEPTANCE.md","test/plan-contract.test.js","test/groq-gateway.test.js",
   "test/local-permit.test.js","test/cli.test.js",
   "docs/AI_MODEL_GATEWAY.md",
   "engineering/static-review.mjs","engineering/proof-bundle.mjs",

@@ -1,4 +1,5 @@
 import {templateDefinition, validateRecords, saveRecord, changeStatus, removeRecord, summarizeRecords} from './project-domain.mjs';
+import {MAX_BACKUP_BYTES, serializeBackup, parseBackup} from './project-backup.mjs';
 
 // Only built-in, reviewed application logic is mounted. No model output is executed.
 export function mountApplication(root, config, {persist = true} = {}) {
@@ -30,6 +31,8 @@ export function mountApplication(root, config, {persist = true} = {}) {
   const toolbar = element('div'); toolbar.className = 'toolbar';
   const searchLabel = element('label', 'Search', toolbar); const search = element('input', undefined, searchLabel); search.type = 'search'; search.placeholder = 'Filter your workspace';
   const backup = element('button', 'Export data', toolbar); backup.type = 'button';
+  const restoreLabel = element('label', 'Restore JSON backup', toolbar);
+  const restoreInput = element('input', undefined, restoreLabel); restoreInput.type = 'file'; restoreInput.accept = '.json,application/json';
   const list = element('ul'); list.className = 'record-list'; list.setAttribute('aria-label', 'Records');
   element('p', 'Local browser storage only. No cloud account, team access or automatic backup.', root).className = 'storage-note';
   function resetForm() {editing = null; form.reset(); if (value) value.value = '0'; submit.textContent = 'Add ' + definition.item.toLowerCase(); cancel.hidden = true;}
@@ -62,8 +65,29 @@ export function mountApplication(root, config, {persist = true} = {}) {
     } catch (error) {message.textContent = error.message;}
   });
   cancel.addEventListener('click', resetForm); search.addEventListener('input', render);
+  restoreInput.addEventListener('change', async () => {
+    const file = restoreInput.files?.[0];
+    if (!file) return;
+    try {
+      if (file.size > MAX_BACKUP_BYTES) throw new RangeError('Backup exceeds 256 KiB');
+      const next = parseBackup(await file.text(), config.template);
+      const messageText = 'Replace all ' + records.length + ' current records with ' + next.length + ' from this backup? This cannot be undone.';
+      if (!doc.defaultView.confirm(messageText)) {
+        message.textContent = 'Restore cancelled; existing records are unchanged.';
+        return;
+      }
+      records = next;
+      resetForm();
+      persistAndRender();
+      message.textContent = 'Restored ' + records.length + ' records from a validated local backup.';
+    } catch (error) {
+      message.textContent = 'Restore rejected: ' + error.message;
+    } finally {
+      restoreInput.value = '';
+    }
+  });
   backup.addEventListener('click', () => {
-    const blob = new Blob([JSON.stringify({schema: 'constructor-records-v1', template: config.template, records}, null, 2)], {type: 'application/json'});
+    const blob = new Blob([serializeBackup(records, config.template)], {type: 'application/json'});
     const url = URL.createObjectURL(blob); const a = element('a', undefined); a.href = url; a.download = 'workspace-data.json'; a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000);
   });
   render();
