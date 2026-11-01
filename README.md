@@ -20,7 +20,22 @@ For local development, install the locked dependencies with `npm ci --ignore-scr
 
 Choose an application type, project name and accent, build a preview and download the ZIP. The exported project is dependency-free: unzip it, run `npm run verify`, `npm test` and `npm start`. Exported apps are local, single-user tools with browser storage; customer authentication, shared databases, arbitrary model-generated code and production hosting remain separate work.
 
-See [Template Studio scope and acceptance](docs/TEMPLATE_STUDIO.md) and [commercial release gates](docs/COMMERCIAL_READINESS.md).
+See [Template Studio scope and acceptance](docs/TEMPLATE_STUDIO.md), [independent flagship acceptance](docs/FLAGSHIP_ACCEPTANCE.md) and [commercial release gates](docs/COMMERCIAL_READINESS.md).
+
+### Independently runnable flagship acceptance
+
+The reviewed Template Studio creates three **local single-user apps** with editable ZIP source, deterministic integrity inventory and record-operation tests. The flagship recovery increment adds **Restore JSON backup**: a size-bounded, schema-validated, template-matched import with explicit confirmation before replacement. This is local browser recovery, not cloud backup or production deployment.
+
+An independent engineer can reproduce the product and assemble all three ZIPs using:
+
+~~~sh
+npm ci --ignore-scripts --no-audit --no-fund
+npm run verify
+node tools/build-acceptance.mjs acceptance-output
+~~~
+
+Each ZIP contains an offline local app that can be extracted and checked with npm run verify, npm test, npm start using Node.js 22+. The CI workflow publishes ZIPs plus acceptance-manifest.json tied to the tested revision when GitHub Actions succeeds. **Human browser acceptance remains required**, as the current automated suite is not a browser E2E test. Full prompt-to-production generation and commercial readiness remain unverified.
+
 
 ## Official IMPERIAL Core web identity
 
