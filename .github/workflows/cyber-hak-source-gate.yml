@@ -1,0 +1,82 @@
+name: CONSTRUCTOR AI - Pinned CYBER HAK Source Security Gate
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: constructor-cyber-hak-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  cyber-hak:
+    name: Real source scan and PR delta deny
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+      EVENT_KIND: ${{ github.event_name }}
+    steps:
+      - name: Checkout CONSTRUCTOR AI current source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Checkout immutable CYBER HAK original scanner
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          repository: oromaskevic23-cmd/CYBER-HAK-Public
+          ref: c76109ed6404bcf6145e7d407b50990be403e85d
+          path: pinned-cyber-hak
+          persist-credentials: false
+      - name: Check scanner source SHA
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C pinned-cyber-hak rev-parse HEAD)" = "c76109ed6404bcf6145e7d407b50990be403e85d"
+      - name: Node 22
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22'
+      - name: Verify original scanner behavior
+        run: node --test pinned-cyber-hak/test/source-security-gate.test.mjs
+      - name: Actually scan CONSTRUCTOR AI tracked source
+        shell: bash
+        run: |
+          set -euo pipefail
+          node pinned-cyber-hak/tools/source-security-gate.mjs --root . --report "$RUNNER_TEMP/constructor-full-security.json"
+      - name: Reject new policy violations on PR or main
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "$EVENT_KIND" == "pull_request" || "$EVENT_KIND" == "push" ]]; then
+            if [[ ! "$BASE_SHA" =~ ^[0-9a-f]{40}$ || "$BASE_SHA" =~ ^0{40}$ ]]; then
+              echo "CONSTRUCTOR_SECURITY_BASE_UNVERIFIED" >&2
+              exit 2
+            fi
+            node pinned-cyber-hak/tools/source-security-gate.mjs \
+              --root . --base "$BASE_SHA" --enforce \
+              --report "$RUNNER_TEMP/constructor-diff-security.json"
+          else
+            echo "MANUAL_FULL_REPORT_ONLY_NOT_COMPREHENSIVE"
+          fi
+      - name: Verify non-production evidence and no clean claim
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module -e '
+            import fs from "node:fs";
+            const r=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+
+              "/constructor-full-security.json","utf8"));
+            if(r.coverage_complete!==false||r.no_vulnerabilities_claimed!==false
+                ||r.production_authorized!==false||r.network_used!==false)
+              process.exit(4);
+            console.log("CONSTRUCTOR_CYBER_HAK_SOURCE_GATE_VERIFIED",
+              r.scanned_files,"files",r.policy_signals,"policy signals",
+              "report SHA",r.report_sha256);
+          '
