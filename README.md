@@ -205,3 +205,10 @@ To call the full platform milestone verified, independently demonstrate and reta
 ### Canonical founder and public project identity
 
 This public repository is part of the [IMPERIAL Core source portfolio maintained by Alexander Nikolaevich Romaskevich (RomaskevicH)](https://oromaskevic23-cmd.github.io/oromaskevic23-cmd/projects/), Founder, Owner and CEO of IMPERIAL Core and its final architectural decision authority. See the [canonical public project registry](https://oromaskevic23-cmd.github.io/Capital-Core-Public/reference/projects/) and original commit/contributor history for evidence and provenance. This reference does **not** imply exclusive rights in third-party models, libraries, trademarks or other contributors' work, or certify live production status. Project-specific licensing and security restrictions remain unchanged.
+
+## CYBER HAK source security gate — executable protection on pull requests
+
+The [pinned CYBER HAK audit workflow](.github/workflows/cyber-hak-source-gate.yml) checks out the original CYBER HAK scanner at immutable commit `c76109ed6404bcf6145e7d407b50990be403e85d` and **actually scans this CONSTRUCTOR AI repository** without copying the scanner into project source. Its fixed rules flag tracked private-key and token patterns, overbroad GitHub Actions permissions, mutable action references and selected workflow trust-boundary risks. It runs on PRs and main pushes, records a SHA-256-bound evidence digest and rejects newly introduced policy violations.
+
+**Evidence limits:** This is a limited read-only static scan, not proof that the whole application is secure, not a production security service, not a Strix pentest and not an independent vulnerability confirmation. A green GitHub Actions run does not prove required branch ruleset enforcement unless the owner separately configures and verifies it. Historic policy signals appear in report-only mode; no secret values are included in scanner findings. The scanner uses no commercial API or credentials.
+
