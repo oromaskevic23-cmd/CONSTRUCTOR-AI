@@ -1,0 +1,95 @@
+name: CONSTRUCTOR real LLM three-file browser app and Chromium proof
+
+on:
+  pull_request:
+    paths:
+      - 'browser_factory/**'
+      - 'browser_factory_tests/**'
+      - 'browser_factory_qa/**'
+      - '.github/workflows/constructor-browser-app.yml'
+      - 'docs/VERIFIED_BROWSER_APP_SPRINT.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: constructor-three-file-browser
+  cancel-in-progress: false
+
+jobs:
+  real-model-browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    env:
+      OLLAMA_HOST: '127.0.0.1:11434'
+      OLLAMA_NO_CLOUD: '1'
+      OLLAMA_MODELS: '/tmp/constructor-private-browser-models'
+      CONSTRUCTOR_SYNTHETIC_BROWSER_CONSENT: 'ONE_TIME_FREE_CI_EXPERIMENT'
+    steps:
+      - name: Checkout reviewed PR without retained credentials
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Offline Python harness policy tests
+        run: |
+          set -euo pipefail
+          python3 -m compileall -q browser_factory browser_factory_tests
+          python3 -m unittest discover -s browser_factory_tests -p 'test_*.py' -v
+      - name: Install checksum-verified Ollama to disposable runner
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! command -v zstd >/dev/null 2>&1; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq zstd
+          fi
+          curl --proto '=https' --tlsv1.2 -fL --retry 2 --connect-timeout 15 --max-time 480 \
+            'https://github.com/ollama/ollama/releases/download/v0.40.11/ollama-linux-amd64.tar.zst' \
+            --output "$RUNNER_TEMP/ollama-v0.40.11.tar.zst"
+          echo "7bedab90dd122661be78798e9f0edf37fccf0cccf2699d2c58ea1a3afdc04b6d  $RUNNER_TEMP/ollama-v0.40.11.tar.zst" | sha256sum --check
+          mkdir -p "$RUNNER_TEMP/ollama-bin"
+          tar --zstd -xf "$RUNNER_TEMP/ollama-v0.40.11.tar.zst" -C "$RUNNER_TEMP/ollama-bin"
+          test -x "$RUNNER_TEMP/ollama-bin/bin/ollama"
+      - name: Prepare pinned browser container and trusted Playwright test dependency
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker info >/dev/null
+          docker pull mcr.microsoft.com/playwright:v1.56.1-noble
+          IMAGE="$(docker image inspect mcr.microsoft.com/playwright:v1.56.1-noble --format '{{index .RepoDigests 0}}')"
+          [[ "$IMAGE" =~ ^mcr.microsoft.com/playwright@sha256:[a-f0-9]{64}$ ]]
+          echo "CONSTRUCTOR_BROWSER_IMAGE=$IMAGE" >> "$GITHUB_ENV"
+          mkdir -p /tmp/constructor-trusted-browser-deps
+          npm --prefix /tmp/constructor-trusted-browser-deps install \
+            --ignore-scripts --no-audit --no-fund --no-save playwright@1.56.1
+          test -f /tmp/constructor-trusted-browser-deps/node_modules/playwright/index.js
+          echo "CONSTRUCTOR_QA_MODULES=/tmp/constructor-trusted-browser-deps/node_modules" >> "$GITHUB_ENV"
+      - name: Start loopback-only Ollama and pull third-party local coder model
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$OLLAMA_MODELS"
+          "$RUNNER_TEMP/ollama-bin/bin/ollama" serve > "$RUNNER_TEMP/ollama-browser.log" 2>&1 &
+          for i in $(seq 1 60); do
+            if curl --noproxy '*' -fsS http://127.0.0.1:11434/api/tags >/dev/null; then break; fi
+            sleep 1
+          done
+          curl --noproxy '*' -fsS http://127.0.0.1:11434/api/tags >/dev/null
+          timeout 480 "$RUNNER_TEMP/ollama-bin/bin/ollama" pull qwen2.5-coder:7b-instruct
+          "$RUNNER_TEMP/ollama-bin/bin/ollama" list
+      - name: Generate real model files and execute independent Chromium QA only in Docker
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m browser_factory.live_browser_app
+      - name: Preserve machine-readable proof and model-produced app (pass or fail)
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: constructor-real-browser-app-evidence
+          path: |
+            /tmp/constructor-browser-evidence/evidence.json
+            /tmp/constructor-browser-evidence/winning-app/
+          retention-days: 14
+          if-no-files-found: warn
