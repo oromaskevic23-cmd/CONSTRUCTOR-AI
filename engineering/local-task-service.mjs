@@ -1,0 +1,47 @@
+// Optional local control plane; no production authority or execution of generated code.
+import {randomBytes,timingSafeEqual} from 'node:crypto';
+import {basename,isAbsolute} from 'node:path';
+import {issueLocalDraftPermit} from './local-permit.mjs';
+import {requestVelionTaskDraft} from './velion-task-generator.mjs';
+import {stageGeneratedTaskApp} from './task-build-quarantine.mjs';
+
+export function createLocalTaskService({accessToken,permitSecret,model,outputRoot,fetchImpl=fetch}={}){
+  if(typeof accessToken!=='string'||!/^[A-Za-z0-9_-]{32,128}$/.test(accessToken)||
+     typeof permitSecret!=='string'||Buffer.byteLength(permitSecret)<32||
+     Buffer.byteLength(permitSecret)>2048||permitSecret===accessToken||
+     typeof model!=='string'||!model||typeof outputRoot!=='string'||!isAbsolute(outputRoot)||
+     typeof fetchImpl!=='function')throw Error('LOCAL_AI_CONFIGURATION_INVALID');
+  const expected=Buffer.from(accessToken,'utf8');
+  let busy=false;
+  return Object.freeze({
+    authenticate(header){
+      if(typeof header!=='string'||!header.startsWith('Bearer ')||header.length>135)return false;
+      const supplied=Buffer.from(header.slice(7),'utf8');
+      return supplied.length===expected.length&&timingSafeEqual(supplied,expected);
+    },
+    async generate(goal){
+      if(busy){const error=Error('LOCAL_GENERATION_BUSY');error.code='LOCAL_GENERATION_BUSY';throw error;}
+      busy=true;
+      try{
+        const now=Date.now();
+        const mission={id:'local-task-'+randomBytes(12).toString('hex'),goal,allowModel:true};
+        const permit=issueLocalDraftPermit({missionId:mission.id,secret:permitSecret,now});
+        const candidate=await requestVelionTaskDraft({mission,permit,permitSecret,
+          consumedNonces:new Set(),model,fetchImpl,now});
+        const staged=await stageGeneratedTaskApp({receipt:candidate,outputRoot});
+        return Object.freeze({status:staged.status,missionId:candidate.missionId,
+          stageId:basename(staged.stage),stageManifestSha256:staged.stageManifestSha256,
+          draftSha256:candidate.draftSha256,provider:candidate.provider,model:candidate.model,
+          modelIdentity:candidate.modelIdentity,execution:'NOT_RUN',independentQa:'NOT_RUN',
+          approval:'NOT_GRANTED',release:'DENIED'});
+      }finally{busy=false;}
+    }
+  });
+}
+
+export function localTaskServiceFromEnv(env=process.env){
+  if(env.IMPERIAL_TASK_LOCAL_ONLY!=='YES')return null;
+  return createLocalTaskService({accessToken:env.CONSTRUCTOR_LOCAL_AI_TOKEN,
+    permitSecret:env.VELION_LOCAL_PERMIT_SECRET,model:env.VELION_LOCAL_MODEL,
+    outputRoot:env.CONSTRUCTOR_LOCAL_QUARANTINE});
+}

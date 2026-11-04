@@ -8,6 +8,7 @@ import { mkdtemp, mkdir, readFile, stat, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createAppServer } from '../tools/serve.mjs';
+import { createLocalTaskService } from '../engineering/local-task-service.mjs';
 
 const root=await mkdtemp(join(tmpdir(),'constructor-real-browser-'));
 const outcomes=[];
@@ -112,13 +113,65 @@ async function run(kind,studioPage){
     if(app.exitCode===null)await once(app,'exit');
   }
 }
+async function runLocalAi(){
+  const quarantine=join(root,'ai-quarantine');await mkdir(quarantine);
+  const accessToken='browser-fixture-token-0123456789ABCDEF';
+  const permitSecret='browser-fixture-permit-0123456789ABCDEF';
+  const model='fixture:browser-v1';
+  const draft={schema:'constructor_draft_v1',summary:'Synthetic browser fixture',
+    steps:[{id:'create',action:'Prepare a task API',acceptance:'Independent QA remains separate'}],
+    files:[{path:'app.mjs',content:'export const fixture=true;\n'},
+      {path:'test/app.test.mjs',content:'export const fixtureTest=true;\n'}]};
+  const service=createLocalTaskService({accessToken,permitSecret,model,outputRoot:quarantine,
+    fetchImpl:async()=>new Response(JSON.stringify({model,done:true,response:JSON.stringify(draft)}),{status:200})});
+  const server=createAppServer({localTaskService:service});server.listen(0,'127.0.0.1');await once(server,'listening');
+  const localOrigin='http://127.0.0.1:'+server.address().port;
+  const page=await browser.newPage();
+  try{
+    await page.goto(localOrigin+'/studio',{waitUntil:'load'});
+    await page.locator('#local-ai-goal').fill('Build a task manager with completed tasks');
+    await page.locator('#local-ai-token').fill(accessToken);
+    const [response]=await Promise.all([
+      page.waitForResponse(r=>r.url().endsWith('/api/local-velion/task-draft')),
+      page.getByRole('button',{name:'Generate candidate'}).click()
+    ]);
+    assert.equal(response.status(),201);const receipt=await response.json();
+    await page.getByRole('status').filter({hasText:'Candidate saved to local quarantine'}).waitFor();
+    assert.equal(await page.locator('#local-ai-token').inputValue(),'');
+    check((await page.locator('#local-ai-result').innerText()).includes(receipt.draftSha256),'Missing digest');
+    assert.equal((await page.locator('body').innerText()).includes(accessToken),false);
+    assert.equal(receipt.execution,'NOT_RUN');assert.equal(receipt.release,'DENIED');
+    const manifest=JSON.parse(await readFile(join(quarantine,receipt.stageId,'stage-manifest.json'),'utf8'));
+    assert.equal(manifest.independentQa,'NOT_RUN');
+    outcomes.push({template:'local-ai-fixture',status:'PASS',checks:['browser-request','loopback-auth','quarantine','no-execution','token-cleared']});
+  }finally{await page.close();await new Promise(resolve=>server.close(resolve));}
+}
+async function runHostedBoundary(){
+  const page=await browser.newPage();let apiRequests=0;
+  try{
+    await page.route('https://studio-test.invalid/**',async route=>{
+      const url=new URL(route.request().url());
+      if(url.pathname.startsWith('/api/')){apiRequests++;await route.abort();return;}
+      const response=await fetch(origin+url.pathname);
+      await route.fulfill({status:response.status,contentType:response.headers.get('content-type')||'text/plain',
+        body:Buffer.from(await response.arrayBuffer())});
+    });
+    await page.goto('https://studio-test.invalid/studio',{waitUntil:'load'});
+    await page.waitForFunction(()=>!document.querySelector('#download').disabled);
+    assert.equal(await page.locator('#local-ai-token').isDisabled(),true);
+    assert.equal(await page.locator('#local-ai-submit').isDisabled(),true);
+    assert.equal(apiRequests,0);
+    outcomes.push({template:'hosted-boundary',status:'PASS',checks:['local-token-disabled','no-api-request']});
+  }finally{await page.close();}
+}
 try{
   browser=await chromium.launch({headless:true});
   const studioPage=await browser.newPage({acceptDownloads:true});
   await studioPage.goto(origin+'/studio',{waitUntil:'load'});
   await studioPage.waitForFunction(()=>!document.querySelector('#download').disabled);
   for(const kind of TYPES)await run(kind,studioPage);
-  assert.equal(outcomes.length,3);
+  await runLocalAi();await runHostedBoundary();
+  assert.equal(outcomes.length,5);
   console.log(JSON.stringify({schema:'constructor-chromium-acceptance-v1',commit:process.env.GITHUB_SHA||null,status:'PASS',outcomes}));
 }catch(error){
   console.error('BROWSER_ACCEPTANCE_FAIL: '+(error?.stack||error));
