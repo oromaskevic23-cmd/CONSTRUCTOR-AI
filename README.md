@@ -18,6 +18,15 @@ A new [engineering milestone](docs/VELION_PROMPT_SANDBOX_MILESTONE.md) implement
 
 [Sandbox workflow](.github/workflows/prompt-sandbox-qa.yml) · [Model adapter](engineering/velion-task-generator.mjs) · [QA](qa/independent-task-suite.mjs) · [Approval Gateway](engineering/task-approval-gateway.mjs).
 
+### Local Studio → VELION candidate
+
+The local Studio now has an optional Task Manager candidate form. An explicitly
+configured loopback-only server forwards an authorized request to the existing
+local Ollama adapter and writes accepted source into quarantine. The browser
+shows a candidate ID and hashes; no generated code is executed and no QA,
+Owner approval or production release is implied. The hosted static Studio
+does not send the local session token. [Setup and limits](docs/LOCAL_VELION_STUDIO.md).
+
 ## Template Studio
 
 [Open the live Template Studio](https://oromaskevic23-cmd.github.io/Capital-Core-Public/reference/constructor-ai/studio/studio.html).

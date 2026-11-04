@@ -2,6 +2,7 @@
 import {readFile, stat} from "node:fs/promises";
 import {createHash} from "node:crypto";
 const required=[
+  "engineering/local-task-service.mjs","src/local-ai-policy.mjs","test/local-task-http.test.mjs","docs/LOCAL_VELION_STUDIO.md",
   "engineering/velion-task-generator.mjs","engineering/task-build-quarantine.mjs",
   "engineering/task-approval-gateway.mjs","engineering/task-review-export.mjs",
   "tools/prepare-synthetic-task-build.mjs","tools/local-velion-task-build.mjs",

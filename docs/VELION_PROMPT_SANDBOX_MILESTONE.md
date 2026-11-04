@@ -29,6 +29,11 @@ The command only stages synthetic source, never executes it on the host. The Git
 
 ## Optional local model inference — no automated execution
 
+The local Studio can also initiate this restricted generation flow through an
+opt-in loopback endpoint. See [local Studio setup and security boundaries](LOCAL_VELION_STUDIO.md).
+It stages a candidate only; this interface does not start Docker, approve export,
+or prove real inference without a separately observed model run.
+
 On a trusted host with an authorized installed Ollama model running on loopback, and a separately managed 32+ byte local secret:
 
 ~~~sh

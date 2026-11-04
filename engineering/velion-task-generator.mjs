@@ -11,6 +11,29 @@ export class TaskGenerationError extends Error {
   constructor(code){super(code);this.name='TaskGenerationError';this.code=code;}
 }
 
+async function boundedModelBody(response){
+  const reader=response?.body?.getReader?.();
+  if(!reader)throw new TaskGenerationError('LOCAL_MODEL_BODY_UNREADABLE');
+  const chunks=[];let total=0;
+  try{
+    for(;;){
+      const {value,done}=await reader.read();
+      if(done)break;
+      if(!(value instanceof Uint8Array))throw new TaskGenerationError('LOCAL_MODEL_BODY_UNREADABLE');
+      total+=value.byteLength;
+      if(total>100000){
+        try{await reader.cancel();}catch{}
+        throw new TaskGenerationError('LOCAL_MODEL_BODY_TOO_LARGE');
+      }
+      chunks.push(value);
+    }
+    return new TextDecoder('utf-8',{fatal:true}).decode(Buffer.concat(chunks));
+  }catch(error){
+    if(error instanceof TaskGenerationError)throw error;
+    throw new TaskGenerationError('LOCAL_MODEL_BODY_UNREADABLE');
+  }finally{reader.releaseLock();}
+}
+
 export function validateTaskDraft(raw){
   const parsed=parseModelDraft(raw);
   const files=parsed.draft.files;
@@ -59,9 +82,7 @@ export async function requestVelionTaskDraft({mission,permit,permitSecret,consum
       body:JSON.stringify(payload),signal:AbortSignal.timeout(timeoutMs)});
   }catch{throw new TaskGenerationError('LOCAL_MODEL_UNAVAILABLE');}
   if(!response?.ok)throw new TaskGenerationError('LOCAL_MODEL_HTTP_FAILED');
-  let raw;
-  try{raw=await response.text();}catch{throw new TaskGenerationError('LOCAL_MODEL_BODY_UNREADABLE');}
-  if(typeof raw!=='string'||raw.length>100000)throw new TaskGenerationError('LOCAL_MODEL_BODY_TOO_LARGE');
+  const raw=await boundedModelBody(response);
   let envelope;
   try{envelope=JSON.parse(raw);}catch{throw new TaskGenerationError('LOCAL_MODEL_ENVELOPE_INVALID');}
   if(!envelope||envelope.done!==true||envelope.model!==model||typeof envelope.response!=='string')

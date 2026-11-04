@@ -40,6 +40,13 @@ test('local VELION adapter denies unsupported tasks, model IDs and partial respo
  await assert.rejects(call({fetchImpl:async()=>new Response(JSON.stringify({done:false,model:'fixture:task-v1',response:JSON.stringify(draft)}),{status:200})}),/INCOMPLETE/);
  await assert.rejects(call({fetchImpl:async()=>{throw Error('offline');}}),/LOCAL_MODEL_UNAVAILABLE/);
 });
+test('local model response is bounded while streaming, before JSON parsing',async()=>{
+ let chunks=0,cancelled=false;
+ const stream=new ReadableStream({pull(controller){if(chunks===40){controller.close();return;}chunks++;controller.enqueue(new Uint8Array(8192));},
+   cancel(){cancelled=true;}});
+ await assert.rejects(call({fetchImpl:async()=>new Response(stream,{status:200})}),/LOCAL_MODEL_BODY_TOO_LARGE/);
+ assert.equal(cancelled,true);assert.ok(chunks<30);
+});
 test('task source is quarantined with exact manifest and no execution',async t=>{
  const root=await mkdtemp(join(tmpdir(),'task-contract-'));
  t.after(()=>rm(root,{recursive:true,force:true}));
