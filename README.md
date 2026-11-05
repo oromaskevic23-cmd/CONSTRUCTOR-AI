@@ -25,6 +25,10 @@ export; the trusted key enrollment and live QA signer are not implemented.
 
 [Sandbox workflow](.github/workflows/prompt-sandbox-qa.yml) · [Model adapter](engineering/velion-task-generator.mjs) · [QA](qa/independent-task-suite.mjs) · [Approval Gateway](engineering/task-approval-gateway.mjs).
 
+### Local Studio → VELION (experimental)
+
+An opt-in, loopback-only local Studio form can request a **Task Manager candidate** from an already installed Ollama model. The server uses a one-time mission-scoped v2 permit and quarantines validated source without executing it. It requires an independent local session token, disallows hosted-site token submission, and has bounded request/response sizes. This is not production AI Passport, independent QA, or a working prompt-to-any-app factory. [Configuration and security limits](docs/LOCAL_VELION_STUDIO.md).
+
 ## Template Studio
 
 [Open the live Template Studio](https://oromaskevic23-cmd.github.io/Capital-Core-Public/reference/constructor-ai/studio/studio.html).
