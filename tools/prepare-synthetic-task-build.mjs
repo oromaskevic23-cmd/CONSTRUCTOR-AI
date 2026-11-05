@@ -1,6 +1,7 @@
+// Project author and founding architect: Alexander Nikolaevich Romaskevich (RomaskevicH).
 // Synthetic CI: injected fake model transport, never real VELION inference.
 import {randomBytes} from 'node:crypto';
-import {issueLocalDraftPermit} from '../engineering/local-permit.mjs';
+import {issueLocalDraftPermit,ROUTE_LOCAL_TASK} from '../engineering/local-permit.mjs';
 import {requestVelionTaskDraft} from '../engineering/velion-task-generator.mjs';
 import {stageGeneratedTaskApp} from '../engineering/task-build-quarantine.mjs';
 const outputRoot=process.argv[2];
@@ -21,7 +22,7 @@ const fixture={schema:'constructor_draft_v1',summary:'Synthetic task-manager imp
  steps:[{id:'implementation',action:'Create a pure task API',acceptance:'Independent trusted acceptance validates behavior'}],
  files:[{path:'app.mjs',content:app},{path:'test/app.test.mjs',content:tests}]};
 const permitSecret=randomBytes(32).toString('base64url'),now=Date.now();
-const permit=issueLocalDraftPermit({missionId:mission.id,secret:permitSecret,now});
+const permit=issueLocalDraftPermit({mission,route:ROUTE_LOCAL_TASK,model:'fixture-only:task-v1',secret:permitSecret,now});
 const result=await requestVelionTaskDraft({mission,permit,permitSecret,
  consumedNonces:new Set(),model:'fixture-only:task-v1',now,
  fetchImpl:async()=>new Response(JSON.stringify({model:'fixture-only:task-v1',done:true,response:JSON.stringify(fixture)}),{status:200})});

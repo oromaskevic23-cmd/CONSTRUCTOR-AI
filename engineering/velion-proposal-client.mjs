@@ -1,10 +1,12 @@
+// Project author and founding architect: Alexander Nikolaevich Romaskevich (RomaskevicH).
 // CONSTRUCTOR AI -> VELION reviewed private proposal. No general-purpose model access.
 // Local-only shared-secret HMAC + existing single-use local draft permit.
 import {createHash,createHmac,randomBytes} from "node:crypto";
 import {validateMission} from "./draft-contract.mjs";
-import {verifyLocalDraftPermit} from "./local-permit.mjs";
+import {verifyLocalDraftPermit, ROUTE_REVIEWED_PROPOSAL} from "./local-permit.mjs";
 export const REVIEWED_MISSION_ID = "IC-CONSTRUCTOR-ORDER-001";
 export const REVIEWED_GOAL = "Review order-preserving deduplication for a public synthetic Python example.";
+export const REVIEWED_MODEL = "nemotron-3-nano:4b";
 const URL="http://127.0.0.1:8765/v1/model/proposals";
 const HASH=/^[a-f0-9]{64}$/;
 export class VelionProposalError extends Error {
@@ -15,7 +17,7 @@ export function verifyReceipt(r){
       r.schema!=="imperial_velion_receipt_v1" ||
       r.task_id!==REVIEWED_MISSION_ID || r.origin!=="CONSTRUCTOR_AI" ||
       r.capability!=="code:review" || r.status!=="VERIFIED_PROPOSAL_ONLY" ||
-      r.model!=="nemotron-3-nano:4b" ||
+      r.model!==REVIEWED_MODEL ||
       r.decision!=="ORDER_LOSS" || r.recommendation!=="PRESERVE_INSERTION_ORDER" ||
       r.execute_allowed!==false || r.payment_confirmed!==false ||
       r.execution!=="NOT_EXECUTED" ||
@@ -44,7 +46,8 @@ export async function runApprovedVelionProposal({
   if(m.id!==REVIEWED_MISSION_ID || m.goal!==REVIEWED_GOAL)
     throw new VelionProposalError("ONLY_REVIEWED_PUBLIC_MISSION_ALLOWED");
   const permitData=verifyLocalDraftPermit({
-    token:permit,missionId:m.id,secret:permitSecret,consumedNonces,now
+    token:permit,mission:m,route:ROUTE_REVIEWED_PROPOSAL,model:REVIEWED_MODEL,
+    secret:permitSecret,consumedNonces,now
   });
   if(permitData.action!=="model:generate_draft")
     throw new VelionProposalError("PERMIT_ACTION_REJECTED");

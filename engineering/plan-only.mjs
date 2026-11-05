@@ -1,6 +1,7 @@
+// Project author and founding architect: Alexander Nikolaevich Romaskevich (RomaskevicH).
 // Plan-only mission runner: signed local permit gate; NEVER builds or executes AI output.
 import {validateMission} from "./draft-contract.mjs";
-import {verifyLocalDraftPermit} from "./local-permit.mjs";
+import {verifyLocalDraftPermit, ROUTE_GROQ_PLAN} from "./local-permit.mjs";
 import {generateGroqDraft} from "./groq-gateway.mjs";
 
 export async function runPlanOnlyMission({
@@ -9,7 +10,8 @@ export async function runPlanOnlyMission({
 }) {
   const m = validateMission(mission);
   const authorization = verifyLocalDraftPermit({
-    token: permit, missionId: m.id, secret: permitSecret, consumedNonces, now
+    token: permit, mission: m, route: ROUTE_GROQ_PLAN, model,
+    secret: permitSecret, consumedNonces, now
   });
   const result = await generateGroqDraft({mission: m, apiKey, model, fetchImpl, timeoutMs});
   return Object.freeze({

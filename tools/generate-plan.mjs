@@ -1,7 +1,8 @@
 #!/usr/bin/env node
+// Project author and founding architect: Alexander Nikolaevich Romaskevich (RomaskevicH).
 // Owner-operated CLI. No model-generated code is executed or deployed.
 import {randomUUID} from "node:crypto";
-import {issueLocalDraftPermit} from "../engineering/local-permit.mjs";
+import {issueLocalDraftPermit, ROUTE_GROQ_PLAN} from "../engineering/local-permit.mjs";
 import {runPlanOnlyMission} from "../engineering/plan-only.mjs";
 import {quarantineDraft} from "../engineering/proof-bundle.mjs";
 
@@ -34,7 +35,8 @@ if (process.argv.includes("--help")) {
     const mission = {id: "plan-" + randomUUID(),goal,allowModel:true};
     const now=Date.now();
     try {
-      const permit=issueLocalDraftPermit({missionId:mission.id,secret:process.env.PLAN_AUTH_KEY,now});
+      const permit=issueLocalDraftPermit({mission,route:ROUTE_GROQ_PLAN,
+        model:process.env.GROQ_MODEL,secret:process.env.PLAN_AUTH_KEY,now});
       const result=await runPlanOnlyMission({
         mission,permit,permitSecret:process.env.PLAN_AUTH_KEY,
         consumedNonces:new Set(),apiKey:process.env.GROQ_API_KEY,

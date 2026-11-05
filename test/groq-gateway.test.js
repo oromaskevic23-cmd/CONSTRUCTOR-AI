@@ -1,7 +1,8 @@
+// Project author and founding architect: Alexander Nikolaevich Romaskevich (RomaskevicH).
 import test from "node:test";
 import assert from "node:assert/strict";
 import {generateGroqDraft,ModelGatewayError} from "../engineering/groq-gateway.mjs";
-import {issueLocalDraftPermit} from "../engineering/local-permit.mjs";
+import {issueLocalDraftPermit,ROUTE_GROQ_PLAN} from "../engineering/local-permit.mjs";
 import {runPlanOnlyMission} from "../engineering/plan-only.mjs";
 
 const key = "gsk_TEST_ONLY_VALID_LENGTH_NOT_REAL_TOKEN_1234";
@@ -72,7 +73,7 @@ test("oversized provider payload fails closed",async()=>{
 test("valid local permit gates a plan-only provider call and stops replay",async()=>{
   const secret="local-demo-signing-secret-not-production-001";
   const now=1770000000000, consumedNonces=new Set();
-  const permit=issueLocalDraftPermit({missionId:mission.id,secret,now,ttlMs:2000,nonce:"nonce-unique-test-01"});
+  const permit=issueLocalDraftPermit({mission,route:ROUTE_GROQ_PLAN,model,secret,now,ttlMs:2000,nonce:"nonce-unique-test-01"});
   const run=()=>runPlanOnlyMission({...options,permit,permitSecret:secret,now:now+1,consumedNonces,fetchImpl:async()=>reply()});
   const result=await run();
   assert.equal(result.authorization.status,"LOCAL_HMAC_PERMIT_VERIFIED");
@@ -83,4 +84,14 @@ test("permit failure blocks provider call",async()=>{
   let called=false;
   await assert.rejects(()=>runPlanOnlyMission({...options,permit:"bad",permitSecret:"local-demo-signing-secret-not-production-001",consumedNonces:new Set(),fetchImpl:async()=>{called=true;return reply();}}),/PERMIT/);
   assert.equal(called,false);
+});
+test("goal and model substitution are denied before any Groq request",async()=>{
+  const secret="local-demo-signing-secret-not-production-001",now=1770000000000;
+  const permit=issueLocalDraftPermit({mission,route:ROUTE_GROQ_PLAN,model,secret,now});
+  let calls=0;
+  const base={...options,permit,permitSecret:secret,now:now+1,
+    consumedNonces:new Set(),fetchImpl:async()=>{calls++;return reply();}};
+  await assert.rejects(runPlanOnlyMission({...base,mission:{...mission,goal:"Create a different application"}}),/SCOPE/);
+  await assert.rejects(runPlanOnlyMission({...base,model:"other-model"}),/SCOPE/);
+  assert.equal(calls,0);
 });

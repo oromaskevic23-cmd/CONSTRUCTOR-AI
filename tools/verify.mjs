@@ -1,3 +1,4 @@
+// Project author and founding architect: Alexander Nikolaevich Romaskevich (RomaskevicH).
 // Non-authoritative local source inventory; independent QA and production gates remain separate.
 import {readFile, stat} from "node:fs/promises";
 import {createHash} from "node:crypto";
@@ -22,6 +23,7 @@ const required=[
   "test/offline-integration.test.js","docs/PROOF_QUARANTINE.md",
   "engineering/context-shield.mjs","test/context-shield.test.mjs",
   "docs/CONTEXT_SHIELD_SPRINT_20261031.md",
+  "docs/MISSION_SCOPED_LOCAL_PERMITS_20261105.md","docs/ENTERPRISE_PRODUCT_BLUEPRINT_20261105.md",
   "governance/THIRD_PARTY_RIGHTS.json","governance/LICENSE_INVENTORY.md",
   "docs/BIONEMO_IP_POLICY.md","tools/ip-rights-gate.mjs",
   "test/ip-rights-gate.test.mjs",".github/workflows/ip-rights.yml",

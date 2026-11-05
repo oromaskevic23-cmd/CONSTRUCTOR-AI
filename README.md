@@ -10,6 +10,8 @@
 **Project status:** Active engineering · Free-only prototype · **NOT a verified autonomous software factory**  
 **Reference release:** `0.4.0` — Template Studio, three exportable local applications, gated planning and draft quarantine.
 
+**Current engineering direction:** [Enterprise product blueprint](docs/ENTERPRISE_PRODUCT_BLUEPRINT_20261105.md) and [mission-scoped local permits](docs/MISSION_SCOPED_LOCAL_PERMITS_20261105.md). Permit v2 binds the actual goal, route and model; it is a local control, not an enrolled AI Passport or proof of Owner identity.
+
 Create and export a **Task Manager, Business CRM or Business Dashboard** from reviewed built-in templates. The studio includes interactive previews, editable project source, tests and SHA-256 file manifests. It does not yet turn arbitrary prompts into verified production applications.
 
 ## VELION — prompt-generated code pilot (bounded, not production)

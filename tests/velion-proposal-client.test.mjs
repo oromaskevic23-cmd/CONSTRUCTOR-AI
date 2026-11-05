@@ -1,14 +1,16 @@
+// Project author and founding architect: Alexander Nikolaevich Romaskevich (RomaskevicH).
 import {test} from "node:test";
 import assert from "node:assert/strict";
 import {createHash,createHmac} from "node:crypto";
-import {issueLocalDraftPermit} from "../engineering/local-permit.mjs";
-import {runApprovedVelionProposal,REVIEWED_MISSION_ID,REVIEWED_GOAL} from "../engineering/velion-proposal-client.mjs";
+import {issueLocalDraftPermit,ROUTE_REVIEWED_PROPOSAL} from "../engineering/local-permit.mjs";
+import {runApprovedVelionProposal,REVIEWED_MISSION_ID,REVIEWED_GOAL,REVIEWED_MODEL} from "../engineering/velion-proposal-client.mjs";
 const BRIDGE="never-use-this-for-production-velion-test-key";
 const PERMIT="never-use-this-for-production-permit-secret";
 const NOW=1761658900000;
 function args(){
-  return {mission:{id:REVIEWED_MISSION_ID,goal:REVIEWED_GOAL,allowModel:true},
-    permit:issueLocalDraftPermit({missionId:REVIEWED_MISSION_ID,secret:PERMIT,now:NOW,
+  const mission={id:REVIEWED_MISSION_ID,goal:REVIEWED_GOAL,allowModel:true};
+  return {mission,
+    permit:issueLocalDraftPermit({mission,route:ROUTE_REVIEWED_PROPOSAL,model:REVIEWED_MODEL,secret:PERMIT,now:NOW,
       nonce:"permitNonce123456789"}),permitSecret:PERMIT,consumedNonces:new Set(),
     bridgeSecret:BRIDGE,now:NOW,nonce:"bridgeNonce123456789"};
 }

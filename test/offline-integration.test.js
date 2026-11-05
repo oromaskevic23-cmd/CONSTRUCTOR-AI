@@ -1,9 +1,10 @@
+// Project author and founding architect: Alexander Nikolaevich Romaskevich (RomaskevicH).
 import test from "node:test";
 import assert from "node:assert/strict";
 import {mkdtemp,rm,readFile} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
-import {issueLocalDraftPermit} from "../engineering/local-permit.mjs";
+import {issueLocalDraftPermit,ROUTE_GROQ_PLAN} from "../engineering/local-permit.mjs";
 import {runPlanOnlyMission} from "../engineering/plan-only.mjs";
 import {quarantineDraft,verifyProofBundle} from "../engineering/proof-bundle.mjs";
 
@@ -20,7 +21,7 @@ test("full OFFLINE mocked model→permit→draft→quarantine→proof roundtrip"
  const root=await mkdtemp(join(tmpdir(),"constructor-offline-e2e-"));
  t.after(async()=>{await rm(root,{recursive:true,force:true});});
  const now=1750000000000;
- const permit=issueLocalDraftPermit({missionId:mission.id,secret,now,nonce:"e2e-nonce-123456"});
+ const permit=issueLocalDraftPermit({mission,route:ROUTE_GROQ_PLAN,model:"model-testing-only",secret,now,nonce:"e2e-nonce-123456"});
  let requests=0;
  const fakeProvider=async (_url,request)=>{
    requests++;

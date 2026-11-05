@@ -1,10 +1,11 @@
+// Project author and founding architect: Alexander Nikolaevich Romaskevich (RomaskevicH).
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {generateKeyPairSync,sign} from 'node:crypto';
 import {mkdtemp,readFile,readdir,rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
-import {issueLocalDraftPermit} from '../engineering/local-permit.mjs';
+import {issueLocalDraftPermit,ROUTE_LOCAL_TASK} from '../engineering/local-permit.mjs';
 import {requestVelionTaskDraft,validateTaskDraft} from '../engineering/velion-task-generator.mjs';
 import {stageGeneratedTaskApp} from '../engineering/task-build-quarantine.mjs';
 import {verifyTaskOwnerApproval} from '../engineering/task-approval-gateway.mjs';
@@ -14,12 +15,15 @@ const draft={schema:'constructor_draft_v1',summary:'Synthetic task manager',
  steps:[{id:'create',action:'Implement domain code',acceptance:'Independent tests'}],
  files:[{path:'app.mjs',content:'export const createTask=(id,title)=>({id,title,done:false});\n'},
         {path:'test/app.test.mjs',content:'export const fixture=true;\n'}]};
-function call({now=Date.now(),input=draft,model='fixture:task-v1',fetchImpl}={}){
- const permit=issueLocalDraftPermit({missionId:mission.id,secret,now});
+async function call({now=Date.now(),input=draft,model='fixture:task-v1',fetchImpl}={}){
+ const permit=issueLocalDraftPermit({mission,route:ROUTE_LOCAL_TASK,model,secret,now});
  return requestVelionTaskDraft({mission,permit,permitSecret:secret,model,now,consumedNonces:new Set(),
    fetchImpl:fetchImpl||(async(url,request)=>{
      assert.equal(url,'http://127.0.0.1:11434/api/generate');
      assert.equal(request.redirect,'error');
+     const body=JSON.parse(request.body);
+     assert.equal(body.options.num_predict,4096);
+     assert.equal(body.options.max_predict,undefined);
      return new Response(JSON.stringify({done:true,model,response:JSON.stringify(input)}),{status:200});
    })});
 }
@@ -33,12 +37,23 @@ test('VELION local adapter returns validated UNTRUSTED source only',async()=>{
 });
 test('local VELION adapter denies unsupported tasks, model IDs and partial responses',async()=>{
  const now=Date.now();
- const permit=issueLocalDraftPermit({missionId:mission.id,secret,now});
+ const permit=issueLocalDraftPermit({mission,route:ROUTE_LOCAL_TASK,model:'local-v1',secret,now});
  await assert.rejects(requestVelionTaskDraft({mission:{...mission,goal:'Build a banking app'},permit,permitSecret:secret,model:'local-v1',now,consumedNonces:new Set()}),/ONLY_TASK_MANAGER/);
- await assert.rejects(call({model:'https://evil.example/api'}),/LOCAL_MODEL_IDENTIFIER_INVALID|LOCAL_MODEL/);
+ await assert.rejects(call({model:'https://evil.example/api'}),/INVALID_MODEL_SCOPE|LOCAL_MODEL/);
  await assert.rejects(call({input:{...draft,files:[{path:'run.sh',content:'x'}]}}),/TASK_CONTRACT|Disallowed artifact type/);
  await assert.rejects(call({fetchImpl:async()=>new Response(JSON.stringify({done:false,model:'fixture:task-v1',response:JSON.stringify(draft)}),{status:200})}),/INCOMPLETE/);
+ await assert.rejects(call({fetchImpl:async()=>new Response(JSON.stringify({done:true,done_reason:'length',model:'fixture:task-v1',response:JSON.stringify(draft)}),{status:200})}),/INCOMPLETE/);
  await assert.rejects(call({fetchImpl:async()=>{throw Error('offline');}}),/LOCAL_MODEL_UNAVAILABLE/);
+});
+test('substituted task goal or model cannot reach the local model',async()=>{
+ const now=Date.now(),model='fixture:task-v1';
+ const permit=issueLocalDraftPermit({mission,route:ROUTE_LOCAL_TASK,model,secret,now});
+ let calls=0;
+ const base={mission,permit,permitSecret:secret,model,now,consumedNonces:new Set(),
+   fetchImpl:async()=>{calls++;throw Error('should not be called');}};
+ await assert.rejects(requestVelionTaskDraft({...base,mission:{...mission,goal:'Build a different task manager'}}),/SCOPE/);
+ await assert.rejects(requestVelionTaskDraft({...base,model:'other-local-model'}),/SCOPE/);
+ assert.equal(calls,0);
 });
 test('task source is quarantined with exact manifest and no execution',async t=>{
  const root=await mkdtemp(join(tmpdir(),'task-contract-'));
