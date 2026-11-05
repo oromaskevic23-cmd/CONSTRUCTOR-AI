@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Project author and founding architect: Alexander Nikolaevich Romaskevich (RomaskevicH).
 # Run UNTRUSTED Task Manager source only inside a locked-down Docker container.
 # Usage: bash tools/run-isolated-task-qa.sh STAGE EXISTING_EVIDENCE_DIR
 set -euo pipefail
@@ -8,7 +9,7 @@ STAGE="$(realpath -e -- "$1")"
 EVIDENCE="$(realpath -e -- "$2")"
 [[ -d "$STAGE" && -d "$EVIDENCE" ]] || { echo "SAFE_DIRECTORIES_REQUIRED" >&2; exit 2; }
 [[ "$STAGE" != "$EVIDENCE" ]] || { echo "EVIDENCE_AND_STAGE_MUST_BE_SEPARATE" >&2; exit 2; }
-[[ ! -e "$EVIDENCE/independent-qa.log" && ! -e "$EVIDENCE/task-qa-proof.json" ]] || { echo "REFUSE_TO_OVERWRITE_EVIDENCE" >&2; exit 2; }
+[[ ! -e "$EVIDENCE/independent-qa.log" && ! -e "$EVIDENCE/task-qa-observation.json" ]] || { echo "REFUSE_TO_OVERWRITE_EVIDENCE" >&2; exit 2; }
 IMAGE="node@sha256:fe4f6d74e20370acb04ad889077d14d0f64a9c8ea6a42bc60cddf1e844699914"
 docker image inspect "$IMAGE" >/dev/null 2>&1 || { echo "PINNED_SANDBOX_IMAGE_NOT_PRELOADED" >&2; exit 2; }
 docker run --rm --pull=never --network=none --read-only \
@@ -24,5 +25,5 @@ docker run --rm --pull=never --network=none --read-only \
  "$IMAGE" node --test /work/test/app.test.mjs /qa/independent-task-suite.mjs \
  | tee "$EVIDENCE/independent-qa.log"
 node "$ROOT/tools/verify-task-sandbox-qa.mjs" "$STAGE" \
- "$EVIDENCE/independent-qa.log" "$EVIDENCE/task-qa-proof.json"
-echo "SANDBOX_QA_PASS; RELEASE_DENIED"
+ "$EVIDENCE/independent-qa.log" "$EVIDENCE/task-qa-observation.json"
+echo "UNSIGNED_QA_LOG_RECORDED; RELEASE_DENIED"

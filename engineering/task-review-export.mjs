@@ -1,9 +1,11 @@
+// Project author and founding architect: Alexander Nikolaevich Romaskevich (RomaskevicH).
 // Explicit Owner-signed, replay-protected export of a LOCAL REVIEW COPY ONLY.
 // No build execution, network calls, deployment, payments or production authority.
 import {createHash} from 'node:crypto';
 import {constants} from 'node:fs';
 import {lstat,readFile,readdir,mkdir,open,realpath} from 'node:fs/promises';
 import {join,resolve} from 'node:path';
+import {fileURLToPath} from 'node:url';
 import {verifyTaskOwnerApproval} from './task-approval-gateway.mjs';
 
 const sha=x=>createHash('sha256').update(x).digest('hex');
@@ -22,7 +24,7 @@ async function createExclusive(path,bytes){
  try{await handle.writeFile(bytes);await handle.sync();}finally{await handle.close();}
 }
 export async function exportOwnerApprovedReviewCopy({
- stagePath,qaProofPath,qaLogPath,approvalPath,ownerPublicKeyPath,
+ stagePath,qaProofPath,qaLogPath,approvalPath,ownerPublicKeyPath,qaPublicKeyPath,
  replayDirectory,outputDirectory,now=Date.now()
 }={}){
  // All evidence paths must pre-exist. Never create/guess a trusted Owner key.
@@ -44,11 +46,14 @@ export async function exportOwnerApprovedReviewCopy({
  }
  const qaProof=JSON.parse((await exactFile(resolve(qaProofPath))).toString('utf8'));
  const qaLog=await exactFile(resolve(qaLogPath));
- if(qaProof.manifestSha256!==sha(manifestBytes)||qaProof.qaLogSha256!==sha(qaLog)||
+ if(qaProof.stageManifestSha256!==sha(manifestBytes)||qaProof.qaLogSha256!==sha(qaLog)||
     qaProof.missionId!==manifest.missionId)throw Error('QA_EVIDENCE_BINDING_FAILED');
  const approval=JSON.parse((await exactFile(resolve(approvalPath))).toString('utf8'));
  const ownerKey=(await exactFile(resolve(ownerPublicKeyPath))).toString('utf8');
+ const qaKey=(await exactFile(resolve(qaPublicKeyPath))).toString('utf8');
+ const qaSuite=await exactFile(fileURLToPath(new URL('../qa/independent-task-suite.mjs',import.meta.url)));
  const checked=verifyTaskOwnerApproval({approval,ownerPublicKeyPem:ownerKey,qaProof,
+   qaPublicKeyPem:qaKey,expectedQaSuiteSha256:sha(qaSuite),
    consumedNonces:new Set(),now});
  if(checked.permission!=='EXPORT_REVIEW_COPY_ONLY')throw Error('APPROVAL_NOT_ENOUGH');
  // Replay claim: atomic, persistent on the supplied trusted filesystem.
@@ -62,6 +67,8 @@ export async function exportOwnerApprovedReviewCopy({
  for(const file of files)await createExclusive(join(destination,file.path),file.bytes);
  const proof={schema:'constructor_local_review_copy_v1',missionId:approval.missionId,
    artifactManifestSha256:sha(manifestBytes),qaLogSha256:sha(qaLog),
+   qaAttestationSha256:checked.qaAttestationSha256,
+   qaAuthority:'SUPPLIED_KEY_NOT_INDEPENDENTLY_ENROLLED',
    approvedExportSha256:checked.approvalPayloadSha256,
    originalModelSource:'UNTRUSTED',ownerApproval:'EXTERNALLY_SIGNED_KEY_REQUIRED',
    destination:'LOCAL_REVIEW_ONLY',productionRelease:'DENIED'};

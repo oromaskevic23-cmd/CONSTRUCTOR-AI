@@ -1,7 +1,7 @@
 // Project author and founding architect: Alexander Nikolaevich Romaskevich (RomaskevicH).
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {generateKeyPairSync,sign} from 'node:crypto';
+import {createHash,generateKeyPairSync,sign} from 'node:crypto';
 import {mkdtemp,readFile,readdir,rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
@@ -9,6 +9,7 @@ import {issueLocalDraftPermit,ROUTE_LOCAL_TASK} from '../engineering/local-permi
 import {requestVelionTaskDraft,validateTaskDraft} from '../engineering/velion-task-generator.mjs';
 import {stageGeneratedTaskApp} from '../engineering/task-build-quarantine.mjs';
 import {verifyTaskOwnerApproval} from '../engineering/task-approval-gateway.mjs';
+import {taskQaPayload} from '../engineering/task-qa-attestation.mjs';
 const secret='synthetic-hmac-only-strong-37-characters-not-owner';
 const mission={id:'task-build-contract-001',goal:'Build a task manager with completed tasks',allowModel:true};
 const draft={schema:'constructor_draft_v1',summary:'Synthetic task manager',
@@ -72,21 +73,38 @@ test('heuristics deny dangerous generated code; no sandbox bypass',async t=>{
  await assert.rejects(stageGeneratedTaskApp({receipt:await call({input:bad}),outputRoot:root}),/STATIC_REVIEW_BLOCKED/);
 });
 test('Ed25519 Gateway denies absent Owner enrollment, forgery, replay, expiration and wrong QA evidence',()=>{
- const now=Date.now(),hash='a'.repeat(64),other='b'.repeat(64);
- const qaProof={schema:'constructor_task_qa_v1',missionId:'synthetic-task-001',
-  status:'SANDBOX_INDEPENDENT_QA_PASS',execution:'ISOLATED_DOCKER_NO_NETWORK',
-  manifestSha256:hash,qaLogSha256:other,release:'DENIED'};
+ const now=Date.now(),hash='a'.repeat(64),other='b'.repeat(64),suite='c'.repeat(64);
+ const qaKeys=generateKeyPairSync('ed25519');
+ const qaPublic=qaKeys.publicKey.export({format:'pem',type:'spki'});
+ const qaMessage=taskQaPayload({schema:'constructor_task_qa_attestation_v1',
+  missionId:'synthetic-task-001',stageManifestSha256:hash,qaLogSha256:other,
+  qaSuiteSha256:suite,execution:'ISOLATED_DOCKER_NO_NETWORK',
+  result:'INDEPENDENT_QA_PASSED',issuedAt:now,expiresAt:now+120000});
+ const qaProof={...qaMessage,signature:sign(null,Buffer.from(JSON.stringify(qaMessage)),qaKeys.privateKey).toString('base64url')};
+ const qaAttestationSha256=createHash('sha256').update(JSON.stringify(qaProof)).digest('hex');
  const {publicKey,privateKey}=generateKeyPairSync('ed25519');
  const {publicKey:foreign}=generateKeyPairSync('ed25519');
  const pem=publicKey.export({format:'pem',type:'spki'}),foreignPem=foreign.export({format:'pem',type:'spki'});
- const message={version:'constructor_owner_local_export_v1',signer:'OWNER',action:'export:local-review-only',
-  missionId:qaProof.missionId,stageManifestSha256:hash,qaLogSha256:other,
+ const message={version:'constructor_owner_local_export_v2',signer:'OWNER',action:'export:local-review-only',
+  missionId:qaProof.missionId,stageManifestSha256:hash,qaLogSha256:other,qaAttestationSha256,
   issuedAt:now,expiresAt:now+60000,nonce:'test-approval-nonce-123'};
  const approval={...message,signature:sign(null,Buffer.from(JSON.stringify(message)),privateKey).toString('base64url')};
- const args={approval,ownerPublicKeyPem:pem,qaProof,consumedNonces:new Set(),now};
+ const args={approval,ownerPublicKeyPem:pem,qaProof,qaPublicKeyPem:qaPublic,
+  expectedQaSuiteSha256:suite,consumedNonces:new Set(),now};
+ assert.throws(()=>verifyTaskOwnerApproval({...args,qaPublicKeyPem:undefined}),/QA_PUBLIC_KEY_NOT_ENROLLED/);
  assert.throws(()=>verifyTaskOwnerApproval({...args,ownerPublicKeyPem:undefined}),/KEY_NOT_ENROLLED/);
  assert.throws(()=>verifyTaskOwnerApproval({...args,ownerPublicKeyPem:foreignPem}),/SIGNATURE_INVALID/);
- assert.throws(()=>verifyTaskOwnerApproval({...args,qaProof:{...qaProof,status:'FAIL'}}),/QA_EVIDENCE/);
+ assert.throws(()=>verifyTaskOwnerApproval({...args,qaProof:{...qaProof,result:'FAIL'}}),/QA_ATTESTATION/);
+ assert.throws(()=>verifyTaskOwnerApproval({...args,qaProof:{...qaProof,qaLogSha256:hash}}),/QA_SIGNATURE_INVALID/);
+ assert.throws(()=>verifyTaskOwnerApproval({...args,qaPublicKeyPem:foreignPem}),/QA_SIGNATURE_INVALID/);
+ assert.throws(()=>verifyTaskOwnerApproval({...args,expectedQaSuiteSha256:hash}),/QA_SUITE_MISMATCH/);
+ assert.throws(()=>verifyTaskOwnerApproval({...args,ownerPublicKeyPem:qaPublic}),/QA_AND_OWNER_KEYS_MUST_DIFFER/);
+ assert.throws(()=>verifyTaskOwnerApproval({...args,qaProof:{schema:'constructor_task_qa_v1',
+  missionId:qaProof.missionId,status:'SANDBOX_INDEPENDENT_QA_PASS'}}),/QA_ATTESTATION_FORMAT/);
+ const reordered=Object.fromEntries(Object.entries(approval).reverse());
+ assert.equal(verifyTaskOwnerApproval({...args,approval:reordered,consumedNonces:new Set()}).permission,'EXPORT_REVIEW_COPY_ONLY');
+ assert.throws(()=>verifyTaskOwnerApproval({...args,approval:{...approval,version:'constructor_owner_local_export_v1'},
+   consumedNonces:new Set()}),/APPROVAL_SCOPE/);
  assert.throws(()=>verifyTaskOwnerApproval({...args,now:now+70000}),/TIME_DENIED/);
  const approved=verifyTaskOwnerApproval(args);
  assert.equal(approved.permission,'EXPORT_REVIEW_COPY_ONLY');

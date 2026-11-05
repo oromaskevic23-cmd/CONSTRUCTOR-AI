@@ -4,7 +4,7 @@ import {readFile, stat} from "node:fs/promises";
 import {createHash} from "node:crypto";
 const required=[
   "engineering/velion-task-generator.mjs","engineering/task-build-quarantine.mjs",
-  "engineering/task-approval-gateway.mjs","engineering/task-review-export.mjs",
+  "engineering/task-approval-gateway.mjs","engineering/task-qa-attestation.mjs","engineering/task-review-export.mjs",
   "tools/prepare-synthetic-task-build.mjs","tools/local-velion-task-build.mjs",
   "tools/verify-task-sandbox-qa.mjs","tools/run-isolated-task-qa.sh","tools/export-approved-task-review.mjs","qa/independent-task-suite.mjs",
   "test/velion-task-build.test.mjs","test/task-review-export.test.mjs","docs/VELION_PROMPT_SANDBOX_MILESTONE.md",
@@ -23,7 +23,7 @@ const required=[
   "test/offline-integration.test.js","docs/PROOF_QUARANTINE.md",
   "engineering/context-shield.mjs","test/context-shield.test.mjs",
   "docs/CONTEXT_SHIELD_SPRINT_20261031.md",
-  "docs/MISSION_SCOPED_LOCAL_PERMITS_20261105.md","docs/ENTERPRISE_PRODUCT_BLUEPRINT_20261105.md",
+  "docs/MISSION_SCOPED_LOCAL_PERMITS_20261105.md","docs/ENTERPRISE_PRODUCT_BLUEPRINT_20261105.md","docs/QA_ATTESTATION_TRUST_20261105.md",
   "governance/THIRD_PARTY_RIGHTS.json","governance/LICENSE_INVENTORY.md",
   "docs/BIONEMO_IP_POLICY.md","tools/ip-rights-gate.mjs",
   "test/ip-rights-gate.test.mjs",".github/workflows/ip-rights.yml",

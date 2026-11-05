@@ -18,6 +18,11 @@ Create and export a **Task Manager, Business CRM or Business Dashboard** from re
 
 A new [engineering milestone](docs/VELION_PROMPT_SANDBOX_MILESTONE.md) implements a restricted first path beyond fixed templates: an explicitly authorized local VELION/Ollama request for a Task Manager module, typed model output, SHA-256 quarantine, non-network Docker execution, separately authored QA tests and a verification-only Ed25519 Owner Approval Gateway. The sandbox CI uses a **synthetic model fixture**, not real model inference; real-model end-to-end acceptance and real Owner Ed25519 enrollment remain unverified. No automatic production release, commercial account access or cloud deployment is granted.
 
+The local QA log collector cannot authenticate its own execution context.
+[QA attestation verification](docs/QA_ATTESTATION_TRUST_20261105.md) now
+requires a separate QA signature and Owner signature before a local review
+export; the trusted key enrollment and live QA signer are not implemented.
+
 [Sandbox workflow](.github/workflows/prompt-sandbox-qa.yml) · [Model adapter](engineering/velion-task-generator.mjs) · [QA](qa/independent-task-suite.mjs) · [Approval Gateway](engineering/task-approval-gateway.mjs).
 
 ## Template Studio

@@ -8,7 +8,16 @@ The local VELION adapter targets the fixed loopback Ollama endpoint (127.0.0.1:1
 
 The trusted, independently authored QA suite is mounted separately; generated tests do not constitute independent QA. The CI fixture simulates a model response to verify these boundaries; fixture execution DOES NOT establish live VELION inference. A real local model request is supported but has not been proven to complete this cycle on an operational host.
 
-The Ed25519 Approval Gateway verifies separately issued Owner authorization bound to QA evidence and a mission. The gated local-review-export command re-hashes the staged source and QA log, validates their binding, checks an external Owner public key, atomically claims the approval nonce in a trusted persistent directory and writes a local review copy only after successful verification. The code DOES NOT issue Owner approvals or enroll an Owner public key; CI test keys are synthetic. Without a genuine trusted Owner public key and externally signed approval, all exports are denied. An Owner approval signature must come from an external, authorized signing process; this repository intentionally contains no private signing key or enrollment mechanism. Even a valid approval permits a LOCAL REVIEW COPY ONLY, never production deployment, financial operations or autonomous execution.
+The local-review-export command now requires a separately signed QA attestation
+and Owner authorization using different Ed25519 keys. It re-hashes the staged
+source, QA suite and QA log, checks both signatures and their binding to the
+mission, and atomically claims the Owner approval nonce in a trusted persistent
+directory. The keys are supplied by the operator; this code neither enrolls
+them nor establishes that they belong to an independent QA authority or Owner.
+CI keys are synthetic. Without externally trusted QA and Owner keys and valid
+signatures, exports are denied. Even a valid approval permits a LOCAL REVIEW
+COPY ONLY, never production deployment, financial operations or autonomous
+execution. See [QA attestation and trust boundaries](QA_ATTESTATION_TRUST_20261105.md).
 
 ## Supported software request
 
@@ -25,7 +34,14 @@ mkdir -p /tmp/constructor-safe-output
 node tools/prepare-synthetic-task-build.mjs /tmp/constructor-safe-output
 ~~~
 
-The command only stages synthetic source, never executes it on the host. The GitHub Actions prompt-sandbox-qa workflow performs Docker execution and independent QA, and emits a scoped task-qa-proof.json with release DENIED. Trusted operators can use the exact same guarded Docker entrypoint: bash tools/run-isolated-task-qa.sh STAGED_DIR EXISTING_EVIDENCE_DIR. Preload the pinned Node Docker image first; the script fails closed if it is missing. Do not execute app.mjs directly on the host.
+The command only stages synthetic source, never executes it on the host. The
+GitHub Actions prompt-sandbox-qa workflow runs the Docker checks and emits an
+**unsigned log-shape observation**, not an authenticated proof of execution.
+The exact CI job logs are a separate source of execution evidence. Trusted
+operators can use the guarded Docker entrypoint: bash
+tools/run-isolated-task-qa.sh STAGED_DIR EXISTING_EVIDENCE_DIR. Preload the
+pinned Node Docker image first; the script fails closed if it is missing. Do
+not execute app.mjs directly on the host.
 
 ## Optional local model inference — no automated execution
 

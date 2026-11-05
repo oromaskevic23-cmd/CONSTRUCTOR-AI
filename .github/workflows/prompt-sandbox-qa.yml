@@ -1,3 +1,4 @@
+# Project author and founding architect: Alexander Nikolaevich Romaskevich (RomaskevicH).
 name: CONSTRUCTOR AI — Prompt Code Sandbox and Independent QA
 on:
   push:
@@ -45,13 +46,13 @@ jobs:
         run: |
           set -euo pipefail
           bash tools/run-isolated-task-qa.sh "${{ steps.stage.outputs.stage }}" "$RUNNER_TEMP"
-          node -e 'let q=require(process.argv[1]);if(q.release!=="DENIED"||q.approval!=="NOT_GRANTED")process.exit(1)' "$RUNNER_TEMP/task-qa-proof.json"
+          node -e 'let q=require(process.argv[1]);if(q.release!=="DENIED"||q.approval!=="NOT_GRANTED"||q.status!=="UNATTESTED_QA_LOG_SHAPE_ONLY"||q.execution!=="NOT_ATTESTED_BY_COLLECTOR")process.exit(1)' "$RUNNER_TEMP/task-qa-observation.json"
       - name: Preserve test evidence
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: synthetic-task-build-proof-${{ github.sha }}
           path: |
-            ${{ runner.temp }}/task-qa-proof.json
+            ${{ runner.temp }}/task-qa-observation.json
             ${{ runner.temp }}/independent-qa.log
             ${{ steps.stage.outputs.stage }}/stage-manifest.json
           retention-days: 30
