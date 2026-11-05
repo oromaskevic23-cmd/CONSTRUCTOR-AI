@@ -27,11 +27,22 @@ test('restore rejects malformed, mismatched, oversized and unknown-schema files'
   ]) assert.throws(() => parseBackup(JSON.stringify(data), 'tasks'));
   assert.throws(() => parseBackup('{', 'tasks'), /valid JSON/);
   assert.throws(() => parseBackup(null, 'tasks'));
-  assert.throws(() => parseBackup(' '.repeat(MAX_BACKUP_BYTES+1), 'tasks'), /256 KiB/);
+  assert.throws(() => parseBackup(' '.repeat(MAX_BACKUP_BYTES+1), 'tasks'), /1 MiB/);
   assert.throws(() => parseBackup(serializeBackup([sample('tasks')], 'tasks'), 'crm'), /different application/);
 });
 test('invalid backups are rejected without changing the caller workspace', () => {
   const workspace = [sample('tasks')];
   assert.throws(() => parseBackup('{"schema":"constructor-records-v1","template":"tasks","records":[{"id":"x"}]}', 'tasks'));
   assert.deepEqual(workspace, [sample('tasks')]);
+});
+test('maximum-size valid multilingual and escaped workspaces can be exported and restored', () => {
+  for (const character of ['界', '\ud800']) {
+    const records = Array.from({length:250}, (_, index) => ({
+      id:'record-' + index, title:character.repeat(100), detail:character.repeat(240),
+      value:1_000_000_000, status:'Qualified'
+    }));
+    const json = serializeBackup(records, 'crm');
+    assert.ok(new TextEncoder().encode(json).byteLength <= MAX_BACKUP_BYTES);
+    assert.deepEqual(parseBackup(json, 'crm'), records);
+  }
 });

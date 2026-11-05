@@ -16,9 +16,11 @@ export function mountApplication(root, config, {persist = true} = {}) {
   element('p', 'Your work, in one clear view.', header).className = 'muted';
   const stats = element('section'); stats.className = 'stats'; stats.setAttribute('aria-label', 'Summary');
   const message = element('p'); message.setAttribute('role', 'status'); message.className = 'message';
+  const storageWarning = element('p'); storageWarning.setAttribute('role', 'alert'); storageWarning.className = 'storage-warning'; storageWarning.hidden = true;
+  function warnStorage(text) {storageWarning.textContent = text; storageWarning.hidden = false;}
   if (persist) {
     try {const raw = doc.defaultView.localStorage.getItem(key); if (raw) records = validateRecords(JSON.parse(raw), config.template);}
-    catch {storageAvailable = false; message.textContent = 'Stored data could not be loaded. This session uses temporary memory; export a backup before leaving.';}
+    catch {storageAvailable = false; warnStorage('Stored data could not be loaded and has not been replaced. Changes exist only in this session; export its data before closing.');}
   } else message.textContent = 'Interactive preview · temporary sample workspace. Exported apps save data in your browser.';
   const form = element('form'); form.className = 'record-form';
   const field = (label, type, max) => {const wrapper = element('label', label, form); const input = element('input', undefined, wrapper); input.type = type; if (max) input.maxLength = max; return input;};
@@ -37,7 +39,7 @@ export function mountApplication(root, config, {persist = true} = {}) {
   element('p', 'Local browser storage only. No cloud account, team access or automatic backup.', root).className = 'storage-note';
   function resetForm() {editing = null; form.reset(); if (value) value.value = '0'; submit.textContent = 'Add ' + definition.item.toLowerCase(); cancel.hidden = true;}
   function persistAndRender() {
-    if (storageAvailable) {try {doc.defaultView.localStorage.setItem(key, JSON.stringify(records));} catch {storageAvailable = false; message.textContent = 'Browser storage is unavailable. Export your data before leaving.';}}
+    if (storageAvailable) {try {doc.defaultView.localStorage.setItem(key, JSON.stringify(records));} catch {storageAvailable = false; warnStorage('Browser storage is unavailable. Changes exist only in this session; export its data before closing.');}}
     render();
   }
   function render() {
@@ -60,8 +62,10 @@ export function mountApplication(root, config, {persist = true} = {}) {
     event.preventDefault();
     try {
       const previous = records.find(r => r.id === editing);
+      const wasEditing = editing !== null;
       records = saveRecord(records, {id: editing ?? doc.defaultView.crypto.randomUUID(), title: title.value.trim(), detail: detail.value.trim(), value: value ? Number(value.value) : 0, status: previous?.status ?? definition.statuses[0]}, config.template);
-      message.textContent = editing ? 'Changes saved.' : definition.item + ' added.'; resetForm(); persistAndRender();
+      resetForm(); persistAndRender();
+      message.textContent = (wasEditing ? 'Changes updated' : definition.item + ' added') + (storageAvailable ? ' in browser storage.' : ' for this session.');
     } catch (error) {message.textContent = error.message;}
   });
   cancel.addEventListener('click', resetForm); search.addEventListener('input', render);
@@ -69,7 +73,7 @@ export function mountApplication(root, config, {persist = true} = {}) {
     const file = restoreInput.files?.[0];
     if (!file) return;
     try {
-      if (file.size > MAX_BACKUP_BYTES) throw new RangeError('Backup exceeds 256 KiB');
+      if (file.size > MAX_BACKUP_BYTES) throw new RangeError('Backup exceeds 1 MiB');
       const next = parseBackup(await file.text(), config.template);
       const messageText = 'Replace all ' + records.length + ' current records with ' + next.length + ' from this backup? This cannot be undone.';
       if (!doc.defaultView.confirm(messageText)) {
@@ -79,7 +83,7 @@ export function mountApplication(root, config, {persist = true} = {}) {
       records = next;
       resetForm();
       persistAndRender();
-      message.textContent = 'Restored ' + records.length + ' records from a validated local backup.';
+      message.textContent = 'Restored ' + records.length + ' records from a validated local backup' + (storageAvailable ? '.' : ' for this session only.');
     } catch (error) {
       message.textContent = 'Restore rejected: ' + error.message;
     } finally {
