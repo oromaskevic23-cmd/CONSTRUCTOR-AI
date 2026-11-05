@@ -3,8 +3,8 @@
 // No build execution, network calls, deployment, payments or production authority.
 import {createHash} from 'node:crypto';
 import {constants} from 'node:fs';
-import {lstat,readFile,readdir,mkdir,open,realpath} from 'node:fs/promises';
-import {join,resolve} from 'node:path';
+import {lstat,readdir,mkdir,open,realpath} from 'node:fs/promises';
+import {join,resolve,sep} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {verifyTaskOwnerApproval} from './task-approval-gateway.mjs';
 
@@ -15,9 +15,23 @@ async function existingDir(path){
  return realpath(path);
 }
 async function exactFile(path){
- const stat=await lstat(path);
- if(!stat.isFile()||stat.isSymbolicLink()||stat.size>100000)throw Error('UNSAFE_INPUT_FILE');
- return readFile(path);
+ // Open the actual inode once. A pre-open lstat followed by readFile is a
+ // symlink-swap race; O_NOFOLLOW rejects final-component symlinks.
+ let handle;
+ try{
+   handle=await open(path,constants.O_RDONLY|constants.O_NOFOLLOW);
+   const stat=await handle.stat();
+   if(!stat.isFile()||stat.size>100000)throw Error('UNSAFE_INPUT_FILE');
+   const bytes=await handle.readFile();
+   if(bytes.length>100000)throw Error('UNSAFE_INPUT_FILE');
+   return bytes;
+ }catch(error){
+   if(error?.code==='ELOOP')throw Error('UNSAFE_INPUT_FILE');
+   throw error;
+ }finally{await handle?.close();}
+}
+function overlaps(a,b){
+ return a===b||a.startsWith(b+sep)||b.startsWith(a+sep);
 }
 async function createExclusive(path,bytes){
  const handle=await open(path,constants.O_CREAT|constants.O_EXCL|constants.O_WRONLY|constants.O_NOFOLLOW,0o600);
@@ -31,11 +45,16 @@ export async function exportOwnerApprovedReviewCopy({
  const stage=await existingDir(resolve(stagePath));
  const replay=await existingDir(resolve(replayDirectory));
  const output=await existingDir(resolve(outputDirectory));
+ // Trusted replay claims, quarantined source and review output must be disjoint.
+ if(overlaps(stage,replay)||overlaps(stage,output)||overlaps(replay,output))
+   throw Error('UNSAFE_PATH_OVERLAP');
  const manifestBytes=await exactFile(join(stage,'stage-manifest.json'));
  const manifest=JSON.parse(manifestBytes.toString('utf8'));
  if(manifest.schema!=='constructor_task_stage_v1'||manifest.release!=='DENIED'||
     !Array.isArray(manifest.files)||manifest.files.length!==2||
     manifest.files.map(f=>f.path).sort().join('|')!=='app.mjs|test/app.test.mjs')throw Error('STAGE_NOT_VALID');
+ // Do not follow a stage/test symlink into unrelated host files.
+ await existingDir(join(stage,'test'));
  if((await readdir(stage)).sort().join('|')!=='app.mjs|stage-manifest.json|test'||
     (await readdir(join(stage,'test'))).join('|')!=='app.test.mjs')throw Error('STAGE_UNEXPECTED_FILES');
  const files=[];
