@@ -7,7 +7,7 @@ const required=[
   "engineering/task-approval-gateway.mjs","engineering/task-qa-attestation.mjs","engineering/task-review-export.mjs",
   "tools/prepare-synthetic-task-build.mjs","tools/local-velion-task-build.mjs",
   "tools/verify-task-sandbox-qa.mjs","tools/run-isolated-task-qa.sh","tools/export-approved-task-review.mjs","qa/independent-task-suite.mjs",
-  "test/velion-task-build.test.mjs","test/task-review-export.test.mjs","docs/VELION_PROMPT_SANDBOX_MILESTONE.md",
+  "test/velion-task-build.test.mjs","test/task-review-export.test.mjs","test/review-export-filesystem.test.mjs","docs/REVIEW_EXPORT_FS_BOUNDARY_20261105.md","docs/VELION_PROMPT_SANDBOX_MILESTONE.md",
   ".github/workflows/prompt-sandbox-qa.yml",
   "package-lock.json","studio.html","studio.css","src/project-domain.mjs","src/project-runtime.mjs","src/project-backup.mjs","src/project-export.mjs","src/project.css","src/zip.mjs","src/studio.mjs","test/project-domain.test.mjs","test/project-export.test.mjs","test/project-backup.test.mjs",
   "package.json","index.html","styles.css","src/tasks.js","src/app.js",
