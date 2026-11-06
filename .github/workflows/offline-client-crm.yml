@@ -6,6 +6,10 @@ on:
       - 'src/project.css'
       - 'tools/build-offline-client-crm.mjs'
       - 'tools/qa-offline-client-crm.mjs'
+      - 'tools/buyer-review-evidence.mjs'
+      - 'engineering/commercial-evidence-gate.mjs'
+      - 'test/commercial-evidence-gate.test.mjs'
+      - 'docs/BUYER_TECHNICAL_REVIEW.md'
       - 'docs/OFFLINE_CLIENT_CRM_RELEASE.md'
       - '.github/workflows/offline-client-crm.yml'
   push:
@@ -15,6 +19,10 @@ on:
       - 'src/project.css'
       - 'tools/build-offline-client-crm.mjs'
       - 'tools/qa-offline-client-crm.mjs'
+      - 'tools/buyer-review-evidence.mjs'
+      - 'engineering/commercial-evidence-gate.mjs'
+      - 'test/commercial-evidence-gate.test.mjs'
+      - 'docs/BUYER_TECHNICAL_REVIEW.md'
       - 'docs/OFFLINE_CLIENT_CRM_RELEASE.md'
       - '.github/workflows/offline-client-crm.yml'
   workflow_dispatch:
@@ -100,3 +108,46 @@ jobs:
           path: ${{ runner.temp }}/offline-crm-qa-report/
           retention-days: 14
           if-no-files-found: warn
+
+  buyer-technical-evidence:
+    needs: independently-verified-qa
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    permissions:
+      contents: read
+    steps:
+      - name: Check out exact technical review implementation
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Use pinned Node 22
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "22"
+      - name: Download real built CRM artifact
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: constructor-offline-client-crm-${{ github.sha }}
+          path: ${{ runner.temp }}/buyer-input
+      - name: Download separately executed automated QA report
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: constructor-offline-client-crm-qa-${{ github.sha }}
+          path: ${{ runner.temp }}/buyer-qa
+      - name: Verify every actual product file and prepare non-production buyer evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/constructor-review-output"
+          node tools/buyer-review-evidence.mjs \
+            "$RUNNER_TEMP/buyer-input/offline-client-crm" \
+            "$RUNNER_TEMP/buyer-input/build-proof.json" \
+            "$RUNNER_TEMP/buyer-qa/qa.json" \
+            "$RUNNER_TEMP/constructor-review-output/buyer-evidence.json"
+      - name: Preserve read-only technical-review evidence (not a signed release)
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: constructor-buyer-review-${{ github.sha }}
+          path: ${{ runner.temp }}/constructor-review-output/buyer-evidence.json
+          retention-days: 14
+          if-no-files-found: error
