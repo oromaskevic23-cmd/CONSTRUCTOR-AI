@@ -119,3 +119,31 @@ test('Ed25519 Gateway denies absent Owner enrollment, forgery, replay, expiratio
  assert.throws(()=>verifyTaskOwnerApproval(args),/REPLAY_DENIED/);
  assert.throws(()=>verifyTaskOwnerApproval({...args,approval:{...approval,qaLogSha256:hash},consumedNonces:new Set()}),/TIME_DENIED|SCOPE_OR_TIME_DENIED/);
 });
+
+test('strict real-model acceptance rejects synthetic reply without inference evidence',async()=>{
+ const now=Date.now(),model='fixture:task-v1';
+ const permit=issueLocalDraftPermit({mission,route:ROUTE_LOCAL_TASK,model,secret,now});
+ await assert.rejects(requestVelionTaskDraft({
+   mission,permit,permitSecret:secret,model,now,consumedNonces:new Set(),
+   requireRealInferenceEvidence:true,
+   fetchImpl:async()=>new Response(JSON.stringify({
+     done:true,model,response:JSON.stringify(draft)
+   }),{status:200})
+ }),/REAL_INFERENCE_TOKEN_EVIDENCE_REQUIRED/);
+});
+test('real inference receipt is scoped evidence, not cryptographic attestation',async()=>{
+ const now=Date.now(),model='fixture:task-v1';
+ const permit=issueLocalDraftPermit({mission,route:ROUTE_LOCAL_TASK,model,secret,now});
+ const result=await requestVelionTaskDraft({
+   mission,permit,permitSecret:secret,model,now,consumedNonces:new Set(),
+   requireRealInferenceEvidence:true,
+   fetchImpl:async()=>new Response(JSON.stringify({
+     done:true,done_reason:'stop',model,eval_count:25,total_duration:100000,
+     response:JSON.stringify(draft)
+   }),{status:200})
+ });
+ assert.equal(result.generatedTokens,25);
+ assert.equal(result.realInferenceReceiptObserved,true);
+ assert.equal(result.modelIdentity,'THIRD_PARTY_WEIGHTS_NOT_ATTESTED');
+ assert.equal(result.release,'DENIED');
+});
