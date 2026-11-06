@@ -19,3 +19,7 @@ The founder's current direction is to develop CONSTRUCTOR AI, use it to build re
 Each proposed release should identify its exact source commit, dependency lockfile, artifact hashes, test results, known limitations and rollback path. CI success is one gate; it is not an Enterprise certification or proof that software is ready for sale.
 
 Sale or license terms require the actual owner's authorization and review of applicable rights. Product development creates no authority to move funds, operate liquidity pools or make financial commitments.
+
+## Technical buyer review gate
+
+An additional [technical buyer evidence gate](BUYER_TECHNICAL_REVIEW.md) verifies all 12 offline CRM product-file hashes and binds the deterministic build proof to the separately produced automated QA report and exact source revision. A successful gate produces an **unsigned demo-only technical evidence packet**. It does not prove a signed Owner approval, external customer, sale, revenue, live model-generated full app, independent human security certification or commercial readiness. It adds no Supabase Cron or external provider calls.
