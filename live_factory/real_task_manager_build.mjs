@@ -132,7 +132,7 @@ async function main(){
         });
         const generated=await requestVelionTaskDraft({
           mission,permit,permitSecret,consumedNonces:new Set(),
-          model:MODEL,now,timeoutMs:120000,
+          model:MODEL,now,timeoutMs:300000,
           requireRealInferenceEvidence:true
         });
         ensure(generated.realInferenceReceiptObserved===true &&
