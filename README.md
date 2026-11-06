@@ -223,3 +223,7 @@ The [pinned CYBER HAK audit workflow](.github/workflows/cyber-hak-source-gate.ym
 
 **Evidence limits:** This is a limited read-only static scan, not proof that the whole application is secure, not a production security service, not a Strix pentest and not an independent vulnerability confirmation. A green GitHub Actions run does not prove required branch ruleset enforcement unless the owner separately configures and verifies it. Historic policy signals appear in report-only mode; no secret values are included in scanner findings. The scanner uses no commercial API or credentials.
 
+
+## Buyer-ready technical evidence (offline demo only)
+
+The existing reviewed offline CRM workflow now includes an optional **third, fail-closed technical review gate** that checks actual product-file hashes, the independent automated QA report, and the build provenance before creating a bounded `buyer-evidence.json`. This is a synthetic-data, single-user demonstrator, not a production sale, signed external security assessment, real buyer or autonomous NCA delivery. See [buyer technical review process](docs/BUYER_TECHNICAL_REVIEW.md) and [CI workflow](.github/workflows/offline-client-crm.yml). No new always-on cloud jobs, paid API calls or SHPAIZMAN integration are introduced.
