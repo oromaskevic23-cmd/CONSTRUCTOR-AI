@@ -16,7 +16,7 @@ concurrency:
 jobs:
   real-task-manager:
     # Do not run costly model downloads on contributions from forks.
-    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository }}
     runs-on: ubuntu-24.04
     timeout-minutes: 28
     env:
@@ -25,7 +25,7 @@ jobs:
       OLLAMA_MAX_LOADED_MODELS: '1'
       OLLAMA_CONTEXT_LENGTH: '4096'
       OLLAMA_NO_CLOUD: '1'
-      OLLAMA_MODELS: ${{ runner.temp }}/constructor-real-task-models
+      OLLAMA_MODELS: ${{ github.workspace }}/.constructor-real-task-models
       CONSTRUCTOR_REAL_TASK_E2E: 'EPHEMERAL_CI_ONLY'
       CONSTRUCTOR_SANDBOX_IMAGE: 'node@sha256:fe4f6d74e20370acb04ad889077d14d0f64a9c8ea6a42bc60cddf1e844699914'
     steps:
