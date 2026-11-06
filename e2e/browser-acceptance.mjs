@@ -105,6 +105,26 @@ async function run(kind,studioPage){
       check(await page.locator('.record-list h2').innerText()==='Edited '+kind.id,'Restore failed');
       await page.reload();
       check(await page.locator('.record-list h2').innerText()==='Edited '+kind.id,'Persistence failed');
+      if(kind.id==='crm'){
+        const volatile=await browser.newPage();
+        try{
+          await volatile.addInitScript(()=>{
+            Storage.prototype.setItem=function(){throw new DOMException('Blocked','QuotaExceededError');};
+          });
+          await volatile.goto('http://127.0.0.1:4174/',{waitUntil:'load'});
+          const form=volatile.locator('.record-form');
+          await form.locator('input[type=text]').first().fill('Unsaved opportunity');
+          await form.getByRole('button',{name:kind.add}).click();
+          await volatile.getByRole('alert').filter({hasText:'only in this session'}).waitFor();
+          await volatile.getByRole('status').filter({hasText:'for this session'}).waitFor();
+          volatile.once('dialog',dialog=>dialog.accept());
+          await volatile.locator('input[type=file]').setInputFiles(backupFile);
+          await volatile.getByRole('status').filter({hasText:'for this session only'}).waitFor();
+          check(await volatile.getByRole('alert').isVisible(),'Storage warning must persist after restore');
+          await volatile.getByRole('button',{name:'Change status: Edited '+kind.id}).click();
+          check(await volatile.getByRole('alert').isVisible(),'Storage warning must persist after later changes');
+        }finally{await volatile.close();}
+      }
       outcomes.push({template:kind.id,status:'PASS',checks:['studio-preview','browser-zip','clean-extract','integrity','exported-tests','crud','status','edit','search','backup','malformed-reject','type-reject','cancel','restore','reload']});
       await page.screenshot({path:join(root,kind.id+'-browser.png'),fullPage:true});
     }finally{await page.close();}
