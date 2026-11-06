@@ -69,6 +69,8 @@ export async function requestVelionTaskDraft({mission,permit,permitSecret,consum
     'Generate new JavaScript code for a small task-manager domain module, not a built-in template.',
     'Return exactly constructor_draft_v1 JSON: schema, summary, steps and files.',
     'Files MUST be exactly app.mjs and test/app.test.mjs.',
+    'Respond with a single JSON object: schema="constructor_draft_v1", nonempty summary, steps as [{id:"build",action:"...",acceptance:"..."}], files as [{path:"app.mjs",content:"..."},{path:"test/app.test.mjs",content:"..."}].',
+    'Do not include any fields other than schema, summary, steps and files; encode newlines in source strings as JSON string escapes.',
     'app.mjs must export pure createTask(id,title), completeTask(task), filterOpen(tasks).',
     'createTask returns {id,title,done:false}; completeTask returns a NEW object with done:true;',
     'filterOpen returns a NEW array containing only unfinished tasks.',
