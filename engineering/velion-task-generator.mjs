@@ -48,7 +48,8 @@ export function validateTaskDraft(raw){
 }
 
 export async function requestVelionTaskDraft({mission,permit,permitSecret,consumedNonces,
-  model,fetchImpl=fetch,now=Date.now(),timeoutMs=90000}={}){
+  model,fetchImpl=fetch,now=Date.now(),timeoutMs=90000,
+  requireRealInferenceEvidence=false}={}){
   const m=validateMission(mission);
   if(!/\btask[\s-]*manager\b|менеджер\s+задач|управлени[ея]\s+задач/i.test(m.goal)){
     throw new TaskGenerationError('ONLY_TASK_MANAGER_V1_SUPPORTED');
@@ -92,10 +93,18 @@ export async function requestVelionTaskDraft({mission,permit,permitSecret,consum
   if(!envelope||envelope.done!==true||envelope.model!==model||typeof envelope.response!=='string'||
     (Object.hasOwn(envelope,'done_reason')&&envelope.done_reason!=='stop'))
     throw new TaskGenerationError('LOCAL_MODEL_INCOMPLETE_OR_MISMATCHED');
+  // Opt-in evidence requirement for actual local-model acceptance. Synthetic
+  // transport fixtures used by contract tests do not satisfy this boundary.
+  if(requireRealInferenceEvidence && (
+    !Number.isSafeInteger(envelope.eval_count) || envelope.eval_count<1 ||
+    !Number.isSafeInteger(envelope.total_duration) || envelope.total_duration<1
+  )) throw new TaskGenerationError('REAL_INFERENCE_TOKEN_EVIDENCE_REQUIRED');
   const validated=validateTaskDraft(envelope.response);
   return Object.freeze({status:'UNTRUSTED_GENERATED_TASK_APP',missionId:m.id,
     goalSha256:HASH(m.goal),model,provider:'VELION_LOCAL_OLLAMA_ADAPTER',
     modelOutputSha256:HASH(envelope.response),draftSha256:validated.sha256,
+    generatedTokens:Number.isSafeInteger(envelope.eval_count)?envelope.eval_count:null,
+    realInferenceReceiptObserved:requireRealInferenceEvidence,
     draft:validated.draft,execution:'NOT_RUN',independentQa:'NOT_RUN',
     approval:'DENIED',release:'DENIED',modelIdentity:'THIRD_PARTY_WEIGHTS_NOT_ATTESTED'});
 }
