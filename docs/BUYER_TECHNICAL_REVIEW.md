@@ -98,10 +98,10 @@ Next gates: a genuine full-app VELION generation cycle, isolated execution with 
 The existing three-stage CI now produces a **complete offline evaluation directory**, not only a standalone JSON receipt. After the isolated CRM is built and separately checked, the buyer evaluation job:
 
 1. Regenerates and independently compares the exact `buyer-evidence.json` against the actual product, build proof, QA report, source SHA and GitHub run identity.
-2. Copies only the 12 reviewed product files and three approved evidence files to a new temporary directory, never overwriting a prior package.
+2. Copies all 12 reviewed application source files **and the original `manifest.json` integrity inventory**, plus three approved evidence files, to a new temporary directory, never overwriting a prior package. The manifest hash must match the independently prepared build evidence.
 3. Includes `BUYER_GUIDE.md` with evaluation steps using Node.js 22+, the single-user demo scope, synthetic-data warning, and absence of any sale/deployment permissions.
-4. Creates `buyer-package-manifest.json` containing the SHA-256 and byte count of all 16 files, with explicit `NOT_PRODUCTION_AUTHORIZED` and `NOT_SIGNED` status.
-5. Reopens and rehashes the packaged files before upload. Any missing file, extra file, symlink, source mismatch, false QA status or modified byte fails the job.
+4. Creates `buyer-package-manifest.json` containing the SHA-256 and byte count of all **17** files (13 product files, three evidence files, and the guide), with explicit `NOT_PRODUCTION_AUTHORIZED` and `NOT_SIGNED` status.
+5. Reopens and rehashes the packaged files, then executes the **delivered product's own** `node verify.mjs` and `node --test test/app.test.mjs test/backup.test.mjs` before artifact upload. Missing or modified integrity manifests, extra files, failed behavioral tests or inconsistent QA evidence fail the job.
 
 **Artifact to download:** `constructor-buyer-review-<40-character Git commit>` from the corresponding [offline CRM GitHub Actions workflow](../.github/workflows/offline-client-crm.yml). Its `portable-evaluation/` folder contains the complete portable single-user CRM and verification evidence. The top-level `buyer-evidence.json` is retained for machine consumption. Artifacts have the workflow's 14-day retention policy; no new server-side retention job or database was created.
 
@@ -112,3 +112,7 @@ Offline source: [package assembler/verifier](../engineering/buyer-demo-package.m
 **Server limits:** Reuses the existing buyer evidence CI runner, no additional continuous workflow, no new Supabase cron, no model tokens, no paid API call and no external outreach. GitHub Actions quota usage and provider limits must still be monitored by the hosting account.
 
 **Project boundary:** SHPAIZMAN remains entirely separate. No shared credentials, repositories, data, agents or customer records are introduced.
+
+## Portable evaluation integrity repair (7 November 2026)
+
+The initial portable package omitted the exported application's own `manifest.json`, even though its `verify.mjs` requires it. That was an actual acceptance defect: a hash-consistent wrapper could not perform the advertised product self-verification. The repaired assembler includes the original manifest as a separate 17th payload file, binds its hash to the buyer-evidence record, and checks its entries against the 12 reviewed source files. CI now runs the verification and both application and backup tests **from the final portable directory** before publishing the artifact. No additional scheduled job, Supabase table, cloud worker or external model call is introduced. The package is still an unsigned, single-user technical demonstrator; not a completed enterprise sale, verified autonomous product generation, or a production release.
