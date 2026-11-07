@@ -55,10 +55,10 @@ function pack(f,overrides={}){
   ...overrides
  });
 }
-test('builds real source, synthetic QA evidence and 16 hashed evaluation files',async t=>{
+test('builds runnable source, synthetic QA evidence and 17 hashed evaluation files',async t=>{
  const f=await fixture(t);
  const result=await pack(f);
- assert.equal(result.files,16);
+ assert.equal(result.files,17);
  assert.equal(result.productionAuthorized,false);
  assert.equal(result.paidProviderCalls,0);
  const checked=await verifyBuyerEvaluation({
@@ -70,6 +70,11 @@ test('builds real source, synthetic QA evidence and 16 hashed evaluation files',
  assert.equal(manifest.commercialSaleAuthorized,false);
  assert.equal(manifest.independentHumanReviewComplete,false);
  assert(manifest.files.some(x=>x.path==='product/serve.mjs'));
+ assert(manifest.files.some(x=>x.path==='product/manifest.json'));
+ execFileSync(process.execPath,['verify.mjs'],{cwd:join(f.output,'product'),timeout:5000});
+ execFileSync(process.execPath,['--test','test/app.test.mjs','test/backup.test.mjs'],{
+   cwd:join(f.output,'product'),timeout:10000
+ });
  assert(manifest.files.some(x=>x.path==='evidence/qa.json'));
  assert((await readFile(join(f.output,'BUYER_GUIDE.md'),'utf8')).includes('Node.js 22+'));
  await assert.rejects(pack(f),/EEXIST/);
@@ -139,4 +144,25 @@ test('copy is not a production release, buyer contact or payment authorization',
  const m=JSON.parse(await readFile(join(f.output,'buyer-package-manifest.json')));
  assert.equal(m.realRevenueUsd,0);
  assert.equal(m.evidenceSignature,'NOT_SIGNED');
+});
+
+test('missing original product integrity manifest is never packed',async t=>{
+ const f=await fixture(t);
+ await rm(join(f.product,'manifest.json'));
+ await assert.rejects(pack(f),/PRODUCT_ROOT_INVENTORY_MISMATCH|ENOENT/);
+});
+test('modified product manifest is blocked even if the source files remain intact',async t=>{
+ const f=await fixture(t);
+ const p=join(f.product,'manifest.json');
+ const manifest=JSON.parse(await readFile(p,'utf8'));
+ manifest.generator='UNVERIFIED_MODIFICATION';
+ await writeFile(p,JSON.stringify(manifest)+'\n');
+ await assert.rejects(pack(f),/BUILD_PROOF_SCOPE_INVALID|BUYER_PRODUCT_MANIFEST_MISMATCH/);
+});
+test('verification rejects a package missing its required product manifest',async t=>{
+ const f=await fixture(t);
+ await pack(f);
+ await rm(join(f.output,'product','manifest.json'));
+ await assert.rejects(verifyBuyerEvaluation({directory:f.output}),
+   /PACKAGE_PRODUCT_ROOT_INVALID/);
 });

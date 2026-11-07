@@ -69,7 +69,7 @@ jobs:
             --tmpfs /tmp:rw,noexec,nosuid,size=33554432 \
             --mount "type=bind,src=$RUNNER_TEMP/offline-crm-build/offline-client-crm,dst=/work,readonly" \
             --workdir /work \
-            "$NODE_SANDBOX" sh -c 'node verify.mjs && node --test test/app.test.mjs'
+            "$NODE_SANDBOX" sh -c 'node verify.mjs && node --test test/app.test.mjs test/backup.test.mjs'
       - name: Publish finished offline CRM and build proof
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
@@ -166,6 +166,13 @@ jobs:
           set -euo pipefail
           node tools/buyer-pilot-package.mjs verify \
             "$RUNNER_TEMP/constructor-review-output/portable-evaluation"
+      - name: Execute the delivered CRM's own integrity verifier and regression suite
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/constructor-review-output/portable-evaluation/product"
+          node verify.mjs
+          node --test test/app.test.mjs test/backup.test.mjs
       - name: Preserve full offline buyer evaluation package (not a signed release)
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:

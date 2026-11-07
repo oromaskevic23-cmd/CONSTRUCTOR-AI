@@ -19,8 +19,12 @@ const FILES=Object.freeze([
  'project-domain.mjs','project-runtime.mjs','serve.mjs','styles.css',
  'test/app.test.mjs','test/backup.test.mjs','verify.mjs'
 ]);
+// The exported product's own verify.mjs needs this separate integrity manifest.
+// It is not one of the 12 source files enumerated inside that manifest.
+const PRODUCT_MANIFEST='manifest.json';
 const ARTIFACTS=Object.freeze([
  ...FILES.map(path=>'product/'+path),
+ 'product/'+PRODUCT_MANIFEST,
  'evidence/build-proof.json','evidence/qa.json','evidence/buyer-evidence.json',
  'BUYER_GUIDE.md'
 ].sort());
@@ -129,6 +133,23 @@ export async function assembleBuyerEvaluation({
    evidence.productionDeploymentAuthorized===false,
    'BUYER_EVIDENCE_SCOPE_DENIED');
  exact(evidence.productFiles.map(x=>x.path),FILES,'BUYER_PRODUCT_INVENTORY_INVALID');
+ // The source's own integrity manifest is a required runnable component.
+ // Bind its original bytes to the independently prepared buyer evidence.
+ const productManifestBytes=await bytesFrom(join(product,PRODUCT_MANIFEST));
+ assert(digest(productManifestBytes)===evidence.productManifestSha256,
+   'BUYER_PRODUCT_MANIFEST_MISMATCH');
+ const productManifest=json(productManifestBytes,'BUYER_PRODUCT_MANIFEST_INVALID');
+ assert(productManifest.schema==='constructor-template-export-v1'&&
+   productManifest.template==='crm'&&Array.isArray(productManifest.files),
+   'BUYER_PRODUCT_MANIFEST_INVALID');
+ exact(productManifest.files.map(x=>x.path),FILES,
+   'BUYER_PRODUCT_MANIFEST_INVENTORY_DENIED');
+ // This manifest is not trusted just because it claims file checksums.
+ for(const entry of productManifest.files){
+   const matched=evidence.productFiles.find(x=>x.path===entry.path);
+   assert(matched&&matched.bytes===entry.bytes&&matched.sha256===entry.sha256,
+     'BUYER_PRODUCT_MANIFEST_EVIDENCE_MISMATCH');
+ }
 
  // Destination must be a new directory, never overwrite a prior buyer artifact.
  await mkdir(destination,{recursive:false,mode:0o700});
@@ -141,6 +162,7 @@ export async function assembleBuyerEvaluation({
    records.push({path,bytes:bytes.length,sha256:digest(bytes)});
  }
  for(const path of FILES)await add('product/'+path,await bytesFrom(join(product,path)));
+ await add('product/'+PRODUCT_MANIFEST,productManifestBytes);
  await add('evidence/build-proof.json',await bytesFrom(resolve(buildProofPath)));
  await add('evidence/qa.json',await bytesFrom(resolve(qaProofPath)));
  await add('evidence/buyer-evidence.json',evidenceBytes);
@@ -176,7 +198,7 @@ export async function verifyBuyerEvaluation({directory,expectedCommit=null}={}){
  await safeDirectory(join(product,'test'));
  await safeDirectory(join(root,'evidence'));
  exact(await readdir(product),
-   [...FILES.filter(x=>!x.startsWith('test/')),'test'],
+   [...FILES.filter(x=>!x.startsWith('test/')),PRODUCT_MANIFEST,'test'],
    'PACKAGE_PRODUCT_ROOT_INVALID');
  exact(await readdir(join(product,'test')),
    ['app.test.mjs','backup.test.mjs'],'PACKAGE_TEST_INVENTORY_INVALID');
@@ -222,6 +244,21 @@ export async function verifyBuyerEvaluation({directory,expectedCommit=null}={}){
    const actual=map.get('product/'+e.path);
    assert(actual&&actual.sha256===e.sha256&&actual.bytes===e.bytes,
      'PACKAGE_PRODUCT_PROOF_MISMATCH');
+ }
+ const productManifestBytes=await bytesFrom(join(product,PRODUCT_MANIFEST));
+ assert(map.get('product/'+PRODUCT_MANIFEST).sha256===evidence.productManifestSha256&&
+   digest(productManifestBytes)===evidence.productManifestSha256,
+   'PACKAGE_PRODUCT_MANIFEST_EVIDENCE_MISMATCH');
+ const productManifest=json(productManifestBytes,'PACKAGE_PRODUCT_MANIFEST_INVALID');
+ assert(productManifest.schema==='constructor-template-export-v1'&&
+   productManifest.template==='crm'&&Array.isArray(productManifest.files),
+   'PACKAGE_PRODUCT_MANIFEST_INVALID');
+ exact(productManifest.files.map(x=>x.path),FILES,
+   'PACKAGE_PRODUCT_MANIFEST_INVENTORY_DENIED');
+ for(const entry of productManifest.files){
+   const included=map.get('product/'+entry.path);
+   assert(included&&included.bytes===entry.bytes&&included.sha256===entry.sha256,
+     'PACKAGE_PRODUCT_MANIFEST_ENTRY_INVALID');
  }
  assert(map.get('evidence/build-proof.json').sha256===evidence.buildProofSha256&&
    map.get('evidence/qa.json').sha256===evidence.automatedQaProofSha256,
