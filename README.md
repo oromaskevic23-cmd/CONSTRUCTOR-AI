@@ -227,3 +227,8 @@ The [pinned CYBER HAK audit workflow](.github/workflows/cyber-hak-source-gate.ym
 ## Buyer-ready technical evidence (offline demo only)
 
 The existing reviewed offline CRM workflow now includes an optional **third, fail-closed technical review gate** that checks actual product-file hashes, the independent automated QA report, and the build provenance before creating a bounded `buyer-evidence.json`. This is a synthetic-data, single-user demonstrator, not a production sale, signed external security assessment, real buyer or autonomous NCA delivery. See [buyer technical review process](docs/BUYER_TECHNICAL_REVIEW.md) and [CI workflow](.github/workflows/offline-client-crm.yml). No new always-on cloud jobs, paid API calls or SHPAIZMAN integration are introduced.
+
+## Reproducible competitor benchmark — offline contract (7 November 2026)
+
+The [20-task original benchmark catalog](benchmarks/locked-tasks-v1.json), [offline scorer](engineering/competitive-scorecard.mjs) and [adversarial regression suite](test/competitive-scorecard.test.mjs) prepare versioned, budget-bound comparisons with Cursor and Hermes Agent. Six categories cover application creation, maintenance, security, recovery, integrations and accessibility. No models or competitor products are invoked by the scorecard. **No real comparative trials, independent signed QA or superiority claims exist yet**; every output is explicitly marked as self-reported and unverified. [Scope and required evidence](docs/COMPETITIVE_BENCHMARK_HARNESS_20261107.md).
+

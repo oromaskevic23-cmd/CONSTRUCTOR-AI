@@ -1,0 +1,39 @@
+name: CONSTRUCTOR AI — Offline Competitive Scorecard Contract
+on:
+  pull_request:
+    paths:
+      - 'benchmarks/locked-tasks-v1.json'
+      - 'engineering/competitive-scorecard.mjs'
+      - 'tools/score-competitors.mjs'
+      - 'test/competitive-scorecard.test.mjs'
+      - '.github/workflows/competitive-scorecard.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'benchmarks/locked-tasks-v1.json'
+      - 'engineering/competitive-scorecard.mjs'
+      - 'tools/score-competitors.mjs'
+      - 'test/competitive-scorecard.test.mjs'
+      - '.github/workflows/competitive-scorecard.yml'
+permissions:
+  contents: read
+concurrency:
+  group: constructor-competitive-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  offline-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22'
+      - name: Syntax check
+        run: |
+          node --check engineering/competitive-scorecard.mjs
+          node --check tools/score-competitors.mjs
+      - name: No-network adversarial benchmark contract tests
+        run: node --test test/competitive-scorecard.test.mjs
