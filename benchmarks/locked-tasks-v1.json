@@ -1,0 +1,250 @@
+{
+  "schema": "imperial.constructor.benchmark.catalog.v1",
+  "name": "CONSTRUCTOR AI — independent coding benchmark seed",
+  "scope": "ORIGINAL_SYNTHETIC_NO_CUSTOMER_DATA",
+  "version": "2026-11-07",
+  "author": "Alexander Nikolaevich Romaskevich (RomaskevicH)",
+  "taskCount": 20,
+  "tasks": [
+    {
+      "id": "BUILD-01",
+      "category": "application",
+      "prompt": "Build a single-user task board with persistent local data.",
+      "acceptance": [
+        "Create, edit, complete, delete tasks",
+        "Restore state after a browser reload",
+        "Reject unsafe HTML in task text"
+      ],
+      "ownerTests": "TO_BE_AUTHORED_AND_HASH_LOCKED_BEFORE_TRIAL",
+      "dataClassification": "SYNTHETIC_PUBLIC_ONLY"
+    },
+    {
+      "id": "BUILD-02",
+      "category": "application",
+      "prompt": "Create a contacts manager with CSV import and export.",
+      "acceptance": [
+        "Validate and normalize CSV rows",
+        "Handle escaped delimiters and quotes",
+        "Never execute imported content"
+      ],
+      "ownerTests": "TO_BE_AUTHORED_AND_HASH_LOCKED_BEFORE_TRIAL",
+      "dataClassification": "SYNTHETIC_PUBLIC_ONLY"
+    },
+    {
+      "id": "BUILD-03",
+      "category": "application",
+      "prompt": "Generate a simple inventory tracker with reorder alerts.",
+      "acceptance": [
+        "Reject negative quantities",
+        "Compute correct reorder thresholds",
+        "Persist entries after reload"
+      ],
+      "ownerTests": "TO_BE_AUTHORED_AND_HASH_LOCKED_BEFORE_TRIAL",
+      "dataClassification": "SYNTHETIC_PUBLIC_ONLY"
+    },
+    {
+      "id": "BUILD-04",
+      "category": "application",
+      "prompt": "Create an invoicing calculator using decimal-safe arithmetic.",
+      "acceptance": [
+        "Handle tax and discount rounding deterministically",
+        "Reject malformed currency amounts",
+        "Verify totals on predefined edge cases"
+      ],
+      "ownerTests": "TO_BE_AUTHORED_AND_HASH_LOCKED_BEFORE_TRIAL",
+      "dataClassification": "SYNTHETIC_PUBLIC_ONLY"
+    },
+    {
+      "id": "BUILD-05",
+      "category": "application",
+      "prompt": "Generate an accessible appointment planner without network integrations.",
+      "acceptance": [
+        "Detect overlapping appointments",
+        "Validate date and timezone inputs",
+        "Support keyboard-only editing"
+      ],
+      "ownerTests": "TO_BE_AUTHORED_AND_HASH_LOCKED_BEFORE_TRIAL",
+      "dataClassification": "SYNTHETIC_PUBLIC_ONLY"
+    },
+    {
+      "id": "BUG-01",
+      "category": "maintenance",
+      "prompt": "Repair an existing date parser without changing its public interface.",
+      "acceptance": [
+        "Pass existing regression suite",
+        "Reject invalid calendar dates",
+        "Preserve input and output contracts"
+      ],
+      "ownerTests": "TO_BE_AUTHORED_AND_HASH_LOCKED_BEFORE_TRIAL",
+      "dataClassification": "SYNTHETIC_PUBLIC_ONLY"
+    },
+    {
+      "id": "BUG-02",
+      "category": "maintenance",
+      "prompt": "Fix a concurrent update lost-write bug in a local state store.",
+      "acceptance": [
+        "Add a deterministic race reproduction",
+        "Preserve both updates",
+        "Ensure tests fail on the original defect"
+      ],
+      "ownerTests": "TO_BE_AUTHORED_AND_HASH_LOCKED_BEFORE_TRIAL",
+      "dataClassification": "SYNTHETIC_PUBLIC_ONLY"
+    },
+    {
+      "id": "BUG-03",
+      "category": "maintenance",
+      "prompt": "Remove an HTML injection vulnerability in rendered user comments.",
+      "acceptance": [
+        "Preserve plain text content",
+        "Reject script execution and event handlers",
+        "Pass original functional behavior tests"
+      ],
+      "ownerTests": "TO_BE_AUTHORED_AND_HASH_LOCKED_BEFORE_TRIAL",
+      "dataClassification": "SYNTHETIC_PUBLIC_ONLY"
+    },
+    {
+      "id": "BUG-04",
+      "category": "maintenance",
+      "prompt": "Fix pagination boundary errors in a list endpoint.",
+      "acceptance": [
+        "Correct first and final page",
+        "Reject negative page sizes",
+        "No missing or duplicated items"
+      ],
+      "ownerTests": "TO_BE_AUTHORED_AND_HASH_LOCKED_BEFORE_TRIAL",
+      "dataClassification": "SYNTHETIC_PUBLIC_ONLY"
+    },
+    {
+      "id": "BUG-05",
+      "category": "maintenance",
+      "prompt": "Repair backup import so corrupted input cannot destroy existing state.",
+      "acceptance": [
+        "Validate before committing changes",
+        "Support rollback",
+        "Prove old state survives malformed backups"
+      ],
+      "ownerTests": "TO_BE_AUTHORED_AND_HASH_LOCKED_BEFORE_TRIAL",
+      "dataClassification": "SYNTHETIC_PUBLIC_ONLY"
+    },
+    {
+      "id": "SEC-01",
+      "category": "security",
+      "prompt": "Harden a mock API against tenant cross-access.",
+      "acceptance": [
+        "Reject foreign tenant identifiers",
+        "Maintain authorized owner access",
+        "Document denied access evidence"
+      ],
+      "ownerTests": "TO_BE_AUTHORED_AND_HASH_LOCKED_BEFORE_TRIAL",
+      "dataClassification": "SYNTHETIC_PUBLIC_ONLY"
+    },
+    {
+      "id": "SEC-02",
+      "category": "security",
+      "prompt": "Prevent path traversal in a local export function.",
+      "acceptance": [
+        "Reject dot-segment escapes",
+        "Reject symlink targets",
+        "Write only to scoped output directory"
+      ],
+      "ownerTests": "TO_BE_AUTHORED_AND_HASH_LOCKED_BEFORE_TRIAL",
+      "dataClassification": "SYNTHETIC_PUBLIC_ONLY"
+    },
+    {
+      "id": "SEC-03",
+      "category": "security",
+      "prompt": "Bound a simulated tool-calling agent to a read-only allowlist.",
+      "acceptance": [
+        "Reject unapproved tools",
+        "Enforce operation-level permissions",
+        "Record denied attempts without leaking secrets"
+      ],
+      "ownerTests": "TO_BE_AUTHORED_AND_HASH_LOCKED_BEFORE_TRIAL",
+      "dataClassification": "SYNTHETIC_PUBLIC_ONLY"
+    },
+    {
+      "id": "REC-01",
+      "category": "recovery",
+      "prompt": "Implement atomic backup and restore for a local project.",
+      "acceptance": [
+        "Verify manifest hashes",
+        "Reject partial backups",
+        "Recover exact previous state on failure"
+      ],
+      "ownerTests": "TO_BE_AUTHORED_AND_HASH_LOCKED_BEFORE_TRIAL",
+      "dataClassification": "SYNTHETIC_PUBLIC_ONLY"
+    },
+    {
+      "id": "REC-02",
+      "category": "recovery",
+      "prompt": "Introduce rollback to a two-stage data migration.",
+      "acceptance": [
+        "Preserve old schema on failure",
+        "Migrate sample records exactly",
+        "Prove reversible rollback"
+      ],
+      "ownerTests": "TO_BE_AUTHORED_AND_HASH_LOCKED_BEFORE_TRIAL",
+      "dataClassification": "SYNTHETIC_PUBLIC_ONLY"
+    },
+    {
+      "id": "REC-03",
+      "category": "recovery",
+      "prompt": "Recover an idempotent queue worker after a forced restart.",
+      "acceptance": [
+        "Do not duplicate completed jobs",
+        "Resume expired leases",
+        "Honor emergency stop across restart"
+      ],
+      "ownerTests": "TO_BE_AUTHORED_AND_HASH_LOCKED_BEFORE_TRIAL",
+      "dataClassification": "SYNTHETIC_PUBLIC_ONLY"
+    },
+    {
+      "id": "INT-01",
+      "category": "integration",
+      "prompt": "Implement a typed mock CRM import adapter with no external network.",
+      "acceptance": [
+        "Map fields without truncation",
+        "Reject private fields not in scope",
+        "Produce stable import receipts"
+      ],
+      "ownerTests": "TO_BE_AUTHORED_AND_HASH_LOCKED_BEFORE_TRIAL",
+      "dataClassification": "SYNTHETIC_PUBLIC_ONLY"
+    },
+    {
+      "id": "INT-02",
+      "category": "integration",
+      "prompt": "Implement a bounded mock MCP read-tool dispatcher.",
+      "acceptance": [
+        "Deny all writes",
+        "Enforce action and payload limits",
+        "Handle timeout with no retry storm"
+      ],
+      "ownerTests": "TO_BE_AUTHORED_AND_HASH_LOCKED_BEFORE_TRIAL",
+      "dataClassification": "SYNTHETIC_PUBLIC_ONLY"
+    },
+    {
+      "id": "A11Y-01",
+      "category": "accessibility",
+      "prompt": "Repair a dashboard keyboard navigation and focus trap.",
+      "acceptance": [
+        "Meet specified focus order",
+        "Support Escape dismissal",
+        "Ensure all actions are keyboard reachable"
+      ],
+      "ownerTests": "TO_BE_AUTHORED_AND_HASH_LOCKED_BEFORE_TRIAL",
+      "dataClassification": "SYNTHETIC_PUBLIC_ONLY"
+    },
+    {
+      "id": "A11Y-02",
+      "category": "accessibility",
+      "prompt": "Improve an order form for screen-reader errors and validation.",
+      "acceptance": [
+        "Associate fields and error text",
+        "Preserve data after validation failure",
+        "Provide status announcements"
+      ],
+      "ownerTests": "TO_BE_AUTHORED_AND_HASH_LOCKED_BEFORE_TRIAL",
+      "dataClassification": "SYNTHETIC_PUBLIC_ONLY"
+    }
+  ]
+}
