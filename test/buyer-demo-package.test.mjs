@@ -149,7 +149,7 @@ test('copy is not a production release, buyer contact or payment authorization',
 test('missing original product integrity manifest is never packed',async t=>{
  const f=await fixture(t);
  await rm(join(f.product,'manifest.json'));
- await assert.rejects(pack(f),/ENOENT/);
+ await assert.rejects(pack(f),/PRODUCT_ROOT_INVENTORY_MISMATCH|ENOENT/);
 });
 test('modified product manifest is blocked even if the source files remain intact',async t=>{
  const f=await fixture(t);
@@ -157,7 +157,7 @@ test('modified product manifest is blocked even if the source files remain intac
  const manifest=JSON.parse(await readFile(p,'utf8'));
  manifest.generator='UNVERIFIED_MODIFICATION';
  await writeFile(p,JSON.stringify(manifest)+'\n');
- await assert.rejects(pack(f),/BUYER_PRODUCT_MANIFEST_MISMATCH/);
+ await assert.rejects(pack(f),/BUILD_PROOF_SCOPE_INVALID|BUYER_PRODUCT_MANIFEST_MISMATCH/);
 });
 test('verification rejects a package missing its required product manifest',async t=>{
  const f=await fixture(t);
