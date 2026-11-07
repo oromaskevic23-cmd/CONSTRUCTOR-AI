@@ -7,6 +7,9 @@ on:
       - 'tools/build-offline-client-crm.mjs'
       - 'tools/qa-offline-client-crm.mjs'
       - 'tools/buyer-review-evidence.mjs'
+      - 'tools/buyer-pilot-package.mjs'
+      - 'engineering/buyer-demo-package.mjs'
+      - 'test/buyer-demo-package.test.mjs'
       - 'engineering/commercial-evidence-gate.mjs'
       - 'test/commercial-evidence-gate.test.mjs'
       - 'docs/BUYER_TECHNICAL_REVIEW.md'
@@ -20,6 +23,9 @@ on:
       - 'tools/build-offline-client-crm.mjs'
       - 'tools/qa-offline-client-crm.mjs'
       - 'tools/buyer-review-evidence.mjs'
+      - 'tools/buyer-pilot-package.mjs'
+      - 'engineering/buyer-demo-package.mjs'
+      - 'test/buyer-demo-package.test.mjs'
       - 'engineering/commercial-evidence-gate.mjs'
       - 'test/commercial-evidence-gate.test.mjs'
       - 'docs/BUYER_TECHNICAL_REVIEW.md'
@@ -144,10 +150,26 @@ jobs:
             "$RUNNER_TEMP/buyer-input/build-proof.json" \
             "$RUNNER_TEMP/buyer-qa/qa.json" \
             "$RUNNER_TEMP/constructor-review-output/buyer-evidence.json"
-      - name: Preserve read-only technical-review evidence (not a signed release)
+      - name: Assemble transportable CRM source, QA proofs and buyer instructions
+        shell: bash
+        run: |
+          set -euo pipefail
+          node tools/buyer-pilot-package.mjs assemble \
+            "$RUNNER_TEMP/buyer-input/offline-client-crm" \
+            "$RUNNER_TEMP/buyer-input/build-proof.json" \
+            "$RUNNER_TEMP/buyer-qa/qa.json" \
+            "$RUNNER_TEMP/constructor-review-output/buyer-evidence.json" \
+            "$RUNNER_TEMP/constructor-review-output/portable-evaluation"
+      - name: Independently rehash portable buyer evaluation package
+        shell: bash
+        run: |
+          set -euo pipefail
+          node tools/buyer-pilot-package.mjs verify \
+            "$RUNNER_TEMP/constructor-review-output/portable-evaluation"
+      - name: Preserve full offline buyer evaluation package (not a signed release)
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: constructor-buyer-review-${{ github.sha }}
-          path: ${{ runner.temp }}/constructor-review-output/buyer-evidence.json
+          path: ${{ runner.temp }}/constructor-review-output/
           retention-days: 14
           if-no-files-found: error
