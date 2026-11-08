@@ -14,6 +14,17 @@
 
 Create and export a **Task Manager, Business CRM or Business Dashboard** from reviewed built-in templates. The studio includes interactive previews, editable project source, tests and SHA-256 file manifests. It does not yet turn arbitrary prompts into verified production applications.
 
+### Start here — live demonstration, source and evidence
+
+| For | Direct link | What it proves |
+| --- | --- | --- |
+| Product evaluator | [Template Studio demo](https://oromaskevic23-cmd.github.io/Capital-Core-Public/reference/constructor-ai/studio/studio.html) | Interactive public reference; verify current availability independently |
+| Engineer | [Acceptance procedure](docs/FLAGSHIP_ACCEPTANCE.md) and [tested source revision](https://github.com/oromaskevic23-cmd/CONSTRUCTOR-AI/commit/898d1abe2616cb92104b64dc126e0875cc9acddf) | Reproducible local scope at a fixed commit |
+| QA reviewer | [Successful reference CI](https://github.com/oromaskevic23-cmd/CONSTRUCTOR-AI/actions/runs/42001525579) and [Chromium acceptance](https://github.com/oromaskevic23-cmd/CONSTRUCTOR-AI/actions/runs/42001525556) | Project-controlled checks of reviewed templates; **not** an external certification |
+| Investor or pilot partner | [Dated due-diligence brief](https://github.com/oromaskevic23-cmd/oromaskevic23-cmd/blob/main/docs/ENGINEERING_DUE_DILIGENCE_20261109.md) and [pilot overview](https://github.com/oromaskevic23-cmd/oromaskevic23-cmd/blob/main/docs/CONSTRUCTOR_AI_INVESTOR_OVERVIEW.md) | Current limitations, remaining acceptance gates and how to propose a bounded pilot |
+
+**Commercial-readiness boundary:** No production autonomous software factory, externally certified security, signed paying customers or validated acquisition value is established by these links. The goal is independent inspection and a focused pilot, not an inflated capability claim.
+
 ## VELION — prompt-generated code pilot (bounded, not production)
 
 A new [engineering milestone](docs/VELION_PROMPT_SANDBOX_MILESTONE.md) implements a restricted first path beyond fixed templates: an explicitly authorized local VELION/Ollama request for a Task Manager module, typed model output, SHA-256 quarantine, non-network Docker execution, separately authored QA tests and a verification-only Ed25519 Owner Approval Gateway. The sandbox CI uses a **synthetic model fixture**, not real model inference; real-model end-to-end acceptance and real Owner Ed25519 enrollment remain unverified. No automatic production release, commercial account access or cloud deployment is granted.
