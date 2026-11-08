@@ -3,7 +3,7 @@
 **Project creator / founding architect:** Alexander Nikolaevich Romaskevich  
 **International name:** Alexander Nikolaevich Romaskevich  
 **GitHub and public signature:** [RomaskevicH](https://github.com/oromaskevic23-cmd)  
-**Role:** Founder • Owner • CEO • Chief Systems Architect of IMPERIAL Core  
+**Role:** Founder • Owner • CEO of IMPERIAL Core  
 **Final architectural decision authority:** Alexander Nikolaevich Romaskevich
 
 ## Author attribution
