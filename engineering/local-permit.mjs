@@ -9,8 +9,9 @@ const MODEL = /^[A-Za-z0-9][A-Za-z0-9_.:/-]{0,119}$/;
 const DIGEST = /^[a-f0-9]{64}$/;
 export const ROUTE_GROQ_PLAN = "groq-plan";
 export const ROUTE_LOCAL_TASK = "velion-local-task";
+export const ROUTE_LOCAL_APPLICATION = "velion-local-application-v1";
 export const ROUTE_REVIEWED_PROPOSAL = "velion-reviewed-proposal";
-const ROUTES = new Set([ROUTE_GROQ_PLAN, ROUTE_LOCAL_TASK, ROUTE_REVIEWED_PROPOSAL]);
+const ROUTES = new Set([ROUTE_GROQ_PLAN, ROUTE_LOCAL_TASK, ROUTE_LOCAL_APPLICATION, ROUTE_REVIEWED_PROPOSAL]);
 const PERMITTED = "model:generate_draft";
 const KEYS = "action,exp,iat,mission,nonce,scope_sha256,v";
 

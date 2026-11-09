@@ -4,12 +4,30 @@ import { chromium } from 'playwright';
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
 import { once } from 'node:events';
-import { mkdtemp, mkdir, readFile, stat, rm } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, stat, lstat, copyFile, writeFile, rm } from 'node:fs/promises';
+import {constants} from 'node:fs';
+import {createHash} from 'node:crypto';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, isAbsolute } from 'node:path';
 import { createAppServer } from '../tools/serve.mjs';
 import { createLocalTaskService } from '../engineering/local-task-service.mjs';
 
+const evidenceDirectory=process.env.CONSTRUCTOR_BROWSER_EVIDENCE_DIR||null;
+let testedCommit=null;
+if(evidenceDirectory){
+  assert.ok(isAbsolute(evidenceDirectory),'Evidence directory must be an absolute existing directory');
+  const info=await lstat(evidenceDirectory);
+  assert.ok(info.isDirectory()&&!info.isSymbolicLink(),'Evidence directory must not be a symlink');
+  const expected=process.env.CONSTRUCTOR_TESTED_COMMIT||'';
+  assert.match(expected,/^[a-f0-9]{40}$/,'A full tested commit SHA is required');
+  const revision=spawnSync('git',['rev-parse','--verify','HEAD'],{encoding:'utf8',timeout:10000});
+  const status=spawnSync('git',['status','--porcelain','--untracked-files=all'],{encoding:'utf8',timeout:10000});
+  assert.equal(revision.status,0,'A Git checkout is required for screenshot evidence');
+  assert.equal(revision.stdout.trim(),expected,'Tested commit does not match checkout');
+  assert.equal(status.status,0,'Cannot inspect checkout status');
+  assert.equal(status.stdout.trim(),'','Screenshot evidence requires a clean checkout');
+  testedCommit=expected;
+}
 const root=await mkdtemp(join(tmpdir(),'constructor-real-browser-'));
 const outcomes=[];
 const TYPES=[
@@ -65,6 +83,19 @@ async function run(kind,studioPage){
     await waitForApp(app);
     const page=await browser.newPage({acceptDownloads:true});
     try{
+      const unexpectedRequests=[],consoleErrors=[];
+      async function guardPage(target){
+        target.on('pageerror',error=>consoleErrors.push(error.message));
+        target.on('console',message=>{if(message.type()==='error')consoleErrors.push(message.text());});
+        await target.route('**/*',route=>{
+          const url=new URL(route.request().url());
+          if(url.origin!=='http://127.0.0.1:4174'){
+            unexpectedRequests.push(url.origin);return route.abort();
+          }
+          return route.continue();
+        });
+      }
+      await guardPage(page);
       await page.goto('http://127.0.0.1:4174/',{waitUntil:'load'});
       check(await page.locator('h1').first().innerText()==='Browser Acceptance '+kind.id,'Wrong exported app');
       const form=page.locator('.record-form');
@@ -73,7 +104,17 @@ async function run(kind,studioPage){
       if(kind.id!=='tasks')await form.locator('input[type=number]').fill('125.50');
       await form.getByRole('button',{name:kind.add}).click();
       check(await page.locator('.record-list li:not(.empty)').count()===1,'Create failed');
-      await page.getByRole('button',{name:'Change status: Original '+kind.id}).click();
+      const changeStatus=page.getByRole('button',{name:'Change status: Original '+kind.id});
+      if(kind.id==='tasks'){
+        await changeStatus.focus();
+        await page.keyboard.press('Space');
+        assert.equal(await changeStatus.innerText(),'Done');
+        assert.equal(await page.evaluate(()=>document.activeElement?.getAttribute('aria-label')),'Change status: Original tasks');
+        await page.keyboard.press('Space');
+        assert.equal(await changeStatus.innerText(),'Open');
+        await page.keyboard.press('Space');
+        assert.equal(await changeStatus.innerText(),'Done');
+      }else await changeStatus.click();
       if(kind.id==='tasks'){
         await page.getByLabel('Search').focus();
         await page.keyboard.press('Tab');
@@ -115,9 +156,31 @@ async function run(kind,studioPage){
       check(await page.locator('.record-list h2').innerText()==='Edited '+kind.id,'Restore failed');
       await page.reload();
       check(await page.locator('.record-list h2').innerText()==='Edited '+kind.id,'Persistence failed');
+      if(kind.id==='tasks'){
+        const payload='<img src=x onerror=alert(1)>';
+        await form.locator('input[type=text]').first().fill(payload);
+        await form.getByRole('button',{name:kind.add}).click();
+        assert.equal(await page.locator('.record-list h2').filter({hasText:payload}).count(),1);
+        assert.equal(await page.locator('.record-list img').count(),0,'User text must not become markup');
+        await page.getByRole('button',{name:'Delete: '+payload}).click();
+        assert.equal(await page.locator('.record-list h2').count(),1);
+        const isolated=await browser.newContext();
+        const corrupt=await isolated.newPage();
+        try{
+          await guardPage(corrupt);
+          await corrupt.addInitScript(()=>localStorage.setItem('constructor-app-v1:tasks:Browser Acceptance tasks',''));
+          await corrupt.goto('http://127.0.0.1:4174/',{waitUntil:'load'});
+          await corrupt.getByRole('alert').filter({hasText:'not been replaced'}).waitFor();
+          await corrupt.locator('.record-form input[type=text]').first().fill('Session only');
+          await corrupt.getByRole('button',{name:kind.add}).click();
+          assert.equal(await corrupt.evaluate(()=>localStorage.getItem('constructor-app-v1:tasks:Browser Acceptance tasks')),'');
+          assert.equal(await corrupt.getByRole('alert').isVisible(),true);
+        }finally{await isolated.close();}
+      }
       if(kind.id==='crm'){
         const volatile=await browser.newPage();
         try{
+          await guardPage(volatile);
           await volatile.addInitScript(()=>{
             Storage.prototype.setItem=function(){throw new DOMException('Blocked','QuotaExceededError');};
           });
@@ -135,7 +198,9 @@ async function run(kind,studioPage){
           check(await volatile.getByRole('alert').isVisible(),'Storage warning must persist after later changes');
         }finally{await volatile.close();}
       }
-      outcomes.push({template:kind.id,status:'PASS',checks:['studio-preview','browser-zip','clean-extract','integrity','exported-tests','crud','status','edit','search','backup','malformed-reject','type-reject','cancel','restore','reload']});
+      assert.deepEqual(unexpectedRequests,[],'Unexpected external request was blocked');
+      assert.deepEqual(consoleErrors,[],'Unexpected browser console error');
+      outcomes.push({template:kind.id,status:'PASS',checks:['studio-preview','browser-zip','clean-extract','integrity','exported-tests','crud','status','edit','search','backup','malformed-reject','type-reject','cancel','restore','reload',...(kind.id==='tasks'?['keyboard-reopen','safe-rendering','corrupt-storage']:[]),'no-external-requests','no-console-errors']});
       await page.screenshot({path:join(root,kind.id+'-browser.png'),fullPage:true});
     }finally{await page.close();}
   }finally{
@@ -202,6 +267,18 @@ try{
   for(const kind of TYPES)await run(kind,studioPage);
   await runLocalAi();await runHostedBoundary();
   assert.equal(outcomes.length,5);
+  if(evidenceDirectory){
+    const name='constructor-tasks-'+testedCommit+'.png';
+    const screenshot=await readFile(join(root,'tasks-browser.png'));
+    const evidence={schema:'constructor-browser-evidence-v1',commit:testedCommit,
+      screenshot:name,sha256:createHash('sha256').update(screenshot).digest('hex'),
+      node:process.version,browser:browser.version(),platform:process.platform,architecture:process.arch,
+      recordedAt:new Date().toISOString(),scope:'TEMPLATE_REFERENCE_NOT_MODEL_GENERATED',
+      integrity:'UNSIGNED_LOCAL_OBSERVATION_NOT_INDEPENDENT_ATTESTATION',outcomes};
+    await copyFile(join(root,'tasks-browser.png'),join(evidenceDirectory,name),constants.COPYFILE_EXCL);
+    await writeFile(join(evidenceDirectory,'constructor-browser-'+testedCommit+'.json'),
+      JSON.stringify(evidence,null,2)+'\n',{flag:'wx'});
+  }
   console.log(JSON.stringify({schema:'constructor-chromium-acceptance-v1',commit:process.env.GITHUB_SHA||null,status:'PASS',outcomes}));
 }catch(error){
   console.error('BROWSER_ACCEPTANCE_FAIL: '+(error?.stack||error));

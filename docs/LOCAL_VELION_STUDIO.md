@@ -66,3 +66,32 @@ module contract; arbitrary application generation is not provided.
 Tests use a synthetic model transport and do not prove a real Ollama request.
 Browser acceptance must be evaluated from its actual run, separately from
 the ordinary unit tests.
+
+## Full application contract (laboratory only)
+
+The existing local CLI also has a separately scoped `--full-app` route. With
+an authorized local model and private output directory already configured,
+an operator can request one bounded draft:
+
+```sh
+node tools/local-velion-task-build.mjs --full-app "Build a task manager with search and persistent local storage" "$CONSTRUCTOR_LOCAL_QUARANTINE"
+```
+
+This route requires `IMPERIAL_TASK_LOCAL_ONLY=YES`, `VELION_LOCAL_MODEL` and
+`VELION_LOCAL_PERMIT_SECRET`. The local HMAC permit is bound to the distinct
+`velion-local-application-v1` route. It is not an Owner Ed25519 authorization
+or production AI Passport. The adapter makes at most one local model request,
+with a bounded response and output-token ceiling. It neither installs a model
+nor accesses a remote inference provider.
+
+The versioned contract accepts exactly nine model-authored files, including
+HTML, CSS, application/storage/validation modules, server, manifest, README and
+tests. The package manifest permits no dependencies or lifecycle scripts.
+Passing its structural checks does not establish that the source is safe or
+functional. Source is quarantined as untrusted data; static security review,
+isolated build, independent browser QA, Owner approval and release are **not
+performed by this command**. Never execute the candidate on the host.
+
+The model's token counters and source hashes are provider-reported evidence,
+not an independently authenticated model identity or proof of execution.
+Existing Studio UI remains on the earlier two-file task-domain contract.
