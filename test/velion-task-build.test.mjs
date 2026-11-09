@@ -118,8 +118,8 @@ test('trusted QA summary requires all three non-skipped assertions',()=>{
 });
 
 test('candidate-authored TAP requires individual records and a consistent plan, not just a forged summary',()=>{
- const tap='TAP version 13\\n# Subtest: candidate fixture\\nok 1 - candidate fixture\\n1..1\\n# tests 1\\n# pass 1\\n# fail 0\\n# cancelled 0\\n# skipped 0\\n# todo 0\\n';
- const forgedSummary='TAP version 13\\n# tests 1\\n# pass 1\\n# fail 0\\n# cancelled 0\\n# skipped 0\\n# todo 0\\n';
+ const tap='TAP version 13\n# Subtest: candidate fixture\nok 1 - candidate fixture\n1..1\n# tests 1\n# pass 1\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n';
+ const forgedSummary='TAP version 13\n# tests 1\n# pass 1\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n';
  assert.equal(validateGeneratedTaskTap(tap),1);
  for(const invalid of [
    '',forgedSummary,
@@ -130,7 +130,7 @@ test('candidate-authored TAP requires individual records and a consistent plan, 
    tap.replace('# pass 1','# pass 0'),
    tap.replace('# skipped 0','# skipped 1'),
    tap.replace('TAP version 13','TAP version 12'),
-   tap.replace('# pass 1','# pass 1\\n# pass 1')
+   tap.replace('# pass 1','# pass 1\n# pass 1')
  ])assert.throws(()=>validateGeneratedTaskTap(invalid),/GENERATED_TEST_REPORT_INVALID/);
  // TAP records remain untrusted candidate-authored output: independent QA is mandatory.
 });
