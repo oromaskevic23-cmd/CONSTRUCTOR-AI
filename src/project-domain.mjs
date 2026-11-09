@@ -30,6 +30,55 @@ export function accentPalette(accent) {
     focusAccent:Math.min(ratio(normalized,'#10151e'),ratio(normalized,'#1a2332'))>=3?normalized:fallback
   });
 }
+
+// Coordinate cooperating tabs before comparing and replacing localStorage.
+// The Web Locks API is required: a read followed by a write without a lock is
+// not an atomic compare-and-swap. Other same-origin code that ignores this
+// protocol can still modify storage; this is not a security boundary.
+export function createGuardedStorageWriter({storage, locks, key, initialRaw}) {
+  if (typeof key !== 'string' || !key || (initialRaw !== null && typeof initialRaw !== 'string'))
+    throw new TypeError('Invalid storage writer configuration');
+  let expected = initialRaw;
+  let reason = !locks || typeof locks.request !== 'function' ? 'LOCKS_UNAVAILABLE' : null;
+  let pending = false;
+  const sessionOnly = () => ({status: 'SESSION_ONLY', reason});
+  return Object.freeze({
+    get reason() {return reason;},
+    async write(nextRaw) {
+      if (typeof nextRaw !== 'string') throw new TypeError('Storage value must be text');
+      if (reason) return sessionOnly();
+      if (pending) return {status: 'BUSY'};
+      pending = true;
+      let active = true, called = false, wrote = false;
+      try {
+        const result = await locks.request('constructor-storage:' + key, {mode: 'exclusive', ifAvailable: true}, lock => {
+          if (!active || called) {reason = 'LOCKS_UNAVAILABLE'; return sessionOnly();}
+          called = true;
+          if (!lock) return {status: 'BUSY'};
+          let current;
+          try {current = storage.getItem(key);}
+          catch {reason = 'STORAGE_UNAVAILABLE'; return sessionOnly();}
+          if (current !== expected) {reason = 'EXTERNAL_CHANGE'; return sessionOnly();}
+          try {storage.setItem(key, nextRaw);}
+          catch {reason = 'STORAGE_UNAVAILABLE'; return sessionOnly();}
+          wrote = true;
+          expected = nextRaw;
+          return {status: 'SAVED'};
+        });
+        if (!called || !result || !['SAVED', 'BUSY', 'SESSION_ONLY'].includes(result.status) ||
+            (result.status === 'SAVED' && !wrote)) {
+          reason = 'LOCKS_UNAVAILABLE';
+          return sessionOnly();
+        }
+        return result;
+      } catch {
+        reason = 'LOCKS_UNAVAILABLE';
+        return sessionOnly();
+      } finally {active = false; pending = false;}
+    }
+  });
+}
+
 export function templateDefinition(id) {
   const definitions = {
     tasks: {label: 'Task Manager', item: 'Task', detail: 'Notes', value: null, statuses: ['Open', 'Done']},

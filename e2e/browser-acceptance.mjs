@@ -110,18 +110,25 @@ async function run(kind,studioPage){
       await form.locator('input[type=text]').nth(1).fill('Customer follow-up');
       if(kind.id!=='tasks')await form.locator('input[type=number]').fill('125.50');
       await form.getByRole('button',{name:kind.add}).click();
+      await page.locator('.record-list h2').filter({hasText:'Original '+kind.id}).waitFor();
       check(await page.locator('.record-list li:not(.empty)').count()===1,'Create failed');
       const changeStatus=page.getByRole('button',{name:'Change status: Original '+kind.id});
       if(kind.id==='tasks'){
         await changeStatus.focus();
         await page.keyboard.press('Space');
+        await changeStatus.filter({hasText:'Done'}).waitFor();
         assert.equal(await changeStatus.innerText(),'Done');
         assert.equal(await page.evaluate(()=>document.activeElement?.getAttribute('aria-label')),'Change status: Original tasks');
         await page.keyboard.press('Space');
+        await changeStatus.filter({hasText:'Open'}).waitFor();
         assert.equal(await changeStatus.innerText(),'Open');
         await page.keyboard.press('Space');
+        await changeStatus.filter({hasText:'Done'}).waitFor();
         assert.equal(await changeStatus.innerText(),'Done');
-      }else await changeStatus.click();
+      }else {
+        await changeStatus.click();
+        await changeStatus.filter({hasText:kind.id==='crm'?'Qualified':'At risk'}).waitFor();
+      }
       if(kind.id==='tasks'){
         await page.getByLabel('Search').focus();
         await page.keyboard.press('Tab');
@@ -135,6 +142,7 @@ async function run(kind,studioPage){
       await page.getByRole('button',{name:'Edit: Original '+kind.id}).click();
       await form.locator('input[type=text]').first().fill('Edited '+kind.id);
       await form.getByRole('button',{name:'Save changes'}).click();
+      await page.locator('.record-list h2').filter({hasText:'Edited '+kind.id}).waitFor();
       await page.locator('input[type=search]').fill('Edited '+kind.id);
       check(await page.locator('.record-list h2').innerText()==='Edited '+kind.id,'Edit/search failed');
       await page.locator('input[type=search]').fill('');
@@ -145,6 +153,7 @@ async function run(kind,studioPage){
       assert.equal(json.template,kind.id);
       assert.equal(json.records.length,1);
       await page.getByRole('button',{name:'Delete: Edited '+kind.id}).click();
+      await page.locator('.record-list li.empty').waitFor();
       check(await page.locator('.record-list li.empty').count()===1,'Delete failed');
       const picker=page.locator('input[type=file]');
       await picker.setInputFiles({name:'invalid.json',mimeType:'application/json',buffer:Buffer.from('{invalid')});
@@ -164,12 +173,35 @@ async function run(kind,studioPage){
       await page.reload();
       check(await page.locator('.record-list h2').innerText()==='Edited '+kind.id,'Persistence failed');
       if(kind.id==='tasks'){
+        const second=await page.context().newPage();
+        try{
+          await guardPage(second);
+          await second.goto('http://127.0.0.1:4174/',{waitUntil:'load'});
+          await second.locator('.record-list h2').filter({hasText:'Edited tasks'}).waitFor();
+          await form.locator('input[type=text]').first().fill('First tab record');
+          await form.getByRole('button',{name:kind.add}).click();
+          await page.locator('.record-list h2').filter({hasText:'First tab record'}).waitFor();
+          const secondForm=second.locator('.record-form');
+          await secondForm.locator('input[type=text]').first().fill('Second tab record');
+          await secondForm.getByRole('button',{name:kind.add}).click();
+          await second.getByRole('alert').filter({hasText:'not been overwritten'}).waitFor();
+          await second.locator('.record-list h2').filter({hasText:'Second tab record'}).waitFor();
+          const saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('constructor-app-v1:tasks:Browser Acceptance tasks')));
+          assert(saved.some(record=>record.title==='First tab record'));
+          assert(!saved.some(record=>record.title==='Second tab record'));
+        }finally{await second.close();}
+        const firstRecordDelete=page.getByRole('button',{name:'Delete: First tab record'});
+        await firstRecordDelete.click();
+        await firstRecordDelete.waitFor({state:'detached'});
         const payload='<img src=x onerror=alert(1)>';
         await form.locator('input[type=text]').first().fill(payload);
         await form.getByRole('button',{name:kind.add}).click();
+        await page.locator('.record-list h2').filter({hasText:payload}).waitFor();
         assert.equal(await page.locator('.record-list h2').filter({hasText:payload}).count(),1);
         assert.equal(await page.locator('.record-list img').count(),0,'User text must not become markup');
-        await page.getByRole('button',{name:'Delete: '+payload}).click();
+        const maliciousDelete=page.getByRole('button',{name:'Delete: '+payload});
+        await maliciousDelete.click();
+        await maliciousDelete.waitFor({state:'detached'});
         assert.equal(await page.locator('.record-list h2').count(),1);
         const isolated=await browser.newContext();
         const corrupt=await isolated.newPage();
@@ -207,7 +239,7 @@ async function run(kind,studioPage){
       }
       assert.deepEqual(unexpectedRequests,[],'Unexpected external request was blocked');
       assert.deepEqual(consoleErrors,[],'Unexpected browser console error');
-      outcomes.push({template:kind.id,status:'PASS',checks:['studio-preview','browser-zip','clean-extract','integrity','exported-tests','crud','status','edit','search','backup','malformed-reject','type-reject','cancel','restore','reload',...(kind.id==='tasks'?['keyboard-reopen','safe-rendering','corrupt-storage']:[]),'no-external-requests','no-console-errors']});
+      outcomes.push({template:kind.id,status:'PASS',checks:['studio-preview','browser-zip','clean-extract','integrity','exported-tests','crud','status','edit','search','backup','malformed-reject','type-reject','cancel','restore','reload',...(kind.id==='tasks'?['keyboard-reopen','safe-rendering','corrupt-storage','stale-tab-conflict']:[]),'no-external-requests','no-console-errors']});
       await page.screenshot({path:join(root,kind.id+'-browser.png'),fullPage:true});
     }finally{await page.close();}
   }finally{

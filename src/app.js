@@ -6,6 +6,7 @@
  * Individual source contributions and third-party rights: see AUTHORS.md and Git history.
  */
 import {createTask, updateTask, toggleTask, deleteTask, filterTasks, taskCounts, parseTaskStorage} from "./tasks.js";
+import {createGuardedStorageWriter} from "./project-domain.mjs";
 
 const STORAGE_KEY = "constructor_ai_task_manager_v1";
 const form = document.querySelector("#task-form");
@@ -26,6 +27,8 @@ let tasks = [];
 let selectedFilter = "all";
 let editingId = null;
 let storageAvailable = true;
+let storageWriter = null;
+let mutationPending = false;
 
 function notify(text, error = false) {
   message.textContent = text;
@@ -39,18 +42,34 @@ function warnStorage(text) {
 }
 
 try {
-  tasks = parseTaskStorage(window.localStorage.getItem(STORAGE_KEY));
+  const storage = window.localStorage;
+  const raw = storage.getItem(STORAGE_KEY);
+  tasks = parseTaskStorage(raw);
+  storageWriter = createGuardedStorageWriter({storage, locks: window.navigator?.locks, key: STORAGE_KEY, initialRaw: raw});
+  if (storageWriter.reason) warnStorage("Safe browser storage coordination is unavailable. Changes will remain only in this session.");
 } catch {
   warnStorage("Saved tasks could not be loaded and have not been replaced. Changes will remain only in this session.");
 }
 
-function persist(nextTasks) {
-  tasks = nextTasks;
-  if (storageAvailable) {
-    try { window.localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks)); }
-    catch { warnStorage("Browser storage is unavailable. Changes will remain only in this session."); }
+async function persist(nextTasks) {
+  if (mutationPending) {notify("Another change is in progress; try again.", true); return false;}
+  mutationPending = true;
+  for (const control of [titleField, descriptionField, submitButton, cancelButton]) control.disabled = true;
+  try {
+    if (storageAvailable) {
+      const result = await storageWriter.write(JSON.stringify(nextTasks));
+      if (result.status === "BUSY") {notify("Another tab is saving; try again.", true); return false;}
+      if (result.status === "SESSION_ONLY") warnStorage(result.reason === "EXTERNAL_CHANGE"
+        ? "Saved tasks changed elsewhere, possibly in another tab, and were not overwritten. Changes will remain only in this session."
+        : "Safe browser storage is unavailable. Changes will remain only in this session.");
+    }
+    tasks = nextTasks;
+    render();
+    return true;
+  } finally {
+    mutationPending = false;
+    for (const control of [titleField, descriptionField, submitButton, cancelButton]) control.disabled = false;
   }
-  render();
 }
 
 function actionButton(label, action, id, title, extraClass = "") {
@@ -103,7 +122,7 @@ function render() {
   }
 }
 
-form.addEventListener("submit", event => {
+form.addEventListener("submit", async event => {
   event.preventDefault();
   try {
     const input = {title: titleField.value, description: descriptionField.value};
@@ -111,8 +130,9 @@ form.addEventListener("submit", event => {
     const next = editingId
       ? updateTask(tasks, editingId, input, now)
       : createTask(tasks, input, {id: crypto.randomUUID(), now});
-    persist(next);
-    notify(editingId ? "Task updated." : "Task created.");
+    const wasEditing = editingId !== null;
+    if (!await persist(next)) return;
+    notify((wasEditing ? "Task updated" : "Task created") + (storageAvailable ? "." : " for this session only."));
     resetEditor();
   } catch (error) {
     notify(error.message || "Unable to save task.", true);
@@ -128,23 +148,24 @@ function resetEditor() {
 
 cancelButton.addEventListener("click", () => { resetEditor(); notify("Editing cancelled."); });
 
-taskList.addEventListener("click", event => {
+taskList.addEventListener("click", async event => {
   const button = event.target.closest("button[data-action]");
   if (!button || !taskList.contains(button)) return;
+  if (mutationPending) {notify("Another change is in progress; try again.", true); return;}
   const {action, id} = button.dataset;
   const task = tasks.find(t => t.id === id);
   if (!task) return;
   try {
     if (action === "toggle") {
-      persist(toggleTask(tasks, id, new Date().toISOString()));
-      notify("Task status updated.");
+      if (!await persist(toggleTask(tasks, id, new Date().toISOString()))) return;
+      notify("Task status updated" + (storageAvailable ? "." : " for this session only."));
       const updated = [...taskList.querySelectorAll("button[data-action]")].find(b => b.dataset.id === id && b.dataset.action === "toggle");
       (updated || searchField).focus();
     } else if (action === "delete") {
       if (!window.confirm("Permanently remove this task from this browser?")) return;
-      persist(deleteTask(tasks, id));
+      if (!await persist(deleteTask(tasks, id))) return;
       if (editingId === id) resetEditor();
-      notify("Task deleted.");
+      notify("Task deleted" + (storageAvailable ? "." : " for this session only."));
       searchField.focus();
     } else if (action === "edit") {
       editingId = id;
