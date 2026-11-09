@@ -1,3 +1,7 @@
+![CONSTRUCTOR AI concept banner](assets/constructor-ai-banner.jpg)
+
+*Concept artwork; the interface and status indicators are illustrative.*
+
 # CONSTRUCTOR AI
 
 **Project creator & founding architect:** **Alexander Nikolaevich Romaskevich** (Alexander Nikolaevich Romaskevich · RomaskevicH). [Authorship & contribution provenance](AUTHORS.md).
