@@ -1,10 +1,14 @@
-import {templateDefinition, validateRecords, saveRecord, changeStatus, removeRecord, filterRecords, summarizeRecords} from './project-domain.mjs';
+import {accentPalette,templateDefinition, validateRecords, saveRecord, changeStatus, removeRecord, filterRecords, summarizeRecords} from './project-domain.mjs';
 import {MAX_BACKUP_BYTES, serializeBackup, parseBackup} from './project-backup.mjs';
 
 // Only built-in, reviewed application logic is mounted. No model output is executed.
 export function mountApplication(root, config, {persist = true} = {}) {
   const doc = root.ownerDocument;
+  const palette=accentPalette(config.accent);
   root.style.setProperty('--accent', config.accent);
+  root.style.setProperty('--on-accent', palette.onAccent);
+  root.style.setProperty('--accent-text', palette.textAccent);
+  root.style.setProperty('--accent-focus', palette.focusAccent);
   const definition = templateDefinition(config.template);
   const key = 'constructor-app-v1:' + config.template + ':' + config.name;
   let records = [], editing = null, storageAvailable = persist;

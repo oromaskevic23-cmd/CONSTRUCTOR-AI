@@ -11,6 +11,25 @@ export function normalizeProject(input) {
   if (typeof accent !== 'string' || !/^#[0-9a-f]{6}$/i.test(accent)) throw new RangeError('Accent must be a six-digit hex color');
   return Object.freeze({template: input.template, name, accent: accent.toLowerCase()});
 }
+
+// Choose readable text and focus colors for any user-selected six-digit accent.
+// This does not replace browser accessibility or screen-reader testing.
+export function accentPalette(accent) {
+  if (typeof accent !== 'string' || !/^#[0-9a-f]{6}$/i.test(accent)) throw new RangeError('Accent must be a six-digit hex color');
+  const normalized=accent.toLowerCase();
+  const luminance=hex=>{
+    const channels=[1,3,5].map(i=>parseInt(hex.slice(i,i+2),16)/255)
+      .map(v=>v<=0.04045?v/12.92:((v+0.055)/1.055)**2.4);
+    return 0.2126*channels[0]+0.7152*channels[1]+0.0722*channels[2];
+  };
+  const ratio=(a,b)=>{const x=luminance(a),y=luminance(b);return (Math.max(x,y)+0.05)/(Math.min(x,y)+0.05);};
+  const fallback='#66e3c4';
+  return Object.freeze({
+    onAccent:ratio(normalized,'#000000')>=ratio(normalized,'#ffffff')?'#000000':'#ffffff',
+    textAccent:ratio(normalized,'#10151e')>=4.5?normalized:fallback,
+    focusAccent:Math.min(ratio(normalized,'#10151e'),ratio(normalized,'#1a2332'))>=3?normalized:fallback
+  });
+}
 export function templateDefinition(id) {
   const definitions = {
     tasks: {label: 'Task Manager', item: 'Task', detail: 'Notes', value: null, statuses: ['Open', 'Done']},

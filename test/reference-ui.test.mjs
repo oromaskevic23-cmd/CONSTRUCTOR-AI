@@ -6,7 +6,8 @@ import {mountApplication} from '../src/project-runtime.mjs';
 class Element {
   constructor(tag, doc) {
     Object.assign(this, {tag, ownerDocument: doc, children: [], dataset: {}, attributes: {},
-      listeners: {}, value: '', textContent: '', hidden: false, style: {setProperty() {}}});
+      listeners: {}, value: '', textContent: '', hidden: false,
+      style: {values: {}, setProperty(name, value) {this.values[name] = value;}}});
   }
   set innerHTML(value) { throw new Error('Unexpected HTML parsing: ' + value); }
   append(...children) { this.children.push(...children); }
@@ -41,6 +42,13 @@ function one(root, predicate) {
   assert.equal(found.length, 1);
   return found[0];
 }
+
+test('exported UI applies readable colors for a dark selected accent',()=>{
+  const doc=makeDocument(storage()),root=doc.createElement('main');
+  mountApplication(root,{template:'tasks',name:'Smart Task Manager',accent:'#000000'});
+  assert.deepEqual(root.style.values,{'--accent':'#000000','--on-accent':'#ffffff',
+    '--accent-text':'#66e3c4','--accent-focus':'#66e3c4'});
+});
 
 test('exported task UI wires CRUD, search, status and persistent reload', () => {
   const store = storage();

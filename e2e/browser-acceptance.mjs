@@ -61,6 +61,7 @@ async function run(kind,studioPage){
   await mkdir(output);
   await studioPage.locator('#template').selectOption(kind.id);
   await studioPage.locator('#project-name').fill('Browser Acceptance '+kind.id);
+  await studioPage.locator('#accent').fill(kind.id==='tasks'?'#000000':'#66e3c4');
   await studioPage.getByRole('button',{name:'Build preview'}).click();
   await studioPage.waitForFunction(()=>!document.querySelector('#download').disabled);
   check(await studioPage.locator('#preview-kind').innerText()===kind.title,'Wrong studio template');
@@ -99,6 +100,12 @@ async function run(kind,studioPage){
       await page.goto('http://127.0.0.1:4174/',{waitUntil:'load'});
       check(await page.locator('h1').first().innerText()==='Browser Acceptance '+kind.id,'Wrong exported app');
       const form=page.locator('.record-form');
+      if(kind.id==='tasks'){
+        const colors=await form.getByRole('button',{name:kind.add}).evaluate(button=>{
+          const style=getComputedStyle(button);return {text:style.color,background:style.backgroundColor};
+        });
+        assert.deepEqual(colors,{text:'rgb(255, 255, 255)',background:'rgb(0, 0, 0)'});
+      }
       await form.locator('input[type=text]').first().fill('Original '+kind.id);
       await form.locator('input[type=text]').nth(1).fill('Customer follow-up');
       if(kind.id!=='tasks')await form.locator('input[type=number]').fill('125.50');

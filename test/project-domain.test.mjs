@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {normalizeProject, validateRecords, saveRecord, changeStatus, removeRecord, filterRecords, summarizeRecords, TEMPLATE_IDS, templateDefinition} from '../src/project-domain.mjs';
+import {normalizeProject, accentPalette, validateRecords, saveRecord, changeStatus, removeRecord, filterRecords, summarizeRecords, TEMPLATE_IDS, templateDefinition} from '../src/project-domain.mjs';
 import {createZip, crc32} from '../src/zip.mjs';
 for (const template of TEMPLATE_IDS) test(`${template}: create, edit, status, totals and delete preserve input`, () => {
   const record = {id:'record-1',title:'First',detail:'Customer',value:12.34,status:templateDefinition(template).statuses[0]};
@@ -18,6 +18,13 @@ test('project and stored records reject invalid configuration and duplicate iden
   assert.throws(()=>validateRecords([{...r,value:Infinity}],'tasks'));
   assert.throws(()=>validateRecords([{...r,status:'Unknown'}],'tasks'));
   assert.throws(()=>removeRecord([r],'missing','tasks'));
+});
+test('custom accents select readable text and visible focus colors',()=>{
+ assert.deepEqual(accentPalette('#000000'),{onAccent:'#ffffff',textAccent:'#66e3c4',focusAccent:'#66e3c4'});
+ assert.deepEqual(accentPalette('#ffffff'),{onAccent:'#000000',textAccent:'#ffffff',focusAccent:'#ffffff'});
+ assert.deepEqual(accentPalette('#3469db'),{onAccent:'#ffffff',textAccent:'#66e3c4',focusAccent:'#3469db'});
+ assert.deepEqual(accentPalette('#66e3c4'),{onAccent:'#000000',textAccent:'#66e3c4',focusAccent:'#66e3c4'});
+ assert.throws(()=>accentPalette('url(https://invalid.test)'),/Accent/);
 });
 test('task search and status filters combine without changing stored records',()=>{
  const records=[
