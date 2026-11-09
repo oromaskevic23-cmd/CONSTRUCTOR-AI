@@ -5,9 +5,9 @@ import assert from 'node:assert/strict';
 import {execFile} from 'node:child_process';
 import {mkdir,mkdtemp,rm,writeFile} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
-import {join} from 'node:path';
+import {join,resolve} from 'node:path';
 import {promisify} from 'node:util';
-import {taskSandboxArguments} from '../engineering/task-sandbox.mjs';
+import {taskSandboxArguments,validateTrustedTaskQaTap} from '../engineering/task-sandbox.mjs';
 
 const exec=promisify(execFile);
 test('non-owner is denied; owner can run read-only offline QA',async t=>{
@@ -15,15 +15,17 @@ test('non-owner is denied; owner can run read-only offline QA',async t=>{
   const image=process.env.CONSTRUCTOR_SANDBOX_IMAGE;
   const root=await mkdtemp(join(tmpdir(),'constructor-sandbox-preflight-'));
   t.after(()=>rm(root,{recursive:true,force:true}));
-  const stage=join(root,'stage'),qaRoot=join(root,'qa');
+  const stage=join(root,'stage'),qaRoot=resolve('qa');
   await mkdir(stage,{mode:0o700});
   await mkdir(join(stage,'test'),{mode:0o700});
-  await mkdir(qaRoot,{mode:0o700});
-  await writeFile(join(stage,'app.mjs'),'export const answer=42;\n',{mode:0o600});
+  await writeFile(join(stage,'app.mjs'),[
+    "export function createTask(id,title){if(typeof id!=='string'||!/^[A-Za-z0-9_-]+$/.test(id)||typeof title!=='string'||!title.trim())throw new TypeError();return {id,title,done:false};}",
+    "export function completeTask(task){if(!task||typeof task.id!=='string'||typeof task.title!=='string'||typeof task.done!=='boolean')throw new TypeError();return {...task,done:true};}",
+    "export function filterOpen(tasks){return tasks.filter(task=>!task.done);}",
+    ''
+  ].join('\n'),{mode:0o600});
   await writeFile(join(stage,'test','app.test.mjs'),
-    "import test from 'node:test'; import assert from 'node:assert/strict'; import {writeFileSync} from 'node:fs'; import {answer} from '../app.mjs'; test('read-only stage',()=>{assert.equal(answer,42); assert.throws(()=>writeFileSync('/work/forbidden','x'),e=>['EROFS','EACCES'].includes(e.code));});\n",{mode:0o600});
-  await writeFile(join(qaRoot,'independent-task-suite.mjs'),
-    "import test from 'node:test'; import assert from 'node:assert/strict'; import {answer} from '/work/app.mjs'; test('prewritten fixture',()=>assert.equal(answer,42));\n",{mode:0o600});
+    "import test from 'node:test'; import assert from 'node:assert/strict'; import {writeFileSync} from 'node:fs'; import {createTask} from '../app.mjs'; test('read-only stage',()=>{assert.equal(createTask('a','A').done,false); assert.throws(()=>writeFileSync('/work/forbidden','x'),e=>['EROFS','EACCES'].includes(e.code));});\n",{mode:0o600});
   const options={timeout:60000,maxBuffer:120000,env:{PATH:process.env.PATH||'/usr/bin:/bin'}};
   const otherUid=uid===65534?65533:65534;
   const otherGid=gid===65534?65533:65534;
@@ -34,5 +36,10 @@ test('non-owner is denied; owner can run read-only offline QA',async t=>{
   });
   const accepted=taskSandboxArguments({stage,qaRoot,image,uid,gid});
   const result=await exec('docker',accepted,options);
-  assert.match(result.stdout,/# pass 2\b/);
+  assert.match(result.stdout,/# pass 1\b/);
+  const qa=await exec(process.execPath,['--test','--test-reporter=tap',
+    join(qaRoot,'independent-task-suite.mjs')],{...options,timeout:110000,
+    env:{...options.env,CONSTRUCTOR_TASK_STAGE:stage,CONSTRUCTOR_SANDBOX_IMAGE:image,
+      CONSTRUCTOR_TASK_UID:String(uid),CONSTRUCTOR_TASK_GID:String(gid)}});
+  assert.equal(validateTrustedTaskQaTap(qa.stdout),true);
 });

@@ -10,7 +10,7 @@ import {requestVelionTaskDraft,validateTaskDraft} from '../engineering/velion-ta
 import {stageGeneratedTaskApp} from '../engineering/task-build-quarantine.mjs';
 import {verifyTaskOwnerApproval} from '../engineering/task-approval-gateway.mjs';
 import {taskQaPayload} from '../engineering/task-qa-attestation.mjs';
-import {taskSandboxArguments,taskSandboxFailureHints} from '../engineering/task-sandbox.mjs';
+import {taskSandboxArguments,taskSandboxFailureHints,validateTrustedTaskQaTap} from '../engineering/task-sandbox.mjs';
 const secret='synthetic-hmac-only-strong-37-characters-not-owner';
 const mission={id:'task-build-contract-001',goal:'Build a task manager with completed tasks',allowModel:true};
 const draft={schema:'constructor_draft_v1',summary:'Synthetic task manager',
@@ -86,12 +86,30 @@ test('sandbox reads private quarantine as its non-root owner without weakening i
  for(const option of ['--network=none','--read-only','--cap-drop=ALL',
    '--security-opt=no-new-privileges','--pull=never']) assert.ok(args.includes(option));
  assert.ok(args.includes('type=bind,src=/tmp/private-stage,dst=/work,readonly'));
- assert.ok(args.includes('type=bind,src=/opt/qa,dst=/qa,readonly'));
+ assert.ok(!args.some(arg=>arg.includes('src=/opt/qa')));
+ const probe=taskSandboxArguments({...base,mode:'probe',challenge:'{}'});
+ assert.ok(probe.includes('type=bind,src=/opt/qa/task-candidate-probe.mjs,dst=/probe.mjs,readonly'));
+ assert.equal(probe[probe.length-2],'/probe.mjs');
+ assert.equal(probe[probe.length-1],'{}');
  assert.throws(()=>taskSandboxArguments({...base,uid:0}),/NON_ROOT_SANDBOX/);
  assert.throws(()=>taskSandboxArguments({...base,gid:0}),/NON_ROOT_SANDBOX/);
  assert.throws(()=>taskSandboxArguments({...base,uid:undefined}),/NON_ROOT_SANDBOX/);
  assert.throws(()=>taskSandboxArguments({...base,stage:'/tmp/x,readonly=false'}),/MOUNT_PATH_INVALID/);
  assert.throws(()=>taskSandboxArguments({...base,image:'node:latest'}),/PINNED_DOCKER/);
+ assert.throws(()=>taskSandboxArguments({...base,mode:'other'}),/MODE_INVALID/);
+ assert.throws(()=>taskSandboxArguments({...base,mode:'probe',challenge:'x'.repeat(4097)}),/CHALLENGE_INVALID/);
+});
+
+test('trusted QA summary requires all three non-skipped assertions',()=>{
+ const names=['model generated real task creation contract',
+  'completion is immutable and independently observable',
+  'filterOpen is nonmutating with realistic case variation'];
+ const tap=names.map((name,i)=>`ok ${i+1} - ${name}`).join('\n')+
+  '\n# tests 3\n# pass 3\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n';
+ assert.equal(validateTrustedTaskQaTap(tap),true);
+ assert.throws(()=>validateTrustedTaskQaTap(tap.replace('ok 2 - ','not ok 2 - ')),/INCOMPLETE/);
+ assert.throws(()=>validateTrustedTaskQaTap(tap.replace('# skipped 0','# skipped 1')),/INVALID/);
+ assert.throws(()=>validateTrustedTaskQaTap('TAP version 13\nok 1 - file\n# pass 1\n'),/INCOMPLETE/);
 });
 
 test('sandbox failure hints stay bounded and never include untrusted output',()=>{

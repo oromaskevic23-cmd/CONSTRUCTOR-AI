@@ -17,9 +17,10 @@ import {tmpdir} from 'node:os';
 import {issueLocalDraftPermit,ROUTE_LOCAL_TASK} from '../engineering/local-permit.mjs';
 import {requestVelionTaskDraft} from '../engineering/velion-task-generator.mjs';
 import {stageGeneratedTaskApp} from '../engineering/task-build-quarantine.mjs';
-import {taskSandboxArguments,taskSandboxFailureHints} from '../engineering/task-sandbox.mjs';
+import {taskSandboxArguments,taskSandboxFailureHints,validateTrustedTaskQaTap} from '../engineering/task-sandbox.mjs';
 
-const MAX_ATTEMPTS=3;
+// Failed inference or QA requires offline analysis before another cloud run.
+const MAX_ATTEMPTS=1;
 const MAX_LOG_BYTES=120000;
 const IMAGE_PATTERN=/^node@sha256:[a-f0-9]{64}$/;
 const sha=bytes=>createHash('sha256').update(bytes).digest('hex');
@@ -28,6 +29,8 @@ const exec=promisify(execFile);
 const IMAGE=process.env.CONSTRUCTOR_SANDBOX_IMAGE;
 const MODEL='qwen2.5-coder:7b-instruct';
 const QA_SUITE=resolve('qa/independent-task-suite.mjs');
+const QA_FILES=['qa/independent-task-suite.mjs','qa/task-probe-client.mjs',
+  'qa/task-candidate-probe.mjs','engineering/task-sandbox.mjs'];
 const formatError=e=>typeof e?.code==='string'?e.code:'CANDIDATE_OR_QA_REJECTED';
 
 async function localModelIdentity(){
@@ -73,21 +76,32 @@ async function runInSandbox(stage){
   // that UID lets the container read it without widening host permissions.
   const args=taskSandboxArguments({stage,qaRoot:resolve('qa'),image:IMAGE,
     uid:process.getuid(),gid:process.getgid()});
-  let output;
   try{
-    output=await exec('docker',args,{
+    const generated=await exec('docker',args,{
       timeout:90000,maxBuffer:MAX_LOG_BYTES,
       env:{PATH:process.env.PATH||'/usr/bin:/bin'}
     });
+    // Trusted preauthored assertions run outside the container. They never
+    // import candidate source on the host, and communicate with a fresh
+    // restricted container using a bounded, untrusted response protocol.
+    const independent=await exec(process.execPath,
+      ['--test','--test-reporter=tap',QA_SUITE],{
+        timeout:110000,maxBuffer:MAX_LOG_BYTES,
+        env:{PATH:process.env.PATH||'/usr/bin:/bin',
+          CONSTRUCTOR_TASK_STAGE:stage,CONSTRUCTOR_SANDBOX_IMAGE:IMAGE,
+          CONSTRUCTOR_TASK_UID:String(process.getuid()),
+          CONSTRUCTOR_TASK_GID:String(process.getgid())}
+      });
+    validateTrustedTaskQaTap(independent.stdout);
+    return {passed:true,exitCode:0,
+      generatedStdoutSha256:sha(generated.stdout),
+      independentStdoutSha256:sha(independent.stdout),
+      independentCases:3,failure:null};
   }catch(e){
     return {passed:false,exitCode:Number.isInteger(e.code)?e.code:null,
       stdoutSha256:sha(e.stdout||''),stderrSha256:sha(e.stderr||''),
       failure:'ISOLATED_QA_FAILED_CLOSED',diagnosticHints:taskSandboxFailureHints(e)};
   }
-  const result={passed:true,exitCode:0,stdoutSha256:sha(output.stdout),
-    stderrSha256:sha(output.stderr),failure:null};
-  // An exec(0) is the test runner's pass, NOT independent human or external QA.
-  return result;
 }
 
 async function main(){
@@ -99,7 +113,7 @@ async function main(){
   // Reject a root host runner before downloading model output or staging code.
   taskSandboxArguments({stage:resolve('.'),qaRoot:resolve('qa'),image:IMAGE,
     uid:process.getuid?.(),gid:process.getgid?.()});
-  const qaBytes=await readFile(QA_SUITE);
+  const qaHashes=await Promise.all(QA_FILES.map(async path=>({path,sha256:sha(await readFile(path))})));
   const root=await mkdtemp(join(process.env.RUNNER_TEMP||tmpdir(),
     'constructor-real-task-'));
   const outputRoot=process.env.RUNNER_TEMP||tmpdir();
@@ -107,11 +121,13 @@ async function main(){
   const report={
     schema:'constructor.real_task_manager_e2e.v1',
     origin:'EPHEMERAL_GITHUB_ACTIONS_REAL_LOCAL_OLLAMA',
-    model:MODEL,modelSha256,qaSuiteSha256:sha(qaBytes),
+    model:MODEL,modelSha256,qaSuiteSha256:qaHashes[0].sha256,qaFiles:qaHashes,
     sandboxImage:IMAGE,network:'NONE',maxAttempts:MAX_ATTEMPTS,
+    scope:'TWO_FILE_TASK_DOMAIN_ONLY_NOT_FULL_APPLICATION',
     productionAuthorized:false,aiPassportVerified:false,
     ownerEd25519PermitVerified:false,humanIndependentQa:false,
-    approval:'NOT_GRANTED',release:'DENIED',spendUsd:0,
+    approval:'NOT_GRANTED',release:'DENIED',spendUsd:null,
+    billingVerification:'NOT_VERIFIED',
     attempts:[],status:'BLOCKED_NO_ACCEPTED_MODEL_BUILD'
   };
   const permitSecret=randomBytes(32).toString('base64url');
@@ -148,6 +164,8 @@ async function main(){
         step.files=manifest.files;
         step.qa=await runInSandbox(stage.stage);
         await validateStage(stage.stage);
+        for(const file of qaHashes)
+          ensure(sha(await readFile(file.path))===file.sha256,'QA_SOURCE_CHANGED');
         step.qaPassed=step.qa.passed;
         if(!step.qaPassed)continue;
         await copyFile(join(stage.stage,'app.mjs'),join(root,'winning-app.mjs'));
@@ -170,7 +188,7 @@ async function main(){
       attempts:report.attempts.length,
       passed:report.status==='REAL_LOCAL_MODEL_TASK_MANAGER_DOCKER_QA_PASS',
       evidenceRoot:root,modelSha256,qaSuiteSha256:report.qaSuiteSha256,
-      release:'DENIED',spendUsd:0
+      release:'DENIED',spendUsd:null,billingVerification:'NOT_VERIFIED'
     }));
   }
   ensure(report.status==='REAL_LOCAL_MODEL_TASK_MANAGER_DOCKER_QA_PASS',

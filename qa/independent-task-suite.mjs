@@ -1,28 +1,34 @@
-// Independent acceptance written by CONSTRUCTOR AI QA, not by the model.
-// Run ONLY within a no-network, non-root, read-only Docker sandbox.
+// Preauthored assertions run on the trusted host, never in the candidate
+// process. The candidate runs only in a separate offline, read-only container.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createTask,completeTask,filterOpen} from '/work/app.mjs';
+import {randomBytes} from 'node:crypto';
+import {resolve} from 'node:path';
+import {probeTaskCandidate} from './task-probe-client.mjs';
+
+const suffix=randomBytes(8).toString('hex');
+const challenge={idA:'a-'+suffix,titleA:'First '+suffix,idB:'b_'+suffix,titleB:'Second '+suffix};
+const result=await probeTaskCandidate({stage:process.env.CONSTRUCTOR_TASK_STAGE,
+  qaRoot:resolve('qa'),image:process.env.CONSTRUCTOR_SANDBOX_IMAGE,
+  uid:Number(process.env.CONSTRUCTOR_TASK_UID),gid:Number(process.env.CONSTRUCTOR_TASK_GID),challenge});
+const first={id:challenge.idA,title:challenge.titleA,done:false};
+const second={id:challenge.idB,title:challenge.titleB,done:false};
+
 test('model generated real task creation contract',()=>{
-  assert.deepEqual(createTask('a-1','First'),{id:'a-1',title:'First',done:false});
-  assert.deepEqual(createTask('b_2','Second'),{id:'b_2',title:'Second',done:false});
-  assert.throws(()=>createTask('../escape','Bad'),TypeError);
-  assert.throws(()=>createTask('c','   '),TypeError);
+  assert.deepEqual(result.first,first);
+  assert.deepEqual(result.second,second);
+  assert.equal(result.invalidId,'TypeError');
+  assert.equal(result.invalidTitle,'TypeError');
 });
 test('completion is immutable and independently observable',()=>{
-  const original=createTask('task-a','Preserve');
-  const result=completeTask(original);
-  assert.deepEqual(result,{id:'task-a',title:'Preserve',done:true});
-  assert.equal(original.done,false);
-  assert.notEqual(original,result);
-  assert.throws(()=>completeTask({}),TypeError);
+  assert.deepEqual(result.before,first);
+  assert.deepEqual(result.originalAfter,first);
+  assert.deepEqual(result.completed,{...first,done:true});
+  assert.equal(result.sameTask,false);
+  assert.equal(result.invalidTask,'TypeError');
 });
 test('filterOpen is nonmutating with realistic case variation',()=>{
-  const open=createTask('task-b','Follow up');
-  const done=completeTask(createTask('task-c','Ship'));
-  const source=[open,done];
-  const result=filterOpen(source);
-  assert.deepEqual(result,[open]);
-  assert.notEqual(result,source);
-  assert.equal(source.length,2);
+  assert.deepEqual(result.filtered,[first]);
+  assert.equal(result.sameArray,false);
+  assert.equal(result.sourceLength,2);
 });
