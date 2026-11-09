@@ -35,7 +35,7 @@ test('preauthored QA fails on a synthetic zero-exit candidate and accepts valid 
   assert.equal(probeSource.split("'/work/app.mjs'").length,2);
   await writeFile(probe,probeSource.replace("'/work/app.mjs'",JSON.stringify(app)));
   const fake=`#!${process.execPath}\nconst {spawnSync}=require('node:child_process');
-const p=spawnSync(process.execPath,['--experimental-vm-modules',${JSON.stringify(probe)},process.argv.at(-1)],{encoding:'utf8'});
+const p=spawnSync(process.execPath,['--permission',${JSON.stringify('--allow-fs-read='+dir)},'--experimental-vm-modules',${JSON.stringify(probe)},process.argv.at(-1)],{encoding:'utf8'});
 process.stdout.write(p.stdout||'');process.stderr.write(p.stderr||'');process.exit(p.status??1);\n`;
   await writeFile(docker,fake,{mode:0o700});
   await writeFile(app,'process.exit(0);\n');
@@ -55,7 +55,71 @@ process.stdout.write(p.stdout||'');process.stderr.write(p.stderr||'');process.ex
   await writeFile(app,good);
   const accepted=await exec(process.execPath,['--test','--test-reporter=tap',suite],options);
   assert.equal(validateTrustedTaskQaTap(accepted.stdout),true);
+  const noGlobalChallenge=good.replace('export function createTask(id,title){',
+    "export function createTask(id,title){if('__taskProbeExecute' in globalThis||'__taskProbeChallenge' in globalThis)throw Error('exposed');");
+  await writeFile(app,noGlobalChallenge);
+  const noLeak=await exec(process.execPath,['--test','--test-reporter=tap',suite],options);
+  assert.equal(validateTrustedTaskQaTap(noLeak.stdout),true);
   await writeFile(app,good.replace('!/^[A-Za-z0-9_-]+$/.test(id)','false'));
   await assert.rejects(exec(process.execPath,['--test','--test-reporter=tap',suite],options),
     error=>error.code===1&&/# fail 1\b/.test(error.stdout));
+  await writeFile(app,good.replace('return tasks.filter(task=>!task.done);',
+    'tasks.reverse();return tasks.filter(task=>!task.done);'));
+  await assert.rejects(exec(process.execPath,['--test','--test-reporter=tap',suite],options),
+    error=>error.code===1&&/# fail 1\b/.test(error.stdout));
+  await writeFile(app,'export function createTask(){while(true){}}\n');
+  await assert.rejects(exec(process.execPath,['--test','--test-reporter=tap',suite],options),
+    error=>error.code===1&&!/# pass 3\b/.test(error.stdout));
+  const forgedPrototype=`
+Object.defineProperty(Object.prototype,'toJSON',{configurable:true,value:function(){
+  if(this.schema!=='constructor.task_probe.v1')return this;
+  const c=globalThis.__taskProbeChallenge;
+  const first={id:c.idA,title:c.titleA,done:false},second={id:c.idB,title:c.titleB,done:false};
+  return {schema:'constructor.task_probe.v1',first,second,before:first,originalAfter:first,
+    completed:{...first,done:true},sameTask:false,invalidId:'TypeError',invalidTitle:'TypeError',
+    invalidTask:'TypeError',filtered:[first],sameArray:false,sourceLength:2};
+}});
+export function createTask(){return {};}
+export function completeTask(){return {};}
+export function filterOpen(){return [];}`;
+  const forgedInstance=`
+const records=new WeakMap();
+function deceptive(id,title,done){
+  const task={id:'incorrect',title:'incorrect',done};
+  Object.defineProperty(task,'toJSON',{value(){return {id,title,done};}});
+  records.set(task,{id,title});return task;
+}
+export function createTask(id,title){
+  if(typeof id!=='string'||!/^[A-Za-z0-9_-]+$/.test(id)||typeof title!=='string'||!title.trim())throw new TypeError();
+  return deceptive(id,title,false);
+}
+export function completeTask(task){if(!records.has(task))throw new TypeError();
+  const {id,title}=records.get(task);return deceptive(id,title,true);}
+export function filterOpen(tasks){return tasks.filter(task=>!task.done);}`;
+  for(const candidate of [forgedPrototype,forgedInstance]){
+    await writeFile(app,candidate);
+    await assert.rejects(exec(process.execPath,['--test','--test-reporter=tap',suite],options),
+      error=>error.code===1&&!/# pass 3\b/.test(error.stdout));
+  }
+});
+
+test('local Node permission model denies child execution and out-of-scope filesystem access',async t=>{
+  const dir=await mkdtemp(join(tmpdir(),'constructor-permissions-'));
+  t.after(()=>rm(dir,{recursive:true,force:true}));
+  const fixture=join(dir,'permissions.mjs');
+  await writeFile(fixture,`
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync,writeFileSync} from 'node:fs';
+const mod=await import('node:'+'child_'+'process');
+test('rejects child execution',()=>assert.throws(()=>mod['spawn'+'Sync'](process.execPath,['--version']),{code:'ERR_ACCESS_DENIED'}));
+test('rejects external reads',()=>assert.throws(()=>readFileSync('/etc/passwd'),{code:'ERR_ACCESS_DENIED'}));
+test('rejects writes',()=>assert.throws(()=>writeFileSync('/work/forbidden','x'),{code:'ERR_ACCESS_DENIED'}));
+`);
+  const {stdout}=await exec(process.execPath,['--permission','--allow-fs-read='+dir,
+    '--test-reporter=tap',fixture],{timeout:20000,maxBuffer:120000,
+    env:{PATH:process.env.PATH||'/usr/bin:/bin'}});
+  assert.match(stdout,/# tests 3\b/);
+  assert.match(stdout,/# pass 3\b/);
+  assert.match(stdout,/# fail 0\b/);
 });

@@ -22,10 +22,27 @@ export function taskSandboxArguments({stage,qaRoot,image,uid,gid,mode='generated
   ];
   if(mode==='probe')args.push('--mount',
     `type=bind,src=${qaRoot}/task-candidate-probe.mjs,dst=/probe.mjs,readonly`);
-  args.push('--workdir','/work',image,'node');
-  if(mode==='probe')args.push('--experimental-vm-modules','/probe.mjs',challenge);
-  else args.push('--test','--test-reporter=tap','/work/test/app.test.mjs');
+  // Node's permission model adds a best-effort restriction. It is not a
+  // substitute for the Docker isolation or an adversarial security review.
+  args.push('--workdir','/work',image,'node','--permission','--allow-fs-read=/work');
+  if(mode==='probe')args.push('--allow-fs-read=/probe.mjs','--experimental-vm-modules','/probe.mjs',challenge);
+  else args.push('--test-reporter=tap','/work/test/app.test.mjs');
   return args;
+}
+
+// Only a structural check for the candidate-authored test process. Its output
+// is untrusted and never substitutes for preauthored independent assertions.
+export function validateGeneratedTaskTap(output){
+  if(typeof output!=='string'||Buffer.byteLength(output)>120000)throw Error('GENERATED_TEST_REPORT_INVALID');
+  const lines=output.split(/\r?\n/);
+  const counts=lines.filter(line=>/^# tests [0-9]+$/.test(line));
+  if(counts.length!==1)throw Error('GENERATED_TEST_REPORT_INVALID');
+  const count=Number(counts[0].slice(8));
+  if(!Number.isSafeInteger(count)||count<1||count>256||!lines.includes('# pass '+count))
+    throw Error('GENERATED_TEST_REPORT_INVALID');
+  for(const line of ['# fail 0','# cancelled 0','# skipped 0','# todo 0'])
+    if(!lines.includes(line))throw Error('GENERATED_TEST_REPORT_INVALID');
+  return count;
 }
 
 // This TAP is produced by the trusted host-side QA process, not by generated

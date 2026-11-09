@@ -31,4 +31,7 @@ test('filterOpen is nonmutating with realistic case variation',()=>{
   assert.deepEqual(result.filtered,[first]);
   assert.equal(result.sameArray,false);
   assert.equal(result.sourceLength,2);
+  assert.equal(result.sameSourceElements,true);
+  assert.deepEqual(result.originalAfterFilter,first);
+  assert.deepEqual(result.completedAfterFilter,{...first,done:true});
 });

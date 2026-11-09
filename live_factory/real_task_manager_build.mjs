@@ -17,7 +17,7 @@ import {tmpdir} from 'node:os';
 import {issueLocalDraftPermit,ROUTE_LOCAL_TASK} from '../engineering/local-permit.mjs';
 import {requestVelionTaskDraft} from '../engineering/velion-task-generator.mjs';
 import {stageGeneratedTaskApp} from '../engineering/task-build-quarantine.mjs';
-import {taskSandboxArguments,taskSandboxFailureHints,validateTrustedTaskQaTap} from '../engineering/task-sandbox.mjs';
+import {taskSandboxArguments,taskSandboxFailureHints,validateGeneratedTaskTap,validateTrustedTaskQaTap} from '../engineering/task-sandbox.mjs';
 
 // Failed inference or QA requires offline analysis before another cloud run.
 const MAX_ATTEMPTS=1;
@@ -81,6 +81,7 @@ async function runInSandbox(stage){
       timeout:90000,maxBuffer:MAX_LOG_BYTES,
       env:{PATH:process.env.PATH||'/usr/bin:/bin'}
     });
+    const generatedCases=validateGeneratedTaskTap(generated.stdout);
     // Trusted preauthored assertions run outside the container. They never
     // import candidate source on the host, and communicate with a fresh
     // restricted container using a bounded, untrusted response protocol.
@@ -96,7 +97,7 @@ async function runInSandbox(stage){
     return {passed:true,exitCode:0,
       generatedStdoutSha256:sha(generated.stdout),
       independentStdoutSha256:sha(independent.stdout),
-      independentCases:3,failure:null};
+      generatedCases,independentCases:3,failure:null};
   }catch(e){
     return {passed:false,exitCode:Number.isInteger(e.code)?e.code:null,
       stdoutSha256:sha(e.stdout||''),stderrSha256:sha(e.stderr||''),

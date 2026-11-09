@@ -10,7 +10,7 @@ import {requestVelionTaskDraft,validateTaskDraft} from '../engineering/velion-ta
 import {stageGeneratedTaskApp} from '../engineering/task-build-quarantine.mjs';
 import {verifyTaskOwnerApproval} from '../engineering/task-approval-gateway.mjs';
 import {taskQaPayload} from '../engineering/task-qa-attestation.mjs';
-import {taskSandboxArguments,taskSandboxFailureHints,validateTrustedTaskQaTap} from '../engineering/task-sandbox.mjs';
+import {taskSandboxArguments,taskSandboxFailureHints,validateGeneratedTaskTap,validateTrustedTaskQaTap} from '../engineering/task-sandbox.mjs';
 const secret='synthetic-hmac-only-strong-37-characters-not-owner';
 const mission={id:'task-build-contract-001',goal:'Build a task manager with completed tasks',allowModel:true};
 const draft={schema:'constructor_draft_v1',summary:'Synthetic task manager',
@@ -86,9 +86,14 @@ test('sandbox reads private quarantine as its non-root owner without weakening i
  for(const option of ['--network=none','--read-only','--cap-drop=ALL',
    '--security-opt=no-new-privileges','--pull=never']) assert.ok(args.includes(option));
  assert.ok(args.includes('type=bind,src=/tmp/private-stage,dst=/work,readonly'));
+ assert.ok(args.includes('--permission'));
+ assert.ok(args.includes('--allow-fs-read=/work'));
+ assert.ok(!args.includes('--allow-child-process'));
+ assert.ok(!args.includes('--test'));
  assert.ok(!args.some(arg=>arg.includes('src=/opt/qa')));
  const probe=taskSandboxArguments({...base,mode:'probe',challenge:'{}'});
  assert.ok(probe.includes('type=bind,src=/opt/qa/task-candidate-probe.mjs,dst=/probe.mjs,readonly'));
+ assert.ok(probe.includes('--allow-fs-read=/probe.mjs'));
  assert.equal(probe[probe.length-2],'/probe.mjs');
  assert.equal(probe[probe.length-1],'{}');
  assert.throws(()=>taskSandboxArguments({...base,uid:0}),/NON_ROOT_SANDBOX/);
@@ -110,6 +115,14 @@ test('trusted QA summary requires all three non-skipped assertions',()=>{
  assert.throws(()=>validateTrustedTaskQaTap(tap.replace('ok 2 - ','not ok 2 - ')),/INCOMPLETE/);
  assert.throws(()=>validateTrustedTaskQaTap(tap.replace('# skipped 0','# skipped 1')),/INVALID/);
  assert.throws(()=>validateTrustedTaskQaTap('TAP version 13\nok 1 - file\n# pass 1\n'),/INCOMPLETE/);
+});
+
+test('generated suite must report a nonempty, unskipped test run',()=>{
+ const tap='TAP version 13\n# tests 1\n# pass 1\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n';
+ assert.equal(validateGeneratedTaskTap(tap),1);
+ assert.throws(()=>validateGeneratedTaskTap(''),/INVALID/);
+ assert.throws(()=>validateGeneratedTaskTap(tap.replace('# tests 1','# tests 0')),/INVALID/);
+ assert.throws(()=>validateGeneratedTaskTap(tap.replace('# skipped 0','# skipped 1')),/INVALID/);
 });
 
 test('sandbox failure hints stay bounded and never include untrusted output',()=>{
