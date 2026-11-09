@@ -117,12 +117,22 @@ test('trusted QA summary requires all three non-skipped assertions',()=>{
  assert.throws(()=>validateTrustedTaskQaTap('TAP version 13\nok 1 - file\n# pass 1\n'),/INCOMPLETE/);
 });
 
-test('generated suite must report a nonempty, unskipped test run',()=>{
- const tap='TAP version 13\n# tests 1\n# pass 1\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n';
+test('candidate-authored TAP requires individual records and a consistent plan, not just a forged summary',()=>{
+ const tap='TAP version 13\\n# Subtest: candidate fixture\\nok 1 - candidate fixture\\n1..1\\n# tests 1\\n# pass 1\\n# fail 0\\n# cancelled 0\\n# skipped 0\\n# todo 0\\n';
+ const forgedSummary='TAP version 13\\n# tests 1\\n# pass 1\\n# fail 0\\n# cancelled 0\\n# skipped 0\\n# todo 0\\n';
  assert.equal(validateGeneratedTaskTap(tap),1);
- assert.throws(()=>validateGeneratedTaskTap(''),/INVALID/);
- assert.throws(()=>validateGeneratedTaskTap(tap.replace('# tests 1','# tests 0')),/INVALID/);
- assert.throws(()=>validateGeneratedTaskTap(tap.replace('# skipped 0','# skipped 1')),/INVALID/);
+ for(const invalid of [
+   '',forgedSummary,
+   tap.replace('1..1','1..2'),
+   tap.replace('ok 1 - candidate fixture','ok 2 - candidate fixture'),
+   tap.replace('ok 1 - candidate fixture','not ok 1 - candidate fixture'),
+   tap.replace('# tests 1','# tests 0'),
+   tap.replace('# pass 1','# pass 0'),
+   tap.replace('# skipped 0','# skipped 1'),
+   tap.replace('TAP version 13','TAP version 12'),
+   tap.replace('# pass 1','# pass 1\\n# pass 1')
+ ])assert.throws(()=>validateGeneratedTaskTap(invalid),/GENERATED_TEST_REPORT_INVALID/);
+ // TAP records remain untrusted candidate-authored output: independent QA is mandatory.
 });
 
 test('sandbox failure hints stay bounded and never include untrusted output',()=>{
