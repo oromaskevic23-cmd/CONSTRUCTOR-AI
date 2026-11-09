@@ -35,31 +35,59 @@ export function taskSandboxArguments({stage,qaRoot,image,uid,gid,mode='generated
 export function validateGeneratedTaskTap(output){
   if(typeof output!=='string'||Buffer.byteLength(output)>120000)
     throw Error('GENERATED_TEST_REPORT_INVALID');
+  const invalid=()=>{throw Error('GENERATED_TEST_REPORT_INVALID');};
   const lines=output.split(/\r?\n/);
-  if(lines[0]!=='TAP version 13')throw Error('GENERATED_TEST_REPORT_INVALID');
-  const counts=lines.filter(line=>/^# tests [0-9]+$/.test(line));
-  if(counts.length!==1)throw Error('GENERATED_TEST_REPORT_INVALID');
-  const count=Number(counts[0].slice(8));
-  if(!Number.isSafeInteger(count)||count<1||count>256)
-    throw Error('GENERATED_TEST_REPORT_INVALID');
-  // The candidate-authored suite is always untrusted. Requiring a coherent
-  // TAP plan and individual records only rejects truncated/fabricated summaries.
-  // Independent host-authored assertions are the separate acceptance gate.
-  // Node TAP may count nested subtests in # tests, while the root plan
-  // counts only top-level test records. Preserve valid nested test suites.
-  const plans=lines.filter(line=>/^1\.\.[0-9]+$/.test(line));
-  const topLevel=lines.filter(line=>/^ok [1-9][0-9]* - .+/.test(line));
-  if(plans.length!==1||topLevel.length<1||plans[0]!==`1..${topLevel.length}`)
-    throw Error('GENERATED_TEST_REPORT_INVALID');
-  if(topLevel.some((line,i)=>!line.startsWith(`ok ${i+1} - `)))
-    throw Error('GENERATED_TEST_REPORT_INVALID');
-  const oks=lines.filter(line=>/^\s*ok [1-9][0-9]* - .+/.test(line));
-  if(oks.length!==count||lines.some(line=>/^\s*not ok [0-9]+ - /.test(line)))
-    throw Error('GENERATED_TEST_REPORT_INVALID');
-  for(const item of [`# pass ${count}`,'# fail 0','# cancelled 0','# skipped 0','# todo 0']){
-    if(lines.filter(line=>line===item).length!==1)throw Error('GENERATED_TEST_REPORT_INVALID');
+  if(lines[0]!=='TAP version 13')invalid();
+  const summary=Object.create(null),frames=[{records:0,planned:false}];
+  let records=0;
+  for(const line of lines){
+    const metric=/^# (tests|suites|pass|fail|cancelled|skipped|todo) ([0-9]+)$/.exec(line);
+    if(metric){
+      if(frames.length!==1||!frames[0].planned||Object.hasOwn(summary,metric[1]))invalid();
+      summary[metric[1]]=Number(metric[2]);
+      continue;
+    }
+    if(/^# (?:tests|suites|pass|fail|cancelled|skipped|todo)\b/.test(line)||/^Bail out!/i.test(line))invalid();
+    const record=/^( *)(ok|not ok) ([0-9]+) - (.+)$/.exec(line);
+    const plan=/^( *)1\.\.([0-9]+)$/.exec(line);
+    if(!record&&!plan){
+      if(/^ *(?:(?:ok|not ok)\b|1\.\.)/.test(line))invalid();
+      continue;
+    }
+    const indent=(record||plan)[1].length;
+    if(indent%4!==0||indent/4>256)invalid();
+    const depth=indent/4;
+    while(frames.length>depth+1)if(!frames.pop().planned)invalid();
+    while(depth>=frames.length){
+      if(frames.at(-1).planned)invalid();
+      frames.push({records:0,planned:false});
+    }
+    const frame=frames[depth];
+    if(!frame||frame.planned)invalid();
+    if(record){
+      if(record[2]!=='ok'||Number(record[3])!==frame.records+1||/\s+#\s*(?:SKIP|TODO)(?:\s|$)/i.test(record[4]))invalid();
+      frame.records++;records++;
+    }else{
+      if(Number(plan[2])!==frame.records||frame.records===0)invalid();
+      frame.planned=true;
+    }
   }
-  return count;
+  if(frames.length!==1||!frames[0].planned)invalid();
+  for(const key of ['tests','suites','pass','fail','cancelled','skipped','todo'])
+    if(!Number.isSafeInteger(summary[key]))invalid();
+  if(summary.tests<1||summary.tests>256||summary.suites>256||
+    summary.pass!==summary.tests||summary.fail||summary.cancelled||summary.skipped||summary.todo||
+    records!==summary.tests+summary.suites)invalid();
+  // A coherent TAP string can still be fabricated by candidate code.
+  // Only independent host-authored assertions can provide QA evidence.
+  return summary.tests;
+}
+
+// The candidate controls this output, including coherent TAP records. Preserve
+// the reported count for diagnostics without representing it as verified tests.
+export function summarizeGeneratedTaskTap(output){
+  return Object.freeze({reportedCases:validateGeneratedTaskTap(output),
+    status:'UNTRUSTED_CANDIDATE_REPORT',executionVerified:false});
 }
 
 // This TAP is produced by the trusted host-side QA process, not by generated

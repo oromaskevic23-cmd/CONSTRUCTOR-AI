@@ -14,10 +14,11 @@ import {promisify} from 'node:util';
 import {mkdtemp,readFile,copyFile,writeFile,lstat} from 'node:fs/promises';
 import {join,resolve} from 'node:path';
 import {tmpdir} from 'node:os';
+import {fileURLToPath} from 'node:url';
 import {issueLocalDraftPermit,ROUTE_LOCAL_TASK} from '../engineering/local-permit.mjs';
 import {requestVelionTaskDraft} from '../engineering/velion-task-generator.mjs';
 import {stageGeneratedTaskApp} from '../engineering/task-build-quarantine.mjs';
-import {taskSandboxArguments,taskSandboxFailureHints,validateGeneratedTaskTap,validateTrustedTaskQaTap} from '../engineering/task-sandbox.mjs';
+import {taskSandboxArguments,taskSandboxFailureHints,summarizeGeneratedTaskTap,validateTrustedTaskQaTap} from '../engineering/task-sandbox.mjs';
 
 // Failed inference or QA requires offline analysis before another cloud run.
 const MAX_ATTEMPTS=1;
@@ -71,33 +72,31 @@ async function validateStage(stage){
   return {manifestSha256:sha(doc),files:manifest.files};
 }
 
-async function runInSandbox(stage){
+export async function runInSandbox(stage,{run=exec,uid=process.getuid?.(),gid=process.getgid?.(),image=IMAGE}={}){
   // mkdtemp creates a 0700 directory owned by the non-root runner. Matching
   // that UID lets the container read it without widening host permissions.
-  const args=taskSandboxArguments({stage,qaRoot:resolve('qa'),image:IMAGE,
-    uid:process.getuid(),gid:process.getgid()});
+  const args=taskSandboxArguments({stage,qaRoot:resolve('qa'),image,uid,gid});
   try{
-    const generated=await exec('docker',args,{
+    const generated=await run('docker',args,{
       timeout:90000,maxBuffer:MAX_LOG_BYTES,
       env:{PATH:process.env.PATH||'/usr/bin:/bin'}
     });
-    const generatedCases=validateGeneratedTaskTap(generated.stdout);
+    const generatedTestReport=summarizeGeneratedTaskTap(generated.stdout);
     // Trusted preauthored assertions run outside the container. They never
     // import candidate source on the host, and communicate with a fresh
     // restricted container using a bounded, untrusted response protocol.
-    const independent=await exec(process.execPath,
+    const independent=await run(process.execPath,
       ['--test','--test-reporter=tap',QA_SUITE],{
         timeout:110000,maxBuffer:MAX_LOG_BYTES,
         env:{PATH:process.env.PATH||'/usr/bin:/bin',
-          CONSTRUCTOR_TASK_STAGE:stage,CONSTRUCTOR_SANDBOX_IMAGE:IMAGE,
-          CONSTRUCTOR_TASK_UID:String(process.getuid()),
-          CONSTRUCTOR_TASK_GID:String(process.getgid())}
+          CONSTRUCTOR_TASK_STAGE:stage,CONSTRUCTOR_SANDBOX_IMAGE:image,
+          CONSTRUCTOR_TASK_UID:String(uid),CONSTRUCTOR_TASK_GID:String(gid)}
       });
     validateTrustedTaskQaTap(independent.stdout);
     return {passed:true,exitCode:0,
       generatedStdoutSha256:sha(generated.stdout),
       independentStdoutSha256:sha(independent.stdout),
-      generatedCases,independentCases:3,failure:null};
+      generatedTestReport,independentCases:3,failure:null};
   }catch(e){
     return {passed:false,exitCode:Number.isInteger(e.code)?e.code:null,
       stdoutSha256:sha(e.stdout||''),stderrSha256:sha(e.stderr||''),
@@ -196,4 +195,4 @@ async function main(){
     'NO_REAL_MODEL_CANDIDATE_PASSED_INDEPENDENT_SANDBOX_QA');
 }
 
-await main();
+if(process.argv[1] && resolve(process.argv[1])===fileURLToPath(import.meta.url))await main();

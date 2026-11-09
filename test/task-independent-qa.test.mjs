@@ -9,14 +9,50 @@ import {join,resolve} from 'node:path';
 import {promisify} from 'node:util';
 import {validateTrustedTaskQaTap} from '../engineering/task-sandbox.mjs';
 import {probeTaskCandidate} from '../qa/task-probe-client.mjs';
+import {runInSandbox} from '../live_factory/real_task_manager_build.mjs';
 const exec=promisify(execFile);
 const image='node@sha256:'+'a'.repeat(64);
 const input={stage:'/tmp/untrusted-stage',qaRoot:'/tmp/trusted-qa',image,uid:1001,gid:1001,challenge:{idA:'a-1'}};
+
+test('factory CLI fails closed before inference without explicit ephemeral opt-in',async()=>{
+  await assert.rejects(exec(process.execPath,[resolve('live_factory/real_task_manager_build.mjs')],{
+    timeout:10000,env:{PATH:process.env.PATH||'/usr/bin:/bin'}
+  }),error=>error.code===1&&/EXPLICIT_EPHEMERAL_LLM_OPT_IN_REQUIRED/.test(error.stderr));
+});
 
 test('zero exit, fabricated TAP and malformed probe results are denied',async()=>{
   for(const stdout of ['', 'TAP version 13\nok 1 - forged\n# pass 1\n', '{}', '{']){
     await assert.rejects(probeTaskCandidate(input,async()=>({stdout,stderr:''})),/PROBE_OUTPUT_INVALID/);
   }
+});
+
+test('sandbox orchestration fails closed if the trusted QA process fails or returns incomplete output',async()=>{
+  const generated='TAP version 13\n# Subtest: candidate\nok 1 - candidate\n1..1\n# tests 1\n# suites 0\n# pass 1\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n';
+  const names=['model generated real task creation contract',
+    'completion is immutable and independently observable',
+    'filterOpen is nonmutating with realistic case variation'];
+  const independent=names.map((name,i)=>`ok ${i+1} - ${name}`).join('\n')+
+    '\n# tests 3\n# pass 3\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n';
+  const base={image,uid:1001,gid:1001};
+  for(const qaMode of ['exit','incomplete']){
+    let calls=0;
+    const run=async()=>{
+      calls++;
+      if(calls===1)return {stdout:generated,stderr:''};
+      if(qaMode==='exit')throw Object.assign(Error('synthetic failure'),{code:1,stdout:'',stderr:''});
+      return {stdout:'TAP version 13\n# pass 3\n',stderr:''};
+    };
+    const result=await runInSandbox('/tmp/synthetic-stage',{...base,run});
+    assert.equal(calls,2);
+    assert.equal(result.passed,false);
+    assert.equal(result.failure,'ISOLATED_QA_FAILED_CLOSED');
+  }
+  let calls=0;
+  const run=async()=>({stdout:++calls===1?generated:independent,stderr:''});
+  const result=await runInSandbox('/tmp/synthetic-stage',{...base,run});
+  assert.equal(result.passed,true);
+  assert.deepEqual(result.generatedTestReport,{reportedCases:1,
+    status:'UNTRUSTED_CANDIDATE_REPORT',executionVerified:false});
 });
 
 test('preauthored QA fails on a synthetic zero-exit candidate and accepts valid probe responses',async t=>{

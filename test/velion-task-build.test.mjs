@@ -2,15 +2,17 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createHash,generateKeyPairSync,sign} from 'node:crypto';
-import {mkdtemp,readFile,readdir,rm,stat} from 'node:fs/promises';
+import {mkdtemp,readFile,readdir,rm,stat,writeFile} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
+import {execFile} from 'node:child_process';
+import {promisify} from 'node:util';
 import {issueLocalDraftPermit,ROUTE_LOCAL_TASK} from '../engineering/local-permit.mjs';
 import {requestVelionTaskDraft,validateTaskDraft} from '../engineering/velion-task-generator.mjs';
 import {stageGeneratedTaskApp} from '../engineering/task-build-quarantine.mjs';
 import {verifyTaskOwnerApproval} from '../engineering/task-approval-gateway.mjs';
 import {taskQaPayload} from '../engineering/task-qa-attestation.mjs';
-import {taskSandboxArguments,taskSandboxFailureHints,validateGeneratedTaskTap,validateTrustedTaskQaTap} from '../engineering/task-sandbox.mjs';
+import {taskSandboxArguments,taskSandboxFailureHints,validateGeneratedTaskTap,summarizeGeneratedTaskTap,validateTrustedTaskQaTap} from '../engineering/task-sandbox.mjs';
 const secret='synthetic-hmac-only-strong-37-characters-not-owner';
 const mission={id:'task-build-contract-001',goal:'Build a task manager with completed tasks',allowModel:true};
 const draft={schema:'constructor_draft_v1',summary:'Synthetic task manager',
@@ -118,8 +120,8 @@ test('trusted QA summary requires all three non-skipped assertions',()=>{
 });
 
 test('candidate-authored TAP requires individual records and a consistent plan, not just a forged summary',()=>{
- const tap='TAP version 13\n# Subtest: candidate fixture\nok 1 - candidate fixture\n1..1\n# tests 1\n# pass 1\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n';
- const forgedSummary='TAP version 13\n# tests 1\n# pass 1\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n';
+ const tap='TAP version 13\n# Subtest: candidate fixture\nok 1 - candidate fixture\n1..1\n# tests 1\n# suites 0\n# pass 1\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n';
+ const forgedSummary='TAP version 13\n# tests 1\n# suites 0\n# pass 1\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n';
  assert.equal(validateGeneratedTaskTap(tap),1);
  const nestedTap=[
    'TAP version 13',
@@ -130,6 +132,7 @@ test('candidate-authored TAP requires individual records and a consistent plan, 
    'ok 1 - parent',
    '1..1',
    '# tests 2',
+   '# suites 0',
    '# pass 2',
    '# fail 0',
    '# cancelled 0',
@@ -149,6 +152,37 @@ test('candidate-authored TAP requires individual records and a consistent plan, 
    tap.replace('# pass 1','# pass 1\n# pass 1')
  ])assert.throws(()=>validateGeneratedTaskTap(invalid),/GENERATED_TEST_REPORT_INVALID/);
  // TAP records remain untrusted candidate-authored output: independent QA is mandatory.
+});
+
+test('genuine Node TAP accepts nested suites and rejects duplicate nested records',async t=>{
+ const root=await mkdtemp(join(tmpdir(),'constructor-real-tap-'));
+ t.after(()=>rm(root,{recursive:true,force:true}));
+ const fixture=join(root,'suite.mjs'),exec=promisify(execFile);
+ async function run(source){
+  await writeFile(fixture,source);
+  const {stdout}=await exec(process.execPath,['--permission','--allow-fs-read='+root,
+   '--test-reporter=tap',fixture],{timeout:10000,maxBuffer:120000,env:{PATH:process.env.PATH||'/usr/bin:/bin'}});
+  return stdout;
+ }
+ const suite=await run("import {describe,it} from 'node:test';describe('suite',()=>{it('first',()=>{});it('second',()=>{});});\n");
+ assert.equal(validateGeneratedTaskTap(suite),2);
+ const deep=await run("import {describe,it} from 'node:test';describe('outer',()=>{describe('inner',()=>{it('first',()=>{});it('second',()=>{});});it('third',()=>{});});\n");
+ assert.equal(validateGeneratedTaskTap(deep),3);
+ const nested=await run("import test from 'node:test';test('parent',async t=>{await t.test('first',()=>{});await t.test('second',()=>{});});\n");
+ assert.equal(validateGeneratedTaskTap(nested),3);
+ assert.ok(nested.includes('    ok 2 - second'));
+ for(const bad of [
+  nested.replace('    ok 2 - second','    ok 1 - second'),
+  nested.replace('    1..2\n',''),
+  nested.replace('    1..2\n','    1..2\n    1..2\n'),
+  nested.replace('# pass 3','# pass 3\n# pass 999'),
+  nested.replace('1..1\n# tests 3','# tests 3\n1..1'),
+  nested.replace('ok 1 - first','ok 1 - first # SKIP')
+ ])assert.throws(()=>validateGeneratedTaskTap(bad),/GENERATED_TEST_REPORT_INVALID/);
+ const fake='TAP version 13\n# Subtest: fabricated\nok 1 - fabricated\n1..1\n# tests 1\n# suites 0\n# pass 1\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n';
+ const fabricated=await run('process.stdout.write('+JSON.stringify(fake)+');\n');
+ assert.deepEqual(summarizeGeneratedTaskTap(fabricated),{reportedCases:1,
+  status:'UNTRUSTED_CANDIDATE_REPORT',executionVerified:false});
 });
 
 test('sandbox failure hints stay bounded and never include untrusted output',()=>{
