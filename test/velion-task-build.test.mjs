@@ -121,6 +121,22 @@ test('candidate-authored TAP requires individual records and a consistent plan, 
  const tap='TAP version 13\n# Subtest: candidate fixture\nok 1 - candidate fixture\n1..1\n# tests 1\n# pass 1\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n';
  const forgedSummary='TAP version 13\n# tests 1\n# pass 1\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n';
  assert.equal(validateGeneratedTaskTap(tap),1);
+ const nestedTap=[
+   'TAP version 13',
+   '# Subtest: parent',
+   '    # Subtest: child',
+   '    ok 1 - child',
+   '    1..1',
+   'ok 1 - parent',
+   '1..1',
+   '# tests 2',
+   '# pass 2',
+   '# fail 0',
+   '# cancelled 0',
+   '# skipped 0',
+   '# todo 0'
+ ].join('\n')+'\n';
+ assert.equal(validateGeneratedTaskTap(nestedTap),2);
  for(const invalid of [
    '',forgedSummary,
    tap.replace('1..1','1..2'),
