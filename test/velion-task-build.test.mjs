@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createHash,generateKeyPairSync,sign} from 'node:crypto';
-import {mkdtemp,readFile,readdir,rm} from 'node:fs/promises';
+import {mkdtemp,readFile,readdir,rm,stat} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {issueLocalDraftPermit,ROUTE_LOCAL_TASK} from '../engineering/local-permit.mjs';
@@ -10,6 +10,7 @@ import {requestVelionTaskDraft,validateTaskDraft} from '../engineering/velion-ta
 import {stageGeneratedTaskApp} from '../engineering/task-build-quarantine.mjs';
 import {verifyTaskOwnerApproval} from '../engineering/task-approval-gateway.mjs';
 import {taskQaPayload} from '../engineering/task-qa-attestation.mjs';
+import {taskSandboxArguments,taskSandboxFailureHints} from '../engineering/task-sandbox.mjs';
 const secret='synthetic-hmac-only-strong-37-characters-not-owner';
 const mission={id:'task-build-contract-001',goal:'Build a task manager with completed tasks',allowModel:true};
 const draft={schema:'constructor_draft_v1',summary:'Synthetic task manager',
@@ -68,10 +69,37 @@ test('task source is quarantined with exact manifest and no execution',async t=>
  t.after(()=>rm(root,{recursive:true,force:true}));
  const output=await stageGeneratedTaskApp({receipt:await call(),outputRoot:root});
  assert.equal(output.status,'QUARANTINED_NOT_EXECUTED');
+ const info=await stat(output.stage);
+ assert.equal(info.mode&0o777,0o700);
+ assert.equal(info.uid,process.getuid());
  const manifest=JSON.parse(await readFile(join(output.stage,'stage-manifest.json'),'utf8'));
  assert.equal(manifest.files.length,2);
  assert.equal(manifest.release,'DENIED');
  assert.deepEqual((await readdir(output.stage)).sort(),['app.mjs','stage-manifest.json','test']);
+});
+
+test('sandbox reads private quarantine as its non-root owner without weakening isolation',()=>{
+ const image='node@sha256:'+'a'.repeat(64);
+ const base={stage:'/tmp/private-stage',qaRoot:'/opt/qa',image,uid:1001,gid:1001};
+ const args=taskSandboxArguments(base);
+ assert.equal(args[args.indexOf('--user')+1],'1001:1001');
+ for(const option of ['--network=none','--read-only','--cap-drop=ALL',
+   '--security-opt=no-new-privileges','--pull=never']) assert.ok(args.includes(option));
+ assert.ok(args.includes('type=bind,src=/tmp/private-stage,dst=/work,readonly'));
+ assert.ok(args.includes('type=bind,src=/opt/qa,dst=/qa,readonly'));
+ assert.throws(()=>taskSandboxArguments({...base,uid:0}),/NON_ROOT_SANDBOX/);
+ assert.throws(()=>taskSandboxArguments({...base,gid:0}),/NON_ROOT_SANDBOX/);
+ assert.throws(()=>taskSandboxArguments({...base,uid:undefined}),/NON_ROOT_SANDBOX/);
+ assert.throws(()=>taskSandboxArguments({...base,stage:'/tmp/x,readonly=false'}),/MOUNT_PATH_INVALID/);
+ assert.throws(()=>taskSandboxArguments({...base,image:'node:latest'}),/PINNED_DOCKER/);
+});
+
+test('sandbox failure hints stay bounded and never include untrusted output',()=>{
+ const hints=taskSandboxFailureHints({stdout:'EACCES SyntaxError secret-value',stderr:'ERR_ASSERTION'});
+ assert.deepEqual(hints,['OUTPUT_HINT_PERMISSION','OUTPUT_HINT_SYNTAX','OUTPUT_HINT_ASSERTION']);
+ assert.ok(!JSON.stringify(hints).includes('secret-value'));
+ assert.deepEqual(taskSandboxFailureHints({killed:true}),['PROCESS_SIGNALED_OR_TIMED_OUT']);
+ assert.deepEqual(taskSandboxFailureHints({stdout:'arbitrary generated text'}),[]);
 });
 test('heuristics deny dangerous generated code; no sandbox bypass',async t=>{
  const root=await mkdtemp(join(tmpdir(),'task-deny-'));

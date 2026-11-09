@@ -4,8 +4,10 @@ on:
     paths:
       - 'live_factory/real_task_manager_build.mjs'
       - 'engineering/velion-task-generator.mjs'
+      - 'engineering/task-sandbox.mjs'
       - 'test/velion-task-build.test.mjs'
       - 'qa/independent-task-suite.mjs'
+      - 'qa/task-sandbox-container-check.mjs'
       - '.github/workflows/real-task-manager-e2e.yml'
   workflow_dispatch:
 permissions:
@@ -64,6 +66,8 @@ jobs:
           docker info >/dev/null
           docker pull "$CONSTRUCTOR_SANDBOX_IMAGE"
           docker image inspect "$CONSTRUCTOR_SANDBOX_IMAGE" >/dev/null
+      - name: Check quarantine permissions in the restricted sandbox
+        run: node --test qa/task-sandbox-container-check.mjs
       - name: Start local CPU model and install public weights
         shell: bash
         run: |

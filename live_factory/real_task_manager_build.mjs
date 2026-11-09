@@ -11,12 +11,13 @@
 import {randomBytes,createHash} from 'node:crypto';
 import {execFile} from 'node:child_process';
 import {promisify} from 'node:util';
-import {mkdtemp,readFile,copyFile,writeFile,stat} from 'node:fs/promises';
+import {mkdtemp,readFile,copyFile,writeFile,lstat} from 'node:fs/promises';
 import {join,resolve} from 'node:path';
 import {tmpdir} from 'node:os';
 import {issueLocalDraftPermit,ROUTE_LOCAL_TASK} from '../engineering/local-permit.mjs';
 import {requestVelionTaskDraft} from '../engineering/velion-task-generator.mjs';
 import {stageGeneratedTaskApp} from '../engineering/task-build-quarantine.mjs';
+import {taskSandboxArguments,taskSandboxFailureHints} from '../engineering/task-sandbox.mjs';
 
 const MAX_ATTEMPTS=3;
 const MAX_LOG_BYTES=120000;
@@ -44,6 +45,9 @@ async function localModelIdentity(){
 }
 
 async function validateStage(stage){
+  const info=await lstat(stage);
+  ensure(info.isDirectory()&&!info.isSymbolicLink()&&info.uid===process.getuid()&&
+    (info.mode&0o777)===0o700,'SANDBOX_STAGE_OWNER_OR_MODE_INVALID');
   const doc=await readFile(join(stage,'stage-manifest.json'));
   ensure(doc.length<=16000,'STAGE_MANIFEST_OVER_BUDGET');
   const manifest=JSON.parse(doc.toString('utf8'));
@@ -65,16 +69,10 @@ async function validateStage(stage){
 }
 
 async function runInSandbox(stage){
-  const args=[
-    'run','--rm','--pull=never','--network=none','--read-only',
-    '--cap-drop=ALL','--security-opt=no-new-privileges',
-    '--pids-limit=64','--memory=256m','--cpus=1',
-    '--user=65534:65534','--tmpfs','/tmp:rw,noexec,nosuid,nodev,size=33554432',
-    '--mount',`type=bind,src=${stage},dst=/work,readonly`,
-    '--mount',`type=bind,src=${resolve('qa')},dst=/qa,readonly`,
-    '--workdir','/work',IMAGE,'node','--test','--test-reporter=tap',
-    '/work/test/app.test.mjs','/qa/independent-task-suite.mjs'
-  ];
+  // mkdtemp creates a 0700 directory owned by the non-root runner. Matching
+  // that UID lets the container read it without widening host permissions.
+  const args=taskSandboxArguments({stage,qaRoot:resolve('qa'),image:IMAGE,
+    uid:process.getuid(),gid:process.getgid()});
   let output;
   try{
     output=await exec('docker',args,{
@@ -84,7 +82,7 @@ async function runInSandbox(stage){
   }catch(e){
     return {passed:false,exitCode:Number.isInteger(e.code)?e.code:null,
       stdoutSha256:sha(e.stdout||''),stderrSha256:sha(e.stderr||''),
-      failure:'ISOLATED_QA_FAILED_CLOSED'};
+      failure:'ISOLATED_QA_FAILED_CLOSED',diagnosticHints:taskSandboxFailureHints(e)};
   }
   const result={passed:true,exitCode:0,stdoutSha256:sha(output.stdout),
     stderrSha256:sha(output.stderr),failure:null};
@@ -98,6 +96,9 @@ async function main(){
   ensure(IMAGE_PATTERN.test(IMAGE||''),'PINNED_DOCKER_IMAGE_REQUIRED');
   ensure(process.env.OLLAMA_NO_CLOUD==='1','LOCAL_ONLY_MODEL_REQUIRED');
   ensure(process.env.GITHUB_ACTIONS==='true','EPHEMERAL_GITHUB_CI_REQUIRED');
+  // Reject a root host runner before downloading model output or staging code.
+  taskSandboxArguments({stage:resolve('.'),qaRoot:resolve('qa'),image:IMAGE,
+    uid:process.getuid?.(),gid:process.getgid?.()});
   const qaBytes=await readFile(QA_SUITE);
   const root=await mkdtemp(join(process.env.RUNNER_TEMP||tmpdir(),
     'constructor-real-task-'));
