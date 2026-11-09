@@ -33,15 +33,28 @@ export function taskSandboxArguments({stage,qaRoot,image,uid,gid,mode='generated
 // Only a structural check for the candidate-authored test process. Its output
 // is untrusted and never substitutes for preauthored independent assertions.
 export function validateGeneratedTaskTap(output){
-  if(typeof output!=='string'||Buffer.byteLength(output)>120000)throw Error('GENERATED_TEST_REPORT_INVALID');
+  if(typeof output!=='string'||Buffer.byteLength(output)>120000)
+    throw Error('GENERATED_TEST_REPORT_INVALID');
   const lines=output.split(/\r?\n/);
+  if(lines[0]!=='TAP version 13')throw Error('GENERATED_TEST_REPORT_INVALID');
   const counts=lines.filter(line=>/^# tests [0-9]+$/.test(line));
   if(counts.length!==1)throw Error('GENERATED_TEST_REPORT_INVALID');
   const count=Number(counts[0].slice(8));
-  if(!Number.isSafeInteger(count)||count<1||count>256||!lines.includes('# pass '+count))
+  if(!Number.isSafeInteger(count)||count<1||count>256)
     throw Error('GENERATED_TEST_REPORT_INVALID');
-  for(const line of ['# fail 0','# cancelled 0','# skipped 0','# todo 0'])
-    if(!lines.includes(line))throw Error('GENERATED_TEST_REPORT_INVALID');
+  // The candidate-authored suite is always untrusted. Requiring a coherent
+  // TAP plan and individual records only rejects truncated/fabricated summaries.
+  // Independent host-authored assertions are the separate acceptance gate.
+  const plans=lines.filter(line=>/^1\.\.[0-9]+$/.test(line));
+  if(plans.length!==1||plans[0]!==`1..${count}`)
+    throw Error('GENERATED_TEST_REPORT_INVALID');
+  const oks=lines.filter(line=>/^ok [1-9][0-9]* - .+/.test(line));
+  if(oks.length!==count||oks.some((line,i)=>!line.startsWith(`ok ${i+1} - `))||
+    lines.some(line=>/^not ok [0-9]+ - /.test(line)))
+    throw Error('GENERATED_TEST_REPORT_INVALID');
+  for(const item of [`# pass ${count}`,'# fail 0','# cancelled 0','# skipped 0','# todo 0']){
+    if(lines.filter(line=>line===item).length!==1)throw Error('GENERATED_TEST_REPORT_INVALID');
+  }
   return count;
 }
 
