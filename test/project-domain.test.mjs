@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {normalizeProject, validateRecords, saveRecord, changeStatus, removeRecord, summarizeRecords, TEMPLATE_IDS, templateDefinition} from '../src/project-domain.mjs';
+import {normalizeProject, validateRecords, saveRecord, changeStatus, removeRecord, filterRecords, summarizeRecords, TEMPLATE_IDS, templateDefinition} from '../src/project-domain.mjs';
 import {createZip, crc32} from '../src/zip.mjs';
 for (const template of TEMPLATE_IDS) test(`${template}: create, edit, status, totals and delete preserve input`, () => {
   const record = {id:'record-1',title:'First',detail:'Customer',value:12.34,status:templateDefinition(template).statuses[0]};
@@ -18,6 +18,21 @@ test('project and stored records reject invalid configuration and duplicate iden
   assert.throws(()=>validateRecords([{...r,value:Infinity}],'tasks'));
   assert.throws(()=>validateRecords([{...r,status:'Unknown'}],'tasks'));
   assert.throws(()=>removeRecord([r],'missing','tasks'));
+});
+test('task search and status filters combine without changing stored records',()=>{
+ const records=[
+  {id:'a',title:'Review Contract',detail:'Quarterly report',value:0,status:'Open'},
+  {id:'b',title:'Ship release',detail:'Contract checked',value:0,status:'Done'},
+  {id:'c',title:'Call client',detail:'',value:0,status:'Open'}
+ ];
+ const original=structuredClone(records);
+ assert.deepEqual(filterRecords(records,'tasks',{query:'  CONTRACT  '}).map(r=>r.id),['a','b']);
+ assert.deepEqual(filterRecords(records,'tasks',{query:'contract',status:'Done'}).map(r=>r.id),['b']);
+ assert.deepEqual(filterRecords(records,'tasks',{status:'Open'}).map(r=>r.id),['a','c']);
+ assert.deepEqual(filterRecords(records,'tasks',{query:'not present'}),[]);
+ assert.throws(()=>filterRecords(records,'tasks',{status:'Unknown'}),/status filter/);
+ assert.throws(()=>filterRecords(records,'tasks',{query:'x'.repeat(241)}),/Search/);
+ assert.deepEqual(records,original);
 });
 test('ZIP rejects traversal, duplicates and excessive bytes',()=>{
   for(const path of ['../x','a/../x','/x','.env','a//b','a\\b'])assert.throws(()=>createZip([{path,content:'x'}]));

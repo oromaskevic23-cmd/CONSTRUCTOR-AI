@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   createTask, updateTask, toggleTask, deleteTask, filterTasks,
-  taskCounts, loadTasks, isTask, normalizeTitle, normalizeDescription, MAX_TASKS
+  taskCounts, loadTasks, parseTaskStorage, isTask, normalizeTitle, normalizeDescription, MAX_TASKS
 } from "../src/tasks.js";
 
 const NOW = "2026-10-24T12:00:00.000Z";
@@ -75,6 +75,24 @@ test("counts and filters remain consistent", () => {
 
 test("invalid filter fails closed", () => {
   assert.throws(() => filterTasks(add([]),"deleted"), RangeError);
+});
+
+test("search combines with status and matches titles or descriptions", () => {
+  const first=add([],"Review specification","task-1");
+  const second=createTask(first,{title:"Ship release",description:"SPECIFICATION approved"},{id:"task-2",now:NOW});
+  const completed=toggleTask(second,"task-2",LATER);
+  assert.deepEqual(filterTasks(completed,"all","  SPECIFICATION  ").map(t=>t.id),["task-2","task-1"]);
+  assert.deepEqual(filterTasks(completed,"active","specification").map(t=>t.id),["task-1"]);
+  assert.deepEqual(filterTasks(completed,"completed","specification").map(t=>t.id),["task-2"]);
+  assert.deepEqual(filterTasks(completed,"all","absent"),[]);
+  assert.throws(()=>filterTasks(completed,"all",null),/search/);
+});
+
+test("strict storage parsing distinguishes valid empty state from corrupt data", () => {
+  assert.deepEqual(parseTaskStorage(null),[]);
+  assert.deepEqual(parseTaskStorage("  []  "),[]);
+  assert.throws(()=>parseTaskStorage("{broken"),SyntaxError);
+  assert.throws(()=>parseTaskStorage('{"unexpected":true}'),/state/);
 });
 
 test("rejects duplicate and invalid IDs", () => {

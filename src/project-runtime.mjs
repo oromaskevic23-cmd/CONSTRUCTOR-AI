@@ -1,4 +1,4 @@
-import {templateDefinition, validateRecords, saveRecord, changeStatus, removeRecord, summarizeRecords} from './project-domain.mjs';
+import {templateDefinition, validateRecords, saveRecord, changeStatus, removeRecord, filterRecords, summarizeRecords} from './project-domain.mjs';
 import {MAX_BACKUP_BYTES, serializeBackup, parseBackup} from './project-backup.mjs';
 
 // Only built-in, reviewed application logic is mounted. No model output is executed.
@@ -19,7 +19,7 @@ export function mountApplication(root, config, {persist = true} = {}) {
   const storageWarning = element('p'); storageWarning.setAttribute('role', 'alert'); storageWarning.className = 'storage-warning'; storageWarning.hidden = true;
   function warnStorage(text) {storageWarning.textContent = text; storageWarning.hidden = false;}
   if (persist) {
-    try {const raw = doc.defaultView.localStorage.getItem(key); if (raw) records = validateRecords(JSON.parse(raw), config.template);}
+    try {const raw = doc.defaultView.localStorage.getItem(key); if (raw !== null) records = validateRecords(JSON.parse(raw), config.template);}
     catch {storageAvailable = false; warnStorage('Stored data could not be loaded and has not been replaced. Changes exist only in this session; export its data before closing.');}
   } else message.textContent = 'Interactive preview · temporary sample workspace. Exported apps save data in your browser.';
   const form = element('form'); form.className = 'record-form';
@@ -31,7 +31,15 @@ export function mountApplication(root, config, {persist = true} = {}) {
   const submit = element('button', 'Add ' + definition.item.toLowerCase(), form); submit.type = 'submit'; submit.className = 'primary';
   const cancel = element('button', 'Cancel edit', form); cancel.type = 'button'; cancel.hidden = true;
   const toolbar = element('div'); toolbar.className = 'toolbar';
-  const searchLabel = element('label', 'Search', toolbar); const search = element('input', undefined, searchLabel); search.type = 'search'; search.placeholder = 'Filter your workspace';
+  const searchLabel = element('label', 'Search', toolbar); const search = element('input', undefined, searchLabel); search.type = 'search'; search.maxLength = 240; search.placeholder = 'Filter your workspace';
+  let statusFilter = null;
+  if (config.template === 'tasks') {
+    const statusLabel = element('label', 'Status', toolbar);
+    statusFilter = element('select', undefined, statusLabel);
+    for (const [value, label] of [['all', 'All statuses'], ...definition.statuses.map(s => [s, s])]) {
+      const option = element('option', label, statusFilter); option.value = value;
+    }
+  }
   const backup = element('button', 'Export data', toolbar); backup.type = 'button';
   const restoreLabel = element('label', 'Restore JSON backup', toolbar);
   const restoreInput = element('input', undefined, restoreLabel); restoreInput.type = 'file'; restoreInput.accept = '.json,application/json';
@@ -46,16 +54,15 @@ export function mountApplication(root, config, {persist = true} = {}) {
     stats.replaceChildren();
     for (const [label, total] of summarizeRecords(records, config.template)) {const box = element('div', undefined, stats); element('span', label, box); element('strong', new Intl.NumberFormat('en-US', {maximumFractionDigits: 2}).format(total), box);}
     list.replaceChildren();
-    const query = search.value.trim().toLowerCase();
-    const visible = records.filter(r => (r.title + ' ' + r.detail + ' ' + r.status).toLowerCase().includes(query));
+    const visible = filterRecords(records, config.template, {query: search.value, status: statusFilter?.value || 'all'});
     if (!visible.length) element('li', records.length ? 'No matching records.' : 'A clear workspace. Add your first ' + definition.item.toLowerCase() + '.', list).className = 'empty';
     for (const record of visible) {
       const row = element('li', undefined, list); const body = element('div', undefined, row); element('h2', record.title, body); element('p', record.detail, body);
       if (definition.value) element('strong', new Intl.NumberFormat('en-US', {maximumFractionDigits: 2}).format(record.value) + (config.template === 'crm' ? ' USD' : ''), body);
       const actions = element('div', undefined, row); actions.className = 'record-actions';
-      const status = element('button', record.status, actions); status.type = 'button'; status.setAttribute('aria-label', 'Change status: ' + record.title); status.addEventListener('click', () => {records = changeStatus(records, record.id, config.template); persistAndRender();});
+      const status = element('button', record.status, actions); status.type = 'button'; status.dataset.action = 'status'; status.dataset.id = record.id; status.setAttribute('aria-label', 'Change status: ' + record.title); status.addEventListener('click', () => {records = changeStatus(records, record.id, config.template); persistAndRender(); const updated = [...list.querySelectorAll('button[data-action]')].find(button => button.dataset.id === record.id && button.dataset.action === 'status'); (updated || search).focus();});
       const edit = element('button', 'Edit', actions); edit.type = 'button'; edit.setAttribute('aria-label', 'Edit: ' + record.title); edit.addEventListener('click', () => {editing = record.id; title.value = record.title; detail.value = record.detail; if (value) value.value = String(record.value); submit.textContent = 'Save changes'; cancel.hidden = false; title.focus();});
-      const del = element('button', 'Delete', actions); del.type = 'button'; del.setAttribute('aria-label', 'Delete: ' + record.title); del.addEventListener('click', () => {records = removeRecord(records, record.id, config.template); if (editing === record.id) resetForm(); persistAndRender();});
+      const del = element('button', 'Delete', actions); del.type = 'button'; del.setAttribute('aria-label', 'Delete: ' + record.title); del.addEventListener('click', () => {records = removeRecord(records, record.id, config.template); if (editing === record.id) resetForm(); persistAndRender(); search.focus();});
     }
   }
   form.addEventListener('submit', event => {
@@ -69,6 +76,7 @@ export function mountApplication(root, config, {persist = true} = {}) {
     } catch (error) {message.textContent = error.message;}
   });
   cancel.addEventListener('click', resetForm); search.addEventListener('input', render);
+  statusFilter?.addEventListener('change', render);
   restoreInput.addEventListener('change', async () => {
     const file = restoreInput.files?.[0];
     if (!file) return;

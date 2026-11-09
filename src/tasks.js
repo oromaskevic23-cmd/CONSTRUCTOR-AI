@@ -94,10 +94,13 @@ export function deleteTask(tasks, id) {
   return tasks.filter(task => task.id !== id);
 }
 
-export function filterTasks(tasks, status = "all") {
+export function filterTasks(tasks, status = "all", query = "") {
   assertState(tasks);
   if (!["all", "active", "completed"].includes(status)) throw new RangeError("Invalid filter");
-  return status === "all" ? [...tasks] : tasks.filter(task => task.completed === (status === "completed"));
+  if (typeof query !== "string" || query.length > MAX_DESCRIPTION_LENGTH) throw new RangeError("Invalid search");
+  const needle = query.trim().toLowerCase();
+  return tasks.filter(task => (status === "all" || task.completed === (status === "completed")) &&
+    (task.title + " " + task.description).toLowerCase().includes(needle));
 }
 
 export function taskCounts(tasks) {
@@ -106,13 +109,14 @@ export function taskCounts(tasks) {
   return {total: tasks.length, active: tasks.length - completed, completed};
 }
 
+export function parseTaskStorage(raw) {
+  if (raw === null) return [];
+  if (typeof raw !== "string") throw new TypeError("Invalid stored tasks");
+  const parsed = JSON.parse(raw);
+  assertState(parsed);
+  return parsed.map(task => ({...task}));
+}
+
 export function loadTasks(raw) {
-  if (typeof raw !== "string") return [];
-  try {
-    const parsed = JSON.parse(raw);
-    assertState(parsed);
-    return parsed.map(task => ({...task}));
-  } catch {
-    return [];
-  }
+  try { return parseTaskStorage(raw); } catch { return []; }
 }

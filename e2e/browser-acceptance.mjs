@@ -74,6 +74,16 @@ async function run(kind,studioPage){
       await form.getByRole('button',{name:kind.add}).click();
       check(await page.locator('.record-list li:not(.empty)').count()===1,'Create failed');
       await page.getByRole('button',{name:'Change status: Original '+kind.id}).click();
+      if(kind.id==='tasks'){
+        await page.getByLabel('Search').focus();
+        await page.keyboard.press('Tab');
+        assert.equal(await page.evaluate(()=>document.activeElement?.tagName),'SELECT');
+        await page.getByLabel('Status').selectOption('Done');
+        check(await page.locator('.record-list li:not(.empty)').count()===1,'Done status filter failed');
+        await page.getByLabel('Status').selectOption('Open');
+        check(await page.locator('.record-list li.empty').count()===1,'Open status filter failed');
+        await page.getByLabel('Status').selectOption('all');
+      }
       await page.getByRole('button',{name:'Edit: Original '+kind.id}).click();
       await form.locator('input[type=text]').first().fill('Edited '+kind.id);
       await form.getByRole('button',{name:'Save changes'}).click();

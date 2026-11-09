@@ -72,7 +72,7 @@ npm run verify
 npm start
 ```
 
-Open **http://127.0.0.1:4173**. The app supports adding, editing, completing, filtering and deleting tasks. Tasks are saved to this browser's **localStorage only**; there is no account, database, cloud sync, external payments or autonomous AI action.
+Open **http://127.0.0.1:4173**. The reference app supports adding, editing, completing, reopening, searching, filtering and deleting tasks. Tasks are saved to this browser's **localStorage only**; there is no account, database, cloud sync, external payments or autonomous AI action. If stored data is invalid or storage is unavailable, the app warns that changes are temporary and does not overwrite the unreadable data.
 
 ```bash
 npm test            # Node built-in domain tests + HTTP smoke tests

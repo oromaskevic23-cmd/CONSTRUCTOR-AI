@@ -52,6 +52,15 @@ export function removeRecord(records, id, template) {
   if (!records.some(r => r.id === id)) throw new RangeError('Record not found');
   return records.filter(r => r.id !== id).map(r => ({...r}));
 }
+export function filterRecords(records, template, {query = '', status = 'all'} = {}) {
+  validateRecords(records, template);
+  const definition = templateDefinition(template);
+  if (typeof query !== 'string' || query.length > 240) throw new RangeError('Search must be at most 240 characters');
+  if (status !== 'all' && !definition.statuses.includes(status)) throw new RangeError('Invalid status filter');
+  const needle = query.trim().toLowerCase();
+  return records.filter(record => (status === 'all' || record.status === status) &&
+    (record.title + ' ' + record.detail + ' ' + record.status).toLowerCase().includes(needle));
+}
 export function summarizeRecords(records, template) {
   validateRecords(records, template);
   if (template === 'tasks') return [['Tasks', records.length], ['Open', records.filter(r => r.status === 'Open').length], ['Done', records.filter(r => r.status === 'Done').length]];
