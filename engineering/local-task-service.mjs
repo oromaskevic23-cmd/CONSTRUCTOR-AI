@@ -34,7 +34,10 @@ export function createLocalTaskService({accessToken,permitSecret,model,outputRoo
         return Object.freeze({status:staged.status,missionId:candidate.missionId,
           stageId:basename(staged.stage),stageManifestSha256:staged.stageManifestSha256,
           draftSha256:candidate.draftSha256,provider:candidate.provider,model:candidate.model,
-          modelIdentity:candidate.modelIdentity,execution:'NOT_RUN',independentQa:'NOT_RUN',
+          modelIdentity:candidate.modelIdentity,
+          preview:{trust:'UNTRUSTED_MODEL_TEXT',summary:candidate.draft.summary,
+            files:candidate.draft.files.map(({path,content})=>({path,content}))},
+          execution:'NOT_RUN',independentQa:'NOT_RUN',
           approval:'NOT_GRANTED',release:'DENIED'});
       }finally{busy=false;}
     }

@@ -8,7 +8,7 @@ import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {createAppServer} from '../tools/serve.mjs';
 import {createLocalTaskService,localTaskServiceFromEnv} from '../engineering/local-task-service.mjs';
-import {localTaskApiUrl} from '../src/local-ai-policy.mjs';
+import {localTaskApiUrl,formatQuarantinedCandidate} from '../src/local-ai-policy.mjs';
 
 const token='local-session-example-0123456789ABCDEF';
 const permitSecret='local-permit-example-0123456789ABCDEF';
@@ -98,9 +98,31 @@ test('synthetic request reaches the model adapter and creates quarantine only',a
   assert.match(result.stageId,/^constructor-task-quarantine-/);
   assert.equal(JSON.stringify(result).includes(s.outputRoot),false);
   assert.equal(JSON.stringify(result).includes(token),false);
+  assert.equal(result.preview.trust,'UNTRUSTED_MODEL_TEXT');
+  assert.deepEqual(result.preview.files,draft.files);
+  const shown=formatQuarantinedCandidate(result);
+  assert.match(shown,/UNTRUSTED MODEL OUTPUT/);
+  assert.match(shown,/app\.mjs/);
+  assert.match(shown,/createTask/);
   assert.equal(s.calls(),1);
   const manifest=JSON.parse(await readFile(join(s.outputRoot,result.stageId,'stage-manifest.json'),'utf8'));
   assert.equal(manifest.release,'DENIED');assert.equal(manifest.independentQa,'NOT_RUN');
+});
+
+test('candidate preview fails closed on changed state, unexpected files and excessive text',()=>{
+  const base={status:'QUARANTINED_NOT_EXECUTED',execution:'NOT_RUN',independentQa:'NOT_RUN',
+    approval:'NOT_GRANTED',release:'DENIED',draftSha256:'a'.repeat(64),
+    stageManifestSha256:'b'.repeat(64),stageId:'constructor-task-quarantine-Ab12',model:'fixture:local-v1',
+    preview:{trust:'UNTRUSTED_MODEL_TEXT',summary:'Example',files:draft.files}};
+  assert.match(formatQuarantinedCandidate(base),/review only/);
+  for(const change of [
+    {release:'ALLOWED'},
+    {stageId:'../outside'},
+    {preview:{...base.preview,files:[draft.files[0],{path:'other.mjs',content:'x'}]}},
+    {preview:{...base.preview,files:[draft.files[0],{...draft.files[1],content:'x'.repeat(20001)}]}},
+  ])assert.throws(()=>formatQuarantinedCandidate({...base,...change}),/INVALID_QUARANTINE_PREVIEW/);
+  const markup={...base,preview:{...base.preview,summary:'<img src=x onerror=alert(1)>'}};
+  assert.match(formatQuarantinedCandidate(markup),/<img src=x/); // Caller uses textContent.
 });
 
 test('model transport errors are sanitized and do not create quarantine',async t=>{

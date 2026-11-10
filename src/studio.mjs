@@ -2,7 +2,7 @@ import {normalizeProject,templateDefinition} from './project-domain.mjs';
 import {mountApplication} from './project-runtime.mjs';
 import {buildProject,SOURCE_PATHS} from './project-export.mjs';
 import {createZip} from './zip.mjs';
-import {localTaskApiUrl} from './local-ai-policy.mjs';
+import {localTaskApiUrl,formatQuarantinedCandidate} from './local-ai-policy.mjs';
 const form=document.querySelector('#project-form');
 const preview=document.querySelector('#preview');
 const status=document.querySelector('#studio-status');
@@ -69,14 +69,10 @@ aiForm.addEventListener('submit',async event=>{
       headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({goal})});
     const result=await response.json();
     if(!response.ok){aiStatus.textContent=aiErrors[result.code]||'The local request was rejected.';return;}
-    if(response.status!==201||result.status!=='QUARANTINED_NOT_EXECUTED'||result.execution!=='NOT_RUN'||
-       result.independentQa!=='NOT_RUN'||result.approval!=='NOT_GRANTED'||result.release!=='DENIED'||
-       !/^[a-f0-9]{64}$/.test(result.draftSha256)||!/^constructor-task-quarantine-[A-Za-z0-9]+$/.test(result.stageId)){
-      throw Error('Unexpected local response');
-    }
+    if(response.status!==201)throw Error('Unexpected local response');
+    const preview=formatQuarantinedCandidate(result);
     aiStatus.textContent='Candidate saved to local quarantine. No code was executed or approved.';
-    aiResult.textContent='Quarantine: '+result.stageId+'\nDraft SHA-256: '+result.draftSha256+
-      '\nModel reported: '+result.model+'\nIndependent QA: not run\nRelease: denied';
+    aiResult.textContent=preview;
   }catch{aiStatus.textContent='Local AI could not complete the request. Check the local server and model.';}
   finally{aiSubmit.disabled=false;}
 });

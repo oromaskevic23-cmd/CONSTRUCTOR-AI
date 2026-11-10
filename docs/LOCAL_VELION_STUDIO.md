@@ -6,8 +6,10 @@ An optional form in the local Template Studio submits a Task Manager request to
 the existing fixed-loopback VELION/Ollama adapter. Accepted model output passes
 the existing strict two-file contract and heuristic review, then is written to
 a new local quarantine directory. The response includes a mission ID, stage ID
-and hashes. These are local observations, not signed provenance or proof that a
-model's weights are owned by IMPERIAL Core.
+and hashes. The same authenticated response contains a read-only text preview of
+the two untrusted generated files, displayed with `textContent` and never run.
+These are local observations, not signed provenance or proof that a model's
+weights are owned by IMPERIAL Core.
 
 No model output is run or shown as a finished application by this endpoint.
 Docker QA, independent human review, Owner enrollment and the existing
