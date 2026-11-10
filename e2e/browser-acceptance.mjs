@@ -82,7 +82,8 @@ async function run(kind,studioPage){
   const app=spawn(process.execPath,['serve.mjs'],{cwd:output,stdio:'ignore'});
   try{
     await waitForApp(app);
-    const page=await browser.newPage({acceptDownloads:true});
+    const context=await browser.newContext({acceptDownloads:true});
+    const page=await context.newPage();
     try{
       const unexpectedRequests=[],consoleErrors=[];
       async function guardPage(target){
@@ -133,11 +134,11 @@ async function run(kind,studioPage){
         await page.getByLabel('Search').focus();
         await page.keyboard.press('Tab');
         assert.equal(await page.evaluate(()=>document.activeElement?.tagName),'SELECT');
-        await page.getByLabel('Status').selectOption('Done');
+        await page.getByRole('combobox',{name:'Status',exact:true}).selectOption('Done');
         check(await page.locator('.record-list li:not(.empty)').count()===1,'Done status filter failed');
-        await page.getByLabel('Status').selectOption('Open');
+        await page.getByRole('combobox',{name:'Status',exact:true}).selectOption('Open');
         check(await page.locator('.record-list li.empty').count()===1,'Open status filter failed');
-        await page.getByLabel('Status').selectOption('all');
+        await page.getByRole('combobox',{name:'Status',exact:true}).selectOption('all');
       }
       await page.getByRole('button',{name:'Edit: Original '+kind.id}).click();
       await form.locator('input[type=text]').first().fill('Edited '+kind.id);
@@ -237,11 +238,28 @@ async function run(kind,studioPage){
           check(await volatile.getByRole('alert').isVisible(),'Storage warning must persist after later changes');
         }finally{await volatile.close();}
       }
+      if(kind.id==='tasks'){
+        const phone=await browser.newContext({viewport:{width:375,height:812},isMobile:true,hasTouch:true,acceptDownloads:true});
+        try{
+          const mobile=await phone.newPage();
+          await guardPage(mobile);
+          await mobile.goto('http://127.0.0.1:4174/',{waitUntil:'load'});
+          const mobileForm=mobile.locator('.record-form');
+          await mobileForm.locator('input[type=text]').first().fill('Mobile task');
+          await mobileForm.getByRole('button',{name:kind.add}).tap();
+          await mobile.locator('.record-list h2').filter({hasText:'Mobile task'}).waitFor();
+          await mobile.getByRole('button',{name:'Change status: Mobile task'}).tap();
+          await mobile.getByRole('button',{name:'Change status: Mobile task'}).filter({hasText:'Done'}).waitFor();
+          await mobile.reload();
+          await mobile.locator('.record-list h2').filter({hasText:'Mobile task'}).waitFor();
+          assert.equal(await mobile.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth),true,'Mobile layout overflows horizontally');
+        }finally{await phone.close();}
+      }
       assert.deepEqual(unexpectedRequests,[],'Unexpected external request was blocked');
       assert.deepEqual(consoleErrors,[],'Unexpected browser console error');
-      outcomes.push({template:kind.id,status:'PASS',checks:['studio-preview','browser-zip','clean-extract','integrity','exported-tests','crud','status','edit','search','backup','malformed-reject','type-reject','cancel','restore','reload',...(kind.id==='tasks'?['keyboard-reopen','safe-rendering','corrupt-storage','stale-tab-conflict']:[]),'no-external-requests','no-console-errors']});
+      outcomes.push({template:kind.id,status:'PASS',checks:['studio-preview','browser-zip','clean-extract','integrity','exported-tests','crud','status','edit','search','backup','malformed-reject','type-reject','cancel','restore','reload',...(kind.id==='tasks'?['keyboard-reopen','safe-rendering','corrupt-storage','stale-tab-conflict','mobile-chromium-crud']:[]),'no-external-requests','no-console-errors']});
       await page.screenshot({path:join(root,kind.id+'-browser.png'),fullPage:true});
-    }finally{await page.close();}
+    }finally{await context.close();}
   }finally{
     app.kill('SIGTERM');
     if(app.exitCode===null)await once(app,'exit');
