@@ -9,6 +9,7 @@ import {join} from 'node:path';
 import {createAppServer} from '../tools/serve.mjs';
 import {createLocalTaskService,localTaskServiceFromEnv} from '../engineering/local-task-service.mjs';
 import {localTaskApiUrl} from '../src/local-ai-policy.mjs';
+import {FULL_APP_FILES,FULL_APP_SCHEMA} from '../engineering/full-application-contract.mjs';
 
 const token='local-session-example-0123456789ABCDEF';
 const permitSecret='local-permit-example-0123456789ABCDEF';
@@ -18,6 +19,19 @@ const draft={schema:'constructor_draft_v1',summary:'Synthetic candidate',
   steps:[{id:'create',action:'Create domain API',acceptance:'Separate QA required'}],
   files:[{path:'app.mjs',content:'export const createTask=(id,title)=>({id,title,done:false});\n'},
     {path:'test/app.test.mjs',content:'export const testFixture=true;\n'}]};
+const fullSources={
+  'README.md':'Node.js 22. No build required. npm test and npm start at http://127.0.0.1:4174.\n',
+  'app.mjs':'globalThis.__localFullAppMustNotRun=true;\n',
+  'index.html':'<!doctype html><title>Synthetic only</title>',
+  'package.json':JSON.stringify({name:'synthetic-app',version:'1.0.0',private:true,type:'module',
+    scripts:{start:'node serve.mjs',test:'node --test test/app.test.mjs'},engines:{node:'>=22'}}),
+  'serve.mjs':'// synthetic server\n', 'storage.mjs':'// synthetic storage\n',
+  'styles.css':'body { color: white; }\n', 'test/app.test.mjs':'// candidate test\n',
+  'validation.mjs':'// synthetic validation\n'
+};
+const fullDraft={schema:FULL_APP_SCHEMA,summary:'Synthetic full app',
+  steps:[{id:'build',action:'Draft files',acceptance:'Review required'}],
+  files:FULL_APP_FILES.map(path=>({path,content:fullSources[path]}))};
 
 async function setup(t,fetchImpl){
   const outputRoot=await mkdtemp(join(tmpdir(),'constructor-local-ui-'));
@@ -82,10 +96,61 @@ test('invalid requests fail before inference and cannot create artifacts',async 
   const s=await setup(t);
   assert.equal((await s.post('{')).status,400);
   assert.equal((await s.post(JSON.stringify({goal:'Build a task manager',extra:true}))).status,400);
+  assert.equal((await s.post(JSON.stringify({goal:'Build a task manager',mode:'other'}))).status,400);
   assert.equal((await s.post(JSON.stringify({goal:'Build a task manager'}),{'content-type':'text/plain'})).status,415);
   assert.equal((await s.post(JSON.stringify({goal:'x'.repeat(5000)}))).status,413);
   assert.equal((await s.post(JSON.stringify({goal:'Create a banking app'}))).status,422);
   assert.equal(s.calls(),0);assert.deepEqual(await readdir(s.outputRoot),[]);
+});
+
+test('explicit full-application mode quarantines nine synthetic files without execution',async t=>{
+  let calls=0;
+  const s=await setup(t,async(url,request)=>{
+    calls++;
+    const body=JSON.parse(request.body);
+    assert.equal(body.options.num_predict,8192);
+    return new Response(JSON.stringify({model,done:true,done_reason:'stop',eval_count:25,total_duration:1,
+      response:JSON.stringify(fullDraft)}),{status:200});
+  });
+  const res=await s.post(JSON.stringify({goal:'Build a task manager',mode:'full-application'}));
+  assert.equal(res.status,201);
+  const result=await res.json();
+  assert.equal(calls,1);
+  assert.equal(result.contract,'FULL_APPLICATION_V1');
+  assert.match(result.stageId,/^constructor-full-app-quarantine-/);
+  assert.equal(result.execution,'NOT_RUN');
+  assert.equal(result.independentQa,'NOT_RUN');
+  assert.equal(result.release,'DENIED');
+  const manifest=JSON.parse(await readFile(join(s.outputRoot,result.stageId,'stage-manifest.json'),'utf8'));
+  assert.deepEqual(manifest.files.map(file=>file.path),FULL_APP_FILES);
+  assert.equal(await readFile(join(s.outputRoot,result.stageId,'app.mjs'),'utf8'),fullSources['app.mjs']);
+  assert.equal(globalThis.__localFullAppMustNotRun,undefined);
+});
+
+test('disconnect requests cancellation and never stages a cancelled model response',async t=>{
+  let started,aborted,calls=0;
+  const ready=new Promise(resolve=>{started=resolve;});
+  const cancelled=new Promise(resolve=>{aborted=resolve;});
+  const s=await setup(t,async(url,options)=>{
+    calls++;
+    if(calls===1)return new Promise((resolve,reject)=>{
+      started();
+      options.signal.addEventListener('abort',()=>{aborted();const e=Error('aborted');e.name='AbortError';reject(e);},{once:true});
+    });
+    return new Response(JSON.stringify({model,done:true,response:JSON.stringify(draft)}),{status:200});
+  });
+  const req=httpRequest(s.origin+path,{method:'POST',headers:{origin:s.origin,
+    authorization:'Bearer '+token,'content-type':'application/json'}});
+  req.on('error',()=>{});
+  req.end(JSON.stringify({goal:'Build a task manager'}));
+  await ready;
+  req.destroy();
+  await cancelled;
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.deepEqual(await readdir(s.outputRoot),[]);
+  const next=await s.post(JSON.stringify({goal:'Build a task manager'}));
+  assert.equal(next.status,201);
+  assert.equal(calls,2);
 });
 
 test('synthetic request reaches the model adapter and creates quarantine only',async t=>{

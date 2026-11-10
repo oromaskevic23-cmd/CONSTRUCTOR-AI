@@ -11,6 +11,7 @@ import { tmpdir } from 'node:os';
 import { join, isAbsolute } from 'node:path';
 import { createAppServer } from '../tools/serve.mjs';
 import { createLocalTaskService } from '../engineering/local-task-service.mjs';
+import { FULL_APP_FILES, FULL_APP_SCHEMA } from '../engineering/full-application-contract.mjs';
 
 const evidenceDirectory=process.env.CONSTRUCTOR_BROWSER_EVIDENCE_DIR||null;
 let testedCommit=null;
@@ -274,13 +275,38 @@ async function runLocalAi(){
     steps:[{id:'create',action:'Prepare a task API',acceptance:'Independent QA remains separate'}],
     files:[{path:'app.mjs',content:'export const fixture=true;\n'},
       {path:'test/app.test.mjs',content:'export const fixtureTest=true;\n'}]};
+  const fullSource={
+    'README.md':'Node.js 22. No build required. npm test and npm start at http://127.0.0.1:4174.',
+    'app.mjs':'globalThis.__browserFixtureExecuted=true;',
+    'index.html':'<!doctype html><title>Synthetic fixture</title>',
+    'package.json':JSON.stringify({name:'synthetic-app',version:'1.0.0',private:true,type:'module',
+      scripts:{start:'node serve.mjs',test:'node --test test/app.test.mjs'},engines:{node:'>=22'}}),
+    'serve.mjs':'// fixture server', 'storage.mjs':'// fixture storage', 'styles.css':'body { color: white; }',
+    'test/app.test.mjs':'// candidate tests', 'validation.mjs':'// fixture validation'
+  };
+  const fullDraft={schema:FULL_APP_SCHEMA,summary:'Synthetic full app',
+    steps:[{id:'build',action:'Draft files',acceptance:'Separate review required'}],
+    files:FULL_APP_FILES.map(path=>({path,content:fullSource[path]}))};
+  let markStarted,markCancelled;
+  const modelStarted=new Promise(resolve=>{markStarted=resolve;});
+  const modelCancelled=new Promise(resolve=>{markCancelled=resolve;});
   const service=createLocalTaskService({accessToken,permitSecret,model,outputRoot:quarantine,
-    fetchImpl:async()=>new Response(JSON.stringify({model,done:true,response:JSON.stringify(draft)}),{status:200})});
+    fetchImpl:async(url,options)=>{
+      const prompt=JSON.parse(options.body).prompt;
+      if(prompt.includes('cancel test'))return new Promise((resolve,reject)=>{
+        markStarted();
+        options.signal.addEventListener('abort',()=>{markCancelled();const error=Error('aborted');error.name='AbortError';reject(error);},{once:true});
+      });
+      const isFull=prompt.includes(FULL_APP_SCHEMA);
+      return new Response(JSON.stringify({model,done:true,done_reason:'stop',eval_count:25,total_duration:1,
+        response:JSON.stringify(isFull?fullDraft:draft)}),{status:200});
+    }});
   const server=createAppServer({localTaskService:service});server.listen(0,'127.0.0.1');await once(server,'listening');
   const localOrigin='http://127.0.0.1:'+server.address().port;
-  const page=await browser.newPage();
+  const page=await browser.newPage({viewport:{width:375,height:812},isMobile:true,hasTouch:true});
   try{
     await page.goto(localOrigin+'/studio',{waitUntil:'load'});
+    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth),true);
     await page.locator('#local-ai-goal').fill('Build a task manager with completed tasks');
     await page.locator('#local-ai-token').fill(accessToken);
     const [response]=await Promise.all([
@@ -295,7 +321,30 @@ async function runLocalAi(){
     assert.equal(receipt.execution,'NOT_RUN');assert.equal(receipt.release,'DENIED');
     const manifest=JSON.parse(await readFile(join(quarantine,receipt.stageId,'stage-manifest.json'),'utf8'));
     assert.equal(manifest.independentQa,'NOT_RUN');
-    outcomes.push({template:'local-ai-fixture',status:'PASS',checks:['browser-request','loopback-auth','quarantine','no-execution','token-cleared']});
+    await page.locator('#local-ai-mode').selectOption('full-application');
+    await page.locator('#local-ai-token').fill(accessToken);
+    const [fullResponse]=await Promise.all([
+      page.waitForResponse(r=>r.url().endsWith('/api/local-velion/task-draft')),
+      page.getByRole('button',{name:'Generate candidate'}).click()
+    ]);
+    assert.equal(fullResponse.status(),201);
+    const fullReceipt=await fullResponse.json();
+    assert.equal(fullReceipt.contract,'FULL_APPLICATION_V1');
+    assert.equal(fullReceipt.execution,'NOT_RUN');
+    assert.equal(fullReceipt.release,'DENIED');
+    const fullManifest=JSON.parse(await readFile(join(quarantine,fullReceipt.stageId,'stage-manifest.json'),'utf8'));
+    assert.deepEqual(fullManifest.files.map(file=>file.path),FULL_APP_FILES);
+    assert.equal(globalThis.__browserFixtureExecuted,undefined);
+    assert.equal(await page.locator('#local-ai-token').inputValue(),'');
+    await page.locator('#local-ai-goal').fill('Build a task manager cancel test');
+    await page.locator('#local-ai-token').fill(accessToken);
+    await page.getByRole('button',{name:'Generate candidate'}).click();
+    await modelStarted;
+    await page.getByRole('button',{name:'Stop request'}).click();
+    await Promise.race([modelCancelled,new Promise((_,reject)=>setTimeout(()=>reject(Error('Model cancellation not propagated')),3000))]);
+    await page.getByRole('status').filter({hasText:'Request stopped'}).waitFor();
+    assert.equal(await page.locator('#local-ai-token').inputValue(),'');
+    outcomes.push({template:'local-ai-fixture',status:'PASS',checks:['mobile-studio','browser-request','loopback-auth','two-and-nine-file-quarantine','no-execution','token-cleared','cancel-propagated']});
   }finally{await page.close();await new Promise(resolve=>server.close(resolve));}
 }
 async function runHostedBoundary(){
@@ -312,12 +361,19 @@ async function runHostedBoundary(){
     await page.waitForFunction(()=>!document.querySelector('#download').disabled);
     assert.equal(await page.locator('#local-ai-token').isDisabled(),true);
     assert.equal(await page.locator('#local-ai-submit').isDisabled(),true);
+    assert.equal(await page.locator('#local-ai-mode').isDisabled(),true);
     assert.equal(apiRequests,0);
     outcomes.push({template:'hosted-boundary',status:'PASS',checks:['local-token-disabled','no-api-request']});
   }finally{await page.close();}
 }
 try{
-  browser=await chromium.launch({headless:true});
+  const executablePath=process.env.CONSTRUCTOR_CHROMIUM_EXECUTABLE;
+  if(executablePath&&!isAbsolute(executablePath))throw Error('Browser executable must be an absolute path');
+  const launchOptions={headless:true};
+  if(executablePath)launchOptions.executablePath=executablePath;
+  if(process.env.CONSTRUCTOR_BROWSER_NO_SANDBOX==='YES')launchOptions.args=[
+    '--no-sandbox','--disable-gpu','--disable-dev-shm-usage','--disable-software-rasterizer','--no-zygote'];
+  browser=await chromium.launch(launchOptions);
   const studioPage=await browser.newPage({acceptDownloads:true});
   await studioPage.goto(origin+'/studio',{waitUntil:'load'});
   await studioPage.waitForFunction(()=>!document.querySelector('#download').disabled);

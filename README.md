@@ -27,7 +27,7 @@ export; the trusted key enrollment and live QA signer are not implemented.
 
 ### Local Studio → VELION (experimental)
 
-An opt-in, loopback-only local Studio form can request a **Task Manager candidate** from an already installed Ollama model. The server uses a one-time mission-scoped v2 permit and quarantines validated source without executing it. It requires an independent local session token, disallows hosted-site token submission, and has bounded request/response sizes. This is not production AI Passport, independent QA, or a working prompt-to-any-app factory. [Configuration and security limits](docs/LOCAL_VELION_STUDIO.md).
+An opt-in, loopback-only local Studio form can request a **Task Manager candidate** from an already installed Ollama model: either a two-file module or a nine-file application draft. The server uses a one-time mission-scoped v2 permit and quarantines source without executing it. Full-application output has structural checks but no static review or independent QA at this stage. The server requires an independent local session token, disallows hosted-site token submission, and bounds request/response sizes. This is not production AI Passport, independent QA, or a working prompt-to-any-app factory. [Configuration and security limits](docs/LOCAL_VELION_STUDIO.md).
 
 ## Template Studio
 
