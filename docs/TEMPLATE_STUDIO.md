@@ -16,6 +16,8 @@ The manifest is unsigned. It does not establish legal ownership, a trusted relea
 
 Preview records use temporary memory. Exported apps start empty and persist records in that browser's localStorage. Export data downloads a JSON backup. Restore JSON backup validates the strict schema, template type, all record fields, duplicate identities and a 1 MiB size limit before requesting explicit confirmation to replace the current workspace. The limit accommodates the maximum permitted workspace, including escaped text. A rejection or cancellation preserves the existing records. If browser storage cannot be read or written, a persistent warning identifies the session as temporary; exporting that session does not recover previously unreadable data. Neither cloud backup, team synchronization, authentication nor server storage is implemented. The downloaded ZIP contains application source, not preview customer records.
 
+Before saving, an exported app checks whether the stored workspace changed since the tab last read or wrote it. If a conflicting change is detected, the tab stops writing, preserves its current edits in memory and advises the user to export them before reloading. This is a best-effort stale-tab check: localStorage has no atomic compare-and-set, so simultaneous writes can still race. Use one tab per workspace and keep JSON backups.
+
 The local static server uses 127.0.0.1. Neither the studio nor its exports execute arbitrary model-generated code. Existing provider planning and quarantine modules retain their own explicit authorization boundaries.
 
 ## Reproduce

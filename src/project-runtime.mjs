@@ -1,13 +1,28 @@
 import {templateDefinition, validateRecords, saveRecord, changeStatus, removeRecord, summarizeRecords} from './project-domain.mjs';
 import {MAX_BACKUP_BYTES, serializeBackup, parseBackup} from './project-backup.mjs';
 
+// Detect a stale workspace before overwriting changes from another tab. This is
+// a best-effort check; localStorage does not provide an atomic compare-and-set.
+export function guardLocalStorage(storage, key) {
+  let observed = storage.getItem(key);
+  return Object.freeze({
+    read: () => observed,
+    write(value) {
+      if (storage.getItem(key) !== observed) return false;
+      storage.setItem(key, value);
+      observed = value;
+      return true;
+    }
+  });
+}
+
 // Only built-in, reviewed application logic is mounted. No model output is executed.
 export function mountApplication(root, config, {persist = true} = {}) {
   const doc = root.ownerDocument;
   root.style.setProperty('--accent', config.accent);
   const definition = templateDefinition(config.template);
   const key = 'constructor-app-v1:' + config.template + ':' + config.name;
-  let records = [], editing = null, storageAvailable = persist;
+  let records = [], editing = null, storageAvailable = persist, storageGuard;
   root.replaceChildren();
   const element = (tag, text, parent = root) => {const el = doc.createElement(tag); if (text !== undefined) el.textContent = text; parent.append(el); return el;};
   const header = element('header'); header.className = 'app-heading';
@@ -19,7 +34,7 @@ export function mountApplication(root, config, {persist = true} = {}) {
   const storageWarning = element('p'); storageWarning.setAttribute('role', 'alert'); storageWarning.className = 'storage-warning'; storageWarning.hidden = true;
   function warnStorage(text) {storageWarning.textContent = text; storageWarning.hidden = false;}
   if (persist) {
-    try {const raw = doc.defaultView.localStorage.getItem(key); if (raw) records = validateRecords(JSON.parse(raw), config.template);}
+    try {storageGuard = guardLocalStorage(doc.defaultView.localStorage, key); const raw = storageGuard.read(); if (raw) records = validateRecords(JSON.parse(raw), config.template);}
     catch {storageAvailable = false; warnStorage('Stored data could not be loaded and has not been replaced. Changes exist only in this session; export its data before closing.');}
   } else message.textContent = 'Interactive preview · temporary sample workspace. Exported apps save data in your browser.';
   const form = element('form'); form.className = 'record-form';
@@ -39,7 +54,14 @@ export function mountApplication(root, config, {persist = true} = {}) {
   element('p', 'Local browser storage only. No cloud account, team access or automatic backup.', root).className = 'storage-note';
   function resetForm() {editing = null; form.reset(); if (value) value.value = '0'; submit.textContent = 'Add ' + definition.item.toLowerCase(); cancel.hidden = true;}
   function persistAndRender() {
-    if (storageAvailable) {try {doc.defaultView.localStorage.setItem(key, JSON.stringify(records));} catch {storageAvailable = false; warnStorage('Browser storage is unavailable. Changes exist only in this session; export its data before closing.');}}
+    if (storageAvailable) {
+      try {
+        if (!storageGuard.write(JSON.stringify(records))) {
+          storageAvailable = false;
+          warnStorage('Browser storage changed in another tab. Changes exist only in this session; export its data before reloading.');
+        }
+      } catch {storageAvailable = false; warnStorage('Browser storage is unavailable. Changes exist only in this session; export its data before closing.');}
+    }
     render();
   }
   function render() {

@@ -10,7 +10,7 @@ const required=[
   "tools/verify-task-sandbox-qa.mjs","tools/run-isolated-task-qa.sh","tools/export-approved-task-review.mjs","qa/independent-task-suite.mjs",
   "test/velion-task-build.test.mjs","test/task-review-export.test.mjs","test/review-export-filesystem.test.mjs","docs/REVIEW_EXPORT_FS_BOUNDARY_20261105.md","docs/VELION_PROMPT_SANDBOX_MILESTONE.md",
   ".github/workflows/prompt-sandbox-qa.yml",
-  "package-lock.json","studio.html","studio.css","src/project-domain.mjs","src/project-runtime.mjs","src/project-backup.mjs","src/project-export.mjs","src/project.css","src/zip.mjs","src/studio.mjs","test/project-domain.test.mjs","test/project-export.test.mjs","test/project-backup.test.mjs",
+  "package-lock.json","studio.html","studio.css","src/project-domain.mjs","src/project-runtime.mjs","src/project-backup.mjs","src/project-export.mjs","src/project.css","src/zip.mjs","src/studio.mjs","test/project-domain.test.mjs","test/project-export.test.mjs","test/project-backup.test.mjs","test/project-storage.test.mjs",
   "package.json","index.html","styles.css","src/tasks.js","src/app.js",
   "test/tasks.test.js","test/server.test.js","tools/serve.mjs",
   "SECURITY.md","docs/VERIFIED_ENGINEERING_STANDARD.md",
