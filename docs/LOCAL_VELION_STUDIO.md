@@ -41,6 +41,11 @@ cleared on submission and is not stored by the interface. The quarantine
 directory is the one selected in `CONSTRUCTOR_LOCAL_QUARANTINE`; protect it
 and retain it deliberately if its contents are needed after the session.
 
+The **Stop generation** button requests cancellation of an in-progress local
+request. The model server must honor the abort to actually stop computation;
+if staging has already started, a quarantined candidate can still remain.
+Closing the page also requests cancellation and clears the token field.
+
 The local controller issues a one-time mission-scoped v2 HMAC permit bound to the exact mission goal, model identity and `velion-local-task` route before the inference request. It does not grant autonomous execution or prove human identity. Changes to any scoped field are denied before inference.
 
 If the client disconnects while a request is running, the server sends an abort signal to the local model request and releases its one-request slot after the provider returns. Actual cancellation depends on the local model server honoring the disconnected request. A disconnect that occurs during filesystem staging can still leave a quarantined draft; no execution or release is authorized.
