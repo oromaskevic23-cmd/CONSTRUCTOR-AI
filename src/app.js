@@ -5,7 +5,8 @@
  * GitHub: https://github.com/oromaskevic23-cmd
  * Individual source contributions and third-party rights: see AUTHORS.md and Git history.
  */
-import {createTask, updateTask, toggleTask, deleteTask, filterTasks, taskCounts, loadTasks} from "./tasks.js";
+import {createTask, updateTask, toggleTask, deleteTask, filterTasks, taskCounts, parseTaskStorage} from "./tasks.js";
+import {createGuardedStorageWriter} from "./project-domain.mjs";
 
 const STORAGE_KEY = "constructor_ai_task_manager_v1";
 const form = document.querySelector("#task-form");
@@ -15,6 +16,8 @@ const submitButton = document.querySelector("#submit-task");
 const cancelButton = document.querySelector("#cancel-edit");
 const taskList = document.querySelector("#task-list");
 const message = document.querySelector("#message");
+const searchField = document.querySelector("#search-tasks");
+const storageWarning = document.querySelector("#storage-warning");
 const counts = {
   total: document.querySelector("#count-total"),
   active: document.querySelector("#count-active"),
@@ -23,35 +26,58 @@ const counts = {
 let tasks = [];
 let selectedFilter = "all";
 let editingId = null;
+let storageAvailable = true;
+let storageWriter = null;
+let mutationPending = false;
 
 function notify(text, error = false) {
   message.textContent = text;
   message.dataset.state = error ? "error" : "ok";
 }
 
+function warnStorage(text) {
+  storageAvailable = false;
+  storageWarning.textContent = text;
+  storageWarning.hidden = false;
+}
+
 try {
-  const raw = window.localStorage.getItem(STORAGE_KEY);
-  tasks = loadTasks(raw);
-  if (raw && !tasks.length && raw !== "[]") notify("Stored data could not be validated. Nothing has been executed.", true);
+  const storage = window.localStorage;
+  const raw = storage.getItem(STORAGE_KEY);
+  tasks = parseTaskStorage(raw);
+  storageWriter = createGuardedStorageWriter({storage, locks: window.navigator?.locks, key: STORAGE_KEY, initialRaw: raw});
+  if (storageWriter.reason) warnStorage("Safe browser storage coordination is unavailable. Changes will remain only in this session.");
 } catch {
-  notify("Browser storage is disabled. Changes will remain only until this page closes.", true);
+  warnStorage("Saved tasks could not be loaded and have not been replaced. Changes will remain only in this session.");
 }
 
-function persist(nextTasks) {
-  tasks = nextTasks;
+async function persist(nextTasks) {
+  if (mutationPending) {notify("Another change is in progress; try again.", true); return false;}
+  mutationPending = true;
+  for (const control of [titleField, descriptionField, submitButton, cancelButton]) control.disabled = true;
   try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
-  } catch {
-    notify("Storage is unavailable. Changes are temporarily in memory.", true);
+    if (storageAvailable) {
+      const result = await storageWriter.write(JSON.stringify(nextTasks));
+      if (result.status === "BUSY") {notify("Another tab is saving; try again.", true); return false;}
+      if (result.status === "SESSION_ONLY") warnStorage(result.reason === "EXTERNAL_CHANGE"
+        ? "Saved tasks changed elsewhere, possibly in another tab, and were not overwritten. Changes will remain only in this session."
+        : "Safe browser storage is unavailable. Changes will remain only in this session.");
+    }
+    tasks = nextTasks;
+    render();
+    return true;
+  } finally {
+    mutationPending = false;
+    for (const control of [titleField, descriptionField, submitButton, cancelButton]) control.disabled = false;
   }
-  render();
 }
 
-function actionButton(label, action, id, extraClass = "") {
+function actionButton(label, action, id, title, extraClass = "") {
   const button = document.createElement("button");
   button.type = "button";
   button.className = "task-action " + extraClass;
   button.textContent = label;
+  button.setAttribute("aria-label", label + ": " + title);
   button.dataset.action = action;
   button.dataset.id = id;
   return button;
@@ -61,7 +87,7 @@ function render() {
   const totals = taskCounts(tasks);
   Object.keys(counts).forEach(k => { counts[k].textContent = String(totals[k]); });
   taskList.replaceChildren();
-  const visible = filterTasks(tasks, selectedFilter);
+  const visible = filterTasks(tasks, selectedFilter, searchField.value);
   if (!visible.length) {
     const empty = document.createElement("li");
     empty.className = "empty-state";
@@ -87,16 +113,16 @@ function render() {
     const controls = document.createElement("div");
     controls.className = "task-controls";
     controls.append(
-      actionButton(task.completed ? "Reopen" : "Complete", "toggle", task.id),
-      actionButton("Edit", "edit", task.id),
-      actionButton("Delete", "delete", task.id, "danger")
+      actionButton(task.completed ? "Reopen" : "Complete", "toggle", task.id, task.title),
+      actionButton("Edit", "edit", task.id, task.title),
+      actionButton("Delete", "delete", task.id, task.title, "danger")
     );
     item.append(details, controls);
     taskList.append(item);
   }
 }
 
-form.addEventListener("submit", event => {
+form.addEventListener("submit", async event => {
   event.preventDefault();
   try {
     const input = {title: titleField.value, description: descriptionField.value};
@@ -104,8 +130,9 @@ form.addEventListener("submit", event => {
     const next = editingId
       ? updateTask(tasks, editingId, input, now)
       : createTask(tasks, input, {id: crypto.randomUUID(), now});
-    persist(next);
-    notify(editingId ? "Task updated." : "Task created.");
+    const wasEditing = editingId !== null;
+    if (!await persist(next)) return;
+    notify((wasEditing ? "Task updated" : "Task created") + (storageAvailable ? "." : " for this session only."));
     resetEditor();
   } catch (error) {
     notify(error.message || "Unable to save task.", true);
@@ -121,21 +148,25 @@ function resetEditor() {
 
 cancelButton.addEventListener("click", () => { resetEditor(); notify("Editing cancelled."); });
 
-taskList.addEventListener("click", event => {
+taskList.addEventListener("click", async event => {
   const button = event.target.closest("button[data-action]");
   if (!button || !taskList.contains(button)) return;
+  if (mutationPending) {notify("Another change is in progress; try again.", true); return;}
   const {action, id} = button.dataset;
   const task = tasks.find(t => t.id === id);
   if (!task) return;
   try {
     if (action === "toggle") {
-      persist(toggleTask(tasks, id, new Date().toISOString()));
-      notify("Task status updated.");
+      if (!await persist(toggleTask(tasks, id, new Date().toISOString()))) return;
+      notify("Task status updated" + (storageAvailable ? "." : " for this session only."));
+      const updated = [...taskList.querySelectorAll("button[data-action]")].find(b => b.dataset.id === id && b.dataset.action === "toggle");
+      (updated || searchField).focus();
     } else if (action === "delete") {
       if (!window.confirm("Permanently remove this task from this browser?")) return;
-      persist(deleteTask(tasks, id));
+      if (!await persist(deleteTask(tasks, id))) return;
       if (editingId === id) resetEditor();
-      notify("Task deleted.");
+      notify("Task deleted" + (storageAvailable ? "." : " for this session only."));
+      searchField.focus();
     } else if (action === "edit") {
       editingId = id;
       titleField.value = task.title;
@@ -160,4 +191,5 @@ document.querySelector("#filters").addEventListener("click", event => {
   render();
 });
 
+searchField.addEventListener("input", render);
 render();

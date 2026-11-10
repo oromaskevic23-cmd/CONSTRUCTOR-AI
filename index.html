@@ -36,6 +36,7 @@
           </div>
         </form>
         <p id="message" role="status" aria-live="polite" class="status"></p>
+        <p id="storage-warning" role="alert" class="storage-warning" hidden></p>
       </section>
       <section class="panel" aria-labelledby="task-heading">
         <div class="section-heading"><h2 id="task-heading">Tasks</h2><div id="filters" class="filters" role="group" aria-label="Task filters">
@@ -43,6 +44,8 @@
           <button type="button" data-filter="active" aria-pressed="false">Active</button>
           <button type="button" data-filter="completed" aria-pressed="false">Completed</button>
         </div></div>
+        <label for="search-tasks">Search tasks</label>
+        <input id="search-tasks" type="search" maxlength="500" placeholder="Search names and details">
         <div class="stats" aria-label="Task statistics">
           <div><strong id="count-total">0</strong><span>Total</span></div>
           <div><strong id="count-active">0</strong><span>Active</span></div>

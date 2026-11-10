@@ -64,13 +64,24 @@ export function createAppServer({localTaskService=null}={}) {
       let input;
       try{input=JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(await readBoundedBody(req)));}
       catch(error){reply(res,error.message==='BODY_TOO_LARGE'?413:400,{code:error.message==='BODY_TOO_LARGE'?'BODY_TOO_LARGE':'INVALID_JSON'});return;}
-      if(!input||typeof input!=='object'||Array.isArray(input)||Object.keys(input).join('|')!=='goal'||typeof input.goal!=='string'){
+      if(!input||typeof input!=='object'||Array.isArray(input)||
+         !['goal','goal|mode'].includes(Object.keys(input).sort().join('|'))||typeof input.goal!=='string'||
+         (Object.hasOwn(input,'mode')&&!['task-module','full-application'].includes(input.mode))){
         reply(res,400,{code:'INVALID_REQUEST'});return;
       }
-      try{reply(res,201,await localTaskService.generate(input.goal));}
+      const controller=new AbortController();
+      const onClose=()=>{if(!res.writableEnded)controller.abort();};
+      res.once('close',onClose);
+      try{
+        const result=await localTaskService.generate(input.goal,{mode:input.mode||'task-module',signal:controller.signal});
+        if(!res.destroyed)reply(res,201,result);
+      }
       catch(error){
+        if(res.destroyed)return;
         const code=error?.code;
         if(code==='LOCAL_GENERATION_BUSY'){reply(res,409,{code});return;}
+        if(code==='LOCAL_GENERATION_CANCELLED'){reply(res,408,{code});return;}
+        if(code==='LOCAL_MODEL_TIMEOUT'){reply(res,504,{code});return;}
         if(code==='ONLY_TASK_MANAGER_V1_SUPPORTED'||error?.name==='DraftContractError'){
           reply(res,422,{code:'INVALID_OR_UNSUPPORTED_TASK_REQUEST'});return;
         }
@@ -79,6 +90,7 @@ export function createAppServer({localTaskService=null}={}) {
         }
         reply(res,422,{code:'MODEL_DRAFT_OR_QUARANTINE_REJECTED'});
       }
+      finally{res.removeListener('close',onClose);}
       return;
     }
     if (!["GET", "HEAD"].includes(req.method)) {

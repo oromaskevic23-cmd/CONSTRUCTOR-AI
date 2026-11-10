@@ -6,6 +6,7 @@ import {constants} from 'node:fs';
 import {parseModelDraft} from './draft-contract.mjs';
 import {staticDraftReview} from './static-review.mjs';
 import {validateTaskDraft} from './velion-task-generator.mjs';
+import {fullApplicationRequirements,parseFullApplicationDraft} from './full-application-contract.mjs';
 const hash=x=>createHash('sha256').update(x).digest('hex');
 
 export async function stageGeneratedTaskApp({receipt,outputRoot}={}){
@@ -34,6 +35,46 @@ export async function stageGeneratedTaskApp({receipt,outputRoot}={}){
     source:'UNTRUSTED_LOCAL_MODEL_PROPOSAL',files:inventory.sort((a,b)=>a.path.localeCompare(b.path)),
     staticReview:'NO_HEURISTIC_FLAGS_NOT_A_SANDBOX',execution:'NOT_RUN',
     independentQa:'NOT_RUN',approval:'DENIED',release:'DENIED'};
+  const manifestText=JSON.stringify(evidence,null,2)+'\n';
+  const handle=await open(join(stage,'stage-manifest.json'),constants.O_CREAT|constants.O_EXCL|constants.O_WRONLY|constants.O_NOFOLLOW,0o644);
+  try{await handle.writeFile(manifestText);await handle.sync();}finally{await handle.close();}
+  return Object.freeze({stage,stageManifestSha256:hash(manifestText),status:'QUARANTINED_NOT_EXECUTED',release:'DENIED'});
+}
+
+// Full applications use the same private quarantine boundary but a separate
+// versioned inventory. Nothing in this routine imports or executes the draft.
+export async function stageGeneratedFullApplication({receipt,outputRoot}={}){
+  if(!receipt||receipt.status!=='UNTRUSTED_GENERATED_FULL_APPLICATION'||
+    receipt.provider!=='VELION_LOCAL_OLLAMA_ADAPTER'||receipt.execution!=='NOT_RUN'||
+    receipt.independentQa!=='NOT_RUN'||receipt.release!=='DENIED'||receipt.approval!=='DENIED'||
+    typeof receipt.missionId!=='string'||!/^[A-Za-z0-9_-]{6,72}$/.test(receipt.missionId)||
+    typeof receipt.model!=='string'||!/^[A-Za-z0-9][A-Za-z0-9_.:/-]{1,90}$/.test(receipt.model)||
+    receipt.model.includes('..')||receipt.model.includes('://')||
+    typeof receipt.goalSha256!=='string'||!/^[a-f0-9]{64}$/.test(receipt.goalSha256))
+    throw Error('FULL_APP_RECEIPT_NOT_UNTRUSTED');
+  if(typeof receipt.draftJson!=='string')throw Error('FULL_APP_MODEL_OUTPUT_HASH_MISMATCH');
+  const parsed=parseFullApplicationDraft(receipt.draftJson);
+  if(hash(receipt.draftJson)!==receipt.modelOutputSha256)throw Error('FULL_APP_MODEL_OUTPUT_HASH_MISMATCH');
+  if(parsed.sha256!==receipt.draftSha256)throw Error('FULL_APP_DRAFT_HASH_MISMATCH');
+  const requirements=fullApplicationRequirements({missionId:receipt.missionId,goalSha256:receipt.goalSha256});
+  if(requirements.sha256!==receipt.requirementsSha256)throw Error('FULL_APP_REQUIREMENTS_HASH_MISMATCH');
+  if(typeof outputRoot!=='string'||!outputRoot)throw Error('OUTPUT_ROOT_REQUIRED');
+  const dest=resolve(outputRoot),info=await lstat(dest);
+  if(!info.isDirectory()||info.isSymbolicLink())throw Error('UNSAFE_OUTPUT_ROOT');
+  const root=await realpath(dest),stage=await mkdtemp(join(root,'constructor-full-app-quarantine-'));
+  await mkdir(join(stage,'test'),{mode:0o755});
+  const inventory=[];
+  for(const file of parsed.draft.files){
+    const handle=await open(join(stage,file.path),constants.O_CREAT|constants.O_EXCL|constants.O_WRONLY|constants.O_NOFOLLOW,0o644);
+    try{await handle.writeFile(file.content);await handle.sync();}finally{await handle.close();}
+    inventory.push({path:file.path,bytes:Buffer.byteLength(file.content),sha256:hash(file.content)});
+  }
+  const evidence={schema:'constructor_full_application_stage_v1',missionId:receipt.missionId,
+    goalSha256:receipt.goalSha256,requirements:requirements.document,requirementsSha256:requirements.sha256,
+    model:receipt.model,modelOutputSha256:receipt.modelOutputSha256,
+    draftSha256:receipt.draftSha256,source:'UNTRUSTED_LOCAL_MODEL_PROPOSAL',
+    modelIdentity:'NOT_INDEPENDENTLY_ATTESTED',files:inventory,staticReview:'NOT_RUN',
+    execution:'NOT_RUN',independentQa:'NOT_RUN',approval:'DENIED',release:'DENIED'};
   const manifestText=JSON.stringify(evidence,null,2)+'\n';
   const handle=await open(join(stage,'stage-manifest.json'),constants.O_CREAT|constants.O_EXCL|constants.O_WRONLY|constants.O_NOFOLLOW,0o644);
   try{await handle.writeFile(manifestText);await handle.sync();}finally{await handle.close();}

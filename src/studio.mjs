@@ -42,11 +42,14 @@ try{
 const aiForm=document.querySelector('#local-ai-form');
 const aiGoal=document.querySelector('#local-ai-goal');
 const aiToken=document.querySelector('#local-ai-token');
+const aiMode=document.querySelector('#local-ai-mode');
 const aiSubmit=document.querySelector('#local-ai-submit');
+const aiCancel=document.querySelector('#local-ai-cancel');
 const aiStatus=document.querySelector('#local-ai-status');
 const aiResult=document.querySelector('#local-ai-result');
+let aiController=null;
 if(localTaskApiUrl(window.location.href)){
-  aiGoal.disabled=false;aiToken.disabled=false;aiSubmit.disabled=false;
+  aiGoal.disabled=false;aiToken.disabled=false;aiMode.disabled=false;aiSubmit.disabled=false;
   aiStatus.textContent='Local service must be explicitly configured before use.';
 }
 const aiErrors={LOCAL_AI_DISABLED:'Local AI is not configured on this server.',
@@ -54,6 +57,8 @@ const aiErrors={LOCAL_AI_DISABLED:'Local AI is not configured on this server.',
   LOCAL_ORIGIN_REQUIRED:'Open Studio using the local 127.0.0.1 address.',
   INVALID_OR_UNSUPPORTED_TASK_REQUEST:'Use a supported Task Manager request.',
   LOCAL_GENERATION_BUSY:'A generation is already in progress.',
+  LOCAL_GENERATION_CANCELLED:'Request stopped. The local model server may take time to stop.',
+  LOCAL_MODEL_TIMEOUT:'The local model did not respond before the time limit.',
   LOCAL_MODEL_UNAVAILABLE:'The local model service is unavailable.',
   LOCAL_MODEL_HTTP_FAILED:'The local model service rejected the request.',
   MODEL_DRAFT_OR_QUARANTINE_REJECTED:'The model output or quarantine check rejected the candidate.'};
@@ -61,22 +66,30 @@ aiForm.addEventListener('submit',async event=>{
   event.preventDefault();
   const endpoint=localTaskApiUrl(window.location.href);
   if(!endpoint){aiStatus.textContent='Open the local Studio to use local AI.';return;}
-  const token=aiToken.value,goal=aiGoal.value;aiToken.value='';aiSubmit.disabled=true;aiResult.textContent='';
+  if(aiController)return;
+  const token=aiToken.value,goal=aiGoal.value,mode=aiMode.value;
+  aiToken.value='';aiSubmit.disabled=true;aiMode.disabled=true;aiCancel.disabled=false;aiResult.textContent='';
+  aiController=new AbortController();
+  const active=aiController;
   aiStatus.textContent='Requesting a local candidate; it will remain unexecuted.';
   try{
     const response=await fetch(endpoint,{method:'POST',mode:'same-origin',credentials:'omit',cache:'no-store',
-      redirect:'error',referrerPolicy:'no-referrer',signal:AbortSignal.timeout(115000),
-      headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({goal})});
+      redirect:'error',referrerPolicy:'no-referrer',signal:AbortSignal.any([active.signal,AbortSignal.timeout(mode==='full-application'?310000:115000)]),
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({goal,mode})});
     const result=await response.json();
     if(!response.ok){aiStatus.textContent=aiErrors[result.code]||'The local request was rejected.';return;}
     if(response.status!==201||result.status!=='QUARANTINED_NOT_EXECUTED'||result.execution!=='NOT_RUN'||
        result.independentQa!=='NOT_RUN'||result.approval!=='NOT_GRANTED'||result.release!=='DENIED'||
-       !/^[a-f0-9]{64}$/.test(result.draftSha256)||!/^constructor-task-quarantine-[A-Za-z0-9]+$/.test(result.stageId)){
+       result.contract!==(mode==='full-application'?'FULL_APPLICATION_V1':'TASK_DOMAIN_V1')||
+       !/^[a-f0-9]{64}$/.test(result.draftSha256)||
+       !(mode==='full-application'?/^constructor-full-app-quarantine-[A-Za-z0-9]+$/:/^constructor-task-quarantine-[A-Za-z0-9]+$/).test(result.stageId)){
       throw Error('Unexpected local response');
     }
     aiStatus.textContent='Candidate saved to local quarantine. No code was executed or approved.';
     aiResult.textContent='Quarantine: '+result.stageId+'\nDraft SHA-256: '+result.draftSha256+
       '\nModel reported: '+result.model+'\nIndependent QA: not run\nRelease: denied';
-  }catch{aiStatus.textContent='Local AI could not complete the request. Check the local server and model.';}
-  finally{aiSubmit.disabled=false;}
+  }catch{aiStatus.textContent=active.signal.aborted?aiErrors.LOCAL_GENERATION_CANCELLED:'Local AI could not complete the request. Check the local server and model.';}
+  finally{aiController=null;aiSubmit.disabled=false;aiMode.disabled=false;aiCancel.disabled=true;}
 });
+aiCancel.addEventListener('click',()=>aiController?.abort());
+window.addEventListener('pagehide',()=>aiController?.abort());

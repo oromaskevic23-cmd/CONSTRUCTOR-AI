@@ -1,0 +1,99 @@
+name: CONSTRUCTOR AI — Real VELION Task Manager Docker Acceptance
+on:
+  pull_request:
+    paths:
+      - 'live_factory/real_task_manager_build.mjs'
+      - 'engineering/velion-task-generator.mjs'
+      - 'engineering/task-sandbox.mjs'
+      - 'test/velion-task-build.test.mjs'
+      - 'qa/independent-task-suite.mjs'
+      - 'qa/task-candidate-probe.mjs'
+      - 'qa/task-probe-client.mjs'
+      - 'qa/task-sandbox-container-check.mjs'
+      - 'test/task-independent-qa.test.mjs'
+      - '.github/workflows/real-task-manager-e2e.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: constructor-real-task-qa-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  real-task-manager:
+    # Do not run costly model downloads on contributions from forks.
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 28
+    env:
+      OLLAMA_HOST: '127.0.0.1:11434'
+      OLLAMA_NUM_PARALLEL: '1'
+      OLLAMA_MAX_LOADED_MODELS: '1'
+      OLLAMA_CONTEXT_LENGTH: '4096'
+      OLLAMA_NO_CLOUD: '1'
+      OLLAMA_MODELS: ${{ github.workspace }}/.constructor-real-task-models
+      CONSTRUCTOR_REAL_TASK_E2E: 'EPHEMERAL_CI_ONLY'
+      CONSTRUCTOR_SANDBOX_IMAGE: 'node@sha256:fe4f6d74e20370acb04ad889077d14d0f64a9c8ea6a42bc60cddf1e844699914'
+    steps:
+      - name: Checkout original source without persisting credentials
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Configure Node 22
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22'
+      - name: Verify original source and bounded inference contracts
+        run: |
+          npm ci --ignore-scripts --no-audit --no-fund
+          node --check live_factory/real_task_manager_build.mjs
+          node --test test/velion-task-build.test.mjs
+          node --test test/task-independent-qa.test.mjs
+          npm run check
+      - name: Install checksum-pinned Ollama on disposable runner
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! command -v zstd >/dev/null 2>&1; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq zstd
+          fi
+          curl --proto '=https' --tlsv1.2 -fL --retry 2 --connect-timeout 15 --max-time 480 \
+            'https://github.com/ollama/ollama/releases/download/v0.40.11/ollama-linux-amd64.tar.zst' \
+            -o "$RUNNER_TEMP/ollama.tar.zst"
+          echo "7bedab90dd122661be78798e9f0edf37fccf0cccf2699d2c58ea1a3afdc04b6d  $RUNNER_TEMP/ollama.tar.zst" | sha256sum -c -
+          mkdir -p "$RUNNER_TEMP/ollama-runtime"
+          tar --zstd -xf "$RUNNER_TEMP/ollama.tar.zst" -C "$RUNNER_TEMP/ollama-runtime"
+          echo "$RUNNER_TEMP/ollama-runtime/bin" >> "$GITHUB_PATH"
+      - name: Prepare restricted Docker image and verify pinned digest
+        run: |
+          set -euo pipefail
+          docker info >/dev/null
+          docker pull "$CONSTRUCTOR_SANDBOX_IMAGE"
+          docker image inspect "$CONSTRUCTOR_SANDBOX_IMAGE" >/dev/null
+      - name: Check quarantine permissions in the restricted sandbox
+        run: node --test qa/task-sandbox-container-check.mjs
+      - name: Start local CPU model and install public weights
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$OLLAMA_MODELS"
+          ollama serve > "$RUNNER_TEMP/ollama-task.log" 2>&1 &
+          for i in $(seq 1 60); do
+            if curl --noproxy '*' -fsS http://127.0.0.1:11434/api/tags >/dev/null; then break; fi
+            sleep 1
+          done
+          curl --noproxy '*' -fsS http://127.0.0.1:11434/api/tags >/dev/null
+          timeout 480 ollama pull qwen2.5-coder:7b-instruct
+      - name: Generate real Task Manager code and run independent Docker acceptance
+        run: node live_factory/real_task_manager_build.mjs
+      - name: Retain model output and bounded engineering evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: constructor-real-task-manager-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/constructor-real-task-*/evidence.json
+            ${{ runner.temp }}/constructor-real-task-*/winning-app.mjs
+            ${{ runner.temp }}/constructor-real-task-*/generated-app.test.mjs
+          if-no-files-found: warn
+          retention-days: 7

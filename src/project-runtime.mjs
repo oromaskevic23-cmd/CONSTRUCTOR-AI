@@ -1,13 +1,17 @@
-import {templateDefinition, validateRecords, saveRecord, changeStatus, removeRecord, summarizeRecords} from './project-domain.mjs';
+import {accentPalette,createGuardedStorageWriter,templateDefinition, validateRecords, saveRecord, changeStatus, removeRecord, filterRecords, summarizeRecords} from './project-domain.mjs';
 import {MAX_BACKUP_BYTES, serializeBackup, parseBackup} from './project-backup.mjs';
 
 // Only built-in, reviewed application logic is mounted. No model output is executed.
 export function mountApplication(root, config, {persist = true} = {}) {
   const doc = root.ownerDocument;
+  const palette=accentPalette(config.accent);
   root.style.setProperty('--accent', config.accent);
+  root.style.setProperty('--on-accent', palette.onAccent);
+  root.style.setProperty('--accent-text', palette.textAccent);
+  root.style.setProperty('--accent-focus', palette.focusAccent);
   const definition = templateDefinition(config.template);
   const key = 'constructor-app-v1:' + config.template + ':' + config.name;
-  let records = [], editing = null, storageAvailable = persist;
+  let records = [], editing = null, storageAvailable = persist, writer = null, mutationPending = false;
   root.replaceChildren();
   const element = (tag, text, parent = root) => {const el = doc.createElement(tag); if (text !== undefined) el.textContent = text; parent.append(el); return el;};
   const header = element('header'); header.className = 'app-heading';
@@ -19,7 +23,12 @@ export function mountApplication(root, config, {persist = true} = {}) {
   const storageWarning = element('p'); storageWarning.setAttribute('role', 'alert'); storageWarning.className = 'storage-warning'; storageWarning.hidden = true;
   function warnStorage(text) {storageWarning.textContent = text; storageWarning.hidden = false;}
   if (persist) {
-    try {const raw = doc.defaultView.localStorage.getItem(key); if (raw) records = validateRecords(JSON.parse(raw), config.template);}
+    try {
+      const storage = doc.defaultView.localStorage, raw = storage.getItem(key);
+      if (raw !== null) records = validateRecords(JSON.parse(raw), config.template);
+      writer = createGuardedStorageWriter({storage, locks: doc.defaultView.navigator?.locks, key, initialRaw: raw});
+      if (writer.reason) {storageAvailable = false; warnStorage('Safe browser storage coordination is unavailable. Changes exist only in this session; export its data before closing.');}
+    }
     catch {storageAvailable = false; warnStorage('Stored data could not be loaded and has not been replaced. Changes exist only in this session; export its data before closing.');}
   } else message.textContent = 'Interactive preview · temporary sample workspace. Exported apps save data in your browser.';
   const form = element('form'); form.className = 'record-form';
@@ -31,44 +40,72 @@ export function mountApplication(root, config, {persist = true} = {}) {
   const submit = element('button', 'Add ' + definition.item.toLowerCase(), form); submit.type = 'submit'; submit.className = 'primary';
   const cancel = element('button', 'Cancel edit', form); cancel.type = 'button'; cancel.hidden = true;
   const toolbar = element('div'); toolbar.className = 'toolbar';
-  const searchLabel = element('label', 'Search', toolbar); const search = element('input', undefined, searchLabel); search.type = 'search'; search.placeholder = 'Filter your workspace';
+  const searchLabel = element('label', 'Search', toolbar); const search = element('input', undefined, searchLabel); search.type = 'search'; search.maxLength = 240; search.placeholder = 'Filter your workspace';
+  let statusFilter = null;
+  if (config.template === 'tasks') {
+    const statusLabel = element('label', 'Status', toolbar);
+    statusFilter = element('select', undefined, statusLabel);
+    for (const [value, label] of [['all', 'All statuses'], ...definition.statuses.map(s => [s, s])]) {
+      const option = element('option', label, statusFilter); option.value = value;
+    }
+  }
   const backup = element('button', 'Export data', toolbar); backup.type = 'button';
   const restoreLabel = element('label', 'Restore JSON backup', toolbar);
   const restoreInput = element('input', undefined, restoreLabel); restoreInput.type = 'file'; restoreInput.accept = '.json,application/json';
   const list = element('ul'); list.className = 'record-list'; list.setAttribute('aria-label', 'Records');
   element('p', 'Local browser storage only. No cloud account, team access or automatic backup.', root).className = 'storage-note';
   function resetForm() {editing = null; form.reset(); if (value) value.value = '0'; submit.textContent = 'Add ' + definition.item.toLowerCase(); cancel.hidden = true;}
-  function persistAndRender() {
-    if (storageAvailable) {try {doc.defaultView.localStorage.setItem(key, JSON.stringify(records));} catch {storageAvailable = false; warnStorage('Browser storage is unavailable. Changes exist only in this session; export its data before closing.');}}
-    render();
+  async function persistAndRender(next) {
+    if (mutationPending) {message.textContent = 'Another change is in progress; try again.'; return false;}
+    mutationPending = true;
+    for (const control of [title, detail, value, submit, cancel, backup, restoreInput]) if (control) control.disabled = true;
+    try {
+      if (storageAvailable) {
+        const result = await writer.write(JSON.stringify(next));
+        if (result.status === 'BUSY') {message.textContent = 'Another tab is saving; try again.'; return false;}
+        if (result.status === 'SESSION_ONLY') {
+          storageAvailable = false;
+          warnStorage(result.reason === 'EXTERNAL_CHANGE'
+            ? 'Stored data changed elsewhere, possibly in another tab, and has not been overwritten. Changes exist only in this session; export its data before closing.'
+            : 'Safe browser storage is unavailable. Changes exist only in this session; export its data before closing.');
+        }
+      }
+      records = next;
+      render();
+      return true;
+    } finally {
+      mutationPending = false;
+      for (const control of [title, detail, value, submit, cancel, backup, restoreInput]) if (control) control.disabled = false;
+    }
   }
   function render() {
     stats.replaceChildren();
     for (const [label, total] of summarizeRecords(records, config.template)) {const box = element('div', undefined, stats); element('span', label, box); element('strong', new Intl.NumberFormat('en-US', {maximumFractionDigits: 2}).format(total), box);}
     list.replaceChildren();
-    const query = search.value.trim().toLowerCase();
-    const visible = records.filter(r => (r.title + ' ' + r.detail + ' ' + r.status).toLowerCase().includes(query));
+    const visible = filterRecords(records, config.template, {query: search.value, status: statusFilter?.value || 'all'});
     if (!visible.length) element('li', records.length ? 'No matching records.' : 'A clear workspace. Add your first ' + definition.item.toLowerCase() + '.', list).className = 'empty';
     for (const record of visible) {
       const row = element('li', undefined, list); const body = element('div', undefined, row); element('h2', record.title, body); element('p', record.detail, body);
       if (definition.value) element('strong', new Intl.NumberFormat('en-US', {maximumFractionDigits: 2}).format(record.value) + (config.template === 'crm' ? ' USD' : ''), body);
       const actions = element('div', undefined, row); actions.className = 'record-actions';
-      const status = element('button', record.status, actions); status.type = 'button'; status.setAttribute('aria-label', 'Change status: ' + record.title); status.addEventListener('click', () => {records = changeStatus(records, record.id, config.template); persistAndRender();});
-      const edit = element('button', 'Edit', actions); edit.type = 'button'; edit.setAttribute('aria-label', 'Edit: ' + record.title); edit.addEventListener('click', () => {editing = record.id; title.value = record.title; detail.value = record.detail; if (value) value.value = String(record.value); submit.textContent = 'Save changes'; cancel.hidden = false; title.focus();});
-      const del = element('button', 'Delete', actions); del.type = 'button'; del.setAttribute('aria-label', 'Delete: ' + record.title); del.addEventListener('click', () => {records = removeRecord(records, record.id, config.template); if (editing === record.id) resetForm(); persistAndRender();});
+      const status = element('button', record.status, actions); status.type = 'button'; status.dataset.action = 'status'; status.dataset.id = record.id; status.setAttribute('aria-label', 'Change status: ' + record.title); status.addEventListener('click', async () => {try {if (!await persistAndRender(changeStatus(records, record.id, config.template))) return; const updated = [...list.querySelectorAll('button[data-action]')].find(button => button.dataset.id === record.id && button.dataset.action === 'status'); (updated || search).focus();} catch (error) {message.textContent = error.message;}});
+      const edit = element('button', 'Edit', actions); edit.type = 'button'; edit.setAttribute('aria-label', 'Edit: ' + record.title); edit.addEventListener('click', () => {if (mutationPending) {message.textContent = 'Another change is in progress; try again.'; return;} editing = record.id; title.value = record.title; detail.value = record.detail; if (value) value.value = String(record.value); submit.textContent = 'Save changes'; cancel.hidden = false; title.focus();});
+      const del = element('button', 'Delete', actions); del.type = 'button'; del.setAttribute('aria-label', 'Delete: ' + record.title); del.addEventListener('click', async () => {try {if (!await persistAndRender(removeRecord(records, record.id, config.template))) return; if (editing === record.id) resetForm(); search.focus();} catch (error) {message.textContent = error.message;}});
     }
   }
-  form.addEventListener('submit', event => {
+  form.addEventListener('submit', async event => {
     event.preventDefault();
     try {
       const previous = records.find(r => r.id === editing);
       const wasEditing = editing !== null;
-      records = saveRecord(records, {id: editing ?? doc.defaultView.crypto.randomUUID(), title: title.value.trim(), detail: detail.value.trim(), value: value ? Number(value.value) : 0, status: previous?.status ?? definition.statuses[0]}, config.template);
-      resetForm(); persistAndRender();
+      const next = saveRecord(records, {id: editing ?? doc.defaultView.crypto.randomUUID(), title: title.value.trim(), detail: detail.value.trim(), value: value ? Number(value.value) : 0, status: previous?.status ?? definition.statuses[0]}, config.template);
+      if (!await persistAndRender(next)) return;
+      resetForm();
       message.textContent = (wasEditing ? 'Changes updated' : definition.item + ' added') + (storageAvailable ? ' in browser storage.' : ' for this session.');
     } catch (error) {message.textContent = error.message;}
   });
   cancel.addEventListener('click', resetForm); search.addEventListener('input', render);
+  statusFilter?.addEventListener('change', render);
   restoreInput.addEventListener('change', async () => {
     const file = restoreInput.files?.[0];
     if (!file) return;
@@ -80,9 +117,8 @@ export function mountApplication(root, config, {persist = true} = {}) {
         message.textContent = 'Restore cancelled; existing records are unchanged.';
         return;
       }
-      records = next;
+      if (!await persistAndRender(next)) return;
       resetForm();
-      persistAndRender();
       message.textContent = 'Restored ' + records.length + ' records from a validated local backup' + (storageAvailable ? '.' : ' for this session only.');
     } catch (error) {
       message.textContent = 'Restore rejected: ' + error.message;

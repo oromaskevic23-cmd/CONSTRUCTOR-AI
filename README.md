@@ -46,7 +46,7 @@ export; the trusted key enrollment and live QA signer are not implemented.
 
 ### Local Studio → VELION (experimental)
 
-An opt-in, loopback-only local Studio form can request a **Task Manager candidate** from an already installed Ollama model. The server uses a one-time mission-scoped v2 permit and quarantines validated source without executing it. It requires an independent local session token, disallows hosted-site token submission, and has bounded request/response sizes. This is not production AI Passport, independent QA, or a working prompt-to-any-app factory. [Configuration and security limits](docs/LOCAL_VELION_STUDIO.md).
+An opt-in, loopback-only local Studio form can request a **Task Manager candidate** from an already installed Ollama model: either a two-file module or a nine-file application draft. The server uses a one-time mission-scoped v2 permit and quarantines source without executing it. Full-application output has structural checks but no static review or independent QA at this stage. The server requires an independent local session token, disallows hosted-site token submission, and bounds request/response sizes. This is not production AI Passport, independent QA, or a working prompt-to-any-app factory. [Configuration and security limits](docs/LOCAL_VELION_STUDIO.md).
 
 ## Template Studio
 
@@ -91,7 +91,7 @@ npm run verify
 npm start
 ```
 
-Open **http://127.0.0.1:4173**. The app supports adding, editing, completing, filtering and deleting tasks. Tasks are saved to this browser's **localStorage only**; there is no account, database, cloud sync, external payments or autonomous AI action.
+Open **http://127.0.0.1:4173**. The reference app supports adding, editing, completing, reopening, searching, filtering and deleting tasks. Tasks are saved to this browser's **localStorage only**; there is no account, database, cloud sync, external payments or autonomous AI action. If stored data is invalid or storage is unavailable, the app warns that changes are temporary and does not overwrite the unreadable data.
 
 ```bash
 npm test            # Node built-in domain tests + HTTP smoke tests
