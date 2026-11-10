@@ -20,7 +20,7 @@ export function createLocalTaskService({accessToken,permitSecret,model,outputRoo
       const supplied=Buffer.from(header.slice(7),'utf8');
       return supplied.length===expected.length&&timingSafeEqual(supplied,expected);
     },
-    async generate(goal){
+    async generate(goal,{signal}={}){
       if(busy){const error=Error('LOCAL_GENERATION_BUSY');error.code='LOCAL_GENERATION_BUSY';throw error;}
       busy=true;
       try{
@@ -28,7 +28,8 @@ export function createLocalTaskService({accessToken,permitSecret,model,outputRoo
         const mission={id:'local-task-'+randomBytes(12).toString('hex'),goal,allowModel:true};
         const permit=issueLocalDraftPermit({mission,route:ROUTE_LOCAL_TASK,model,secret:permitSecret,now});
         const candidate=await requestVelionTaskDraft({mission,permit,permitSecret,
-          consumedNonces:new Set(),model,fetchImpl,now});
+          consumedNonces:new Set(),model,fetchImpl,now,signal});
+        if(signal?.aborted){const error=Error('LOCAL_MODEL_CANCELLED');error.code='LOCAL_MODEL_CANCELLED';throw error;}
         const staged=await stageGeneratedTaskApp({receipt:candidate,outputRoot});
         return Object.freeze({status:staged.status,missionId:candidate.missionId,
           stageId:basename(staged.stage),stageManifestSha256:staged.stageManifestSha256,

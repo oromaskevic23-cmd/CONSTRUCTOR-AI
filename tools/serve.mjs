@@ -67,8 +67,16 @@ export function createAppServer({localTaskService=null}={}) {
       if(!input||typeof input!=='object'||Array.isArray(input)||Object.keys(input).join('|')!=='goal'||typeof input.goal!=='string'){
         reply(res,400,{code:'INVALID_REQUEST'});return;
       }
-      try{reply(res,201,await localTaskService.generate(input.goal));}
+      const controller=new AbortController();
+      const onClose=()=>{if(!res.writableEnded)controller.abort();};
+      res.once('close',onClose);
+      if(res.destroyed)controller.abort();
+      try{
+        const result=await localTaskService.generate(input.goal,{signal:controller.signal});
+        if(!controller.signal.aborted)reply(res,201,result);
+      }
       catch(error){
+        if(controller.signal.aborted)return;
         const code=error?.code;
         if(code==='LOCAL_GENERATION_BUSY'){reply(res,409,{code});return;}
         if(code==='ONLY_TASK_MANAGER_V1_SUPPORTED'||error?.name==='DraftContractError'){
@@ -78,7 +86,7 @@ export function createAppServer({localTaskService=null}={}) {
           reply(res,502,{code});return;
         }
         reply(res,422,{code:'MODEL_DRAFT_OR_QUARANTINE_REJECTED'});
-      }
+      }finally{res.off('close',onClose);}
       return;
     }
     if (!["GET", "HEAD"].includes(req.method)) {

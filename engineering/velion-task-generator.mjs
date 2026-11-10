@@ -48,7 +48,7 @@ export function validateTaskDraft(raw){
 }
 
 export async function requestVelionTaskDraft({mission,permit,permitSecret,consumedNonces,
-  model,fetchImpl=fetch,now=Date.now(),timeoutMs=90000}={}){
+  model,fetchImpl=fetch,now=Date.now(),timeoutMs=90000,signal}={}){
   const m=validateMission(mission);
   if(!/\btask[\s-]*manager\b|менеджер\s+задач|управлени[ея]\s+задач/i.test(m.goal)){
     throw new TaskGenerationError('ONLY_TASK_MANAGER_V1_SUPPORTED');
@@ -60,6 +60,7 @@ export async function requestVelionTaskDraft({mission,permit,permitSecret,consum
   if(!Number.isSafeInteger(timeoutMs)||timeoutMs<1000||timeoutMs>120000){
     throw new TaskGenerationError('MODEL_TIMEOUT_INVALID');
   }
+  if(signal?.aborted)throw new TaskGenerationError('LOCAL_MODEL_CANCELLED');
   verifyLocalDraftPermit({token:permit,mission:m,route:ROUTE_LOCAL_TASK,model,
     secret:permitSecret,consumedNonces,now});
   const system=[
@@ -81,12 +82,17 @@ export async function requestVelionTaskDraft({mission,permit,permitSecret,consum
     prompt:system+'\nMission ID: '+m.id+'\nUser request: '+m.goal};
   let response;
   try{
+    const timeout=AbortSignal.timeout(timeoutMs);
     response=await fetchImpl(LOCAL_MODEL_URL,{method:'POST',redirect:'error',
       headers:{'Content-Type':'application/json','Accept':'application/json'},
-      body:JSON.stringify(payload),signal:AbortSignal.timeout(timeoutMs)});
-  }catch{throw new TaskGenerationError('LOCAL_MODEL_UNAVAILABLE');}
+      body:JSON.stringify(payload),signal:signal?AbortSignal.any([signal,timeout]):timeout});
+  }catch{throw new TaskGenerationError(signal?.aborted?'LOCAL_MODEL_CANCELLED':'LOCAL_MODEL_UNAVAILABLE');}
+  if(signal?.aborted)throw new TaskGenerationError('LOCAL_MODEL_CANCELLED');
   if(!response?.ok)throw new TaskGenerationError('LOCAL_MODEL_HTTP_FAILED');
-  const raw=await boundedModelBody(response);
+  let raw;
+  try{raw=await boundedModelBody(response);}
+  catch(error){if(signal?.aborted)throw new TaskGenerationError('LOCAL_MODEL_CANCELLED');throw error;}
+  if(signal?.aborted)throw new TaskGenerationError('LOCAL_MODEL_CANCELLED');
   let envelope;
   try{envelope=JSON.parse(raw);}catch{throw new TaskGenerationError('LOCAL_MODEL_ENVELOPE_INVALID');}
   if(!envelope||envelope.done!==true||envelope.model!==model||typeof envelope.response!=='string'||

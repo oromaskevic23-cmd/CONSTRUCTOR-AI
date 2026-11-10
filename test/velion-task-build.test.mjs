@@ -56,6 +56,15 @@ test('substituted task goal or model cannot reach the local model',async()=>{
  await assert.rejects(requestVelionTaskDraft({...base,model:'other-local-model'}),/SCOPE/);
  assert.equal(calls,0);
 });
+test('already cancelled model requests never contact the provider',async()=>{
+ const now=Date.now(),model='fixture:task-v1',controller=new AbortController();
+ controller.abort();
+ const permit=issueLocalDraftPermit({mission,route:ROUTE_LOCAL_TASK,model,secret,now});
+ let calls=0;
+ await assert.rejects(requestVelionTaskDraft({mission,permit,permitSecret:secret,model,now,
+   consumedNonces:new Set(),signal:controller.signal,fetchImpl:async()=>{calls++;}}),/LOCAL_MODEL_CANCELLED/);
+ assert.equal(calls,0);
+});
 test('local model response is bounded while streaming, before JSON parsing',async()=>{
  let chunks=0,cancelled=false;
  const stream=new ReadableStream({pull(controller){if(chunks===40){controller.close();return;}chunks++;controller.enqueue(new Uint8Array(8192));},

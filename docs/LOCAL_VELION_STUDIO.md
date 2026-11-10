@@ -41,6 +41,8 @@ and retain it deliberately if its contents are needed after the session.
 
 The local controller issues a one-time mission-scoped v2 HMAC permit bound to the exact mission goal, model identity and `velion-local-task` route before the inference request. It does not grant autonomous execution or prove human identity. Changes to any scoped field are denied before inference.
 
+If the client disconnects while a request is running, the server sends an abort signal to the local model request and releases its one-request slot after the provider returns. Actual cancellation depends on the local model server honoring the disconnected request. A disconnect that occurs during filesystem staging can still leave a quarantined draft; no execution or release is authorized.
+
 The model must already be reachable at `http://127.0.0.1:11434/api/generate`.
 No remote provider, paid fallback, model download or model installation is
 performed by this feature. Model availability and its terms remain operator

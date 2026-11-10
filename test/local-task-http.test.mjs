@@ -143,3 +143,29 @@ test('only one generation per local server may run at a time',async t=>{
   } finally {release();}
   assert.equal((await first).status,201);
 });
+
+test('disconnect cancels the local model request and frees the generation slot',async t=>{
+  let started, cancelled, calls=0;
+  const ready=new Promise(resolve=>{started=resolve;});
+  const stopped=new Promise(resolve=>{cancelled=resolve;});
+  const s=await setup(t,async (_url,{signal})=>{
+    calls++;
+    if(calls>1)return new Response(JSON.stringify({model,done:true,response:JSON.stringify(draft)}),{status:200});
+    started();
+    return new Promise((_resolve,reject)=>signal.addEventListener('abort',()=>{
+      cancelled();reject(Error('local provider aborted'));
+    },{once:true}));
+  });
+  const abort=new AbortController();
+  const first=fetch(s.origin+path,{method:'POST',signal:abort.signal,headers:{
+    'content-type':'application/json','origin':s.origin,'authorization':'Bearer '+token
+  },body:JSON.stringify({goal:'Build a task manager'})});
+  await ready;
+  abort.abort();
+  await assert.rejects(first,{name:'AbortError'});
+  await stopped;
+  assert.deepEqual(await readdir(s.outputRoot),[]);
+  const second=await s.post(JSON.stringify({goal:'Build a task manager'}));
+  assert.equal(second.status,201);
+  assert.equal(calls,2);
+});
