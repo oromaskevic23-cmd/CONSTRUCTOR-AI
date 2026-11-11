@@ -53,6 +53,8 @@ export function attachLocalAiController({form,goal,token,submit,cancel,status,re
     LOCAL_MODEL_BUSY:'The VELION model is busy.',
     LOCAL_MODEL_FORMAT_DISABLED:'The required structured format is not enabled on VELION.',
     LOCAL_MODEL_RESPONSE_REJECTED:'The local model response was incomplete or did not pass validation.',
+    LOCAL_MODEL_RESPONSE_INCOMPLETE:'The model stopped before finishing the candidate. Check its output limit. No source was executed.',
+    LOCAL_MODEL_RESPONSE_SCHEMA_INVALID:'The model response did not match the required draft format. No source was executed.',
     LOCAL_MODEL_UNAVAILABLE:'The local model service is unavailable.',
     LOCAL_MODEL_HTTP_FAILED:'The local model service rejected the request.',
     MODEL_DRAFT_OR_QUARANTINE_REJECTED:'The model output or quarantine check rejected the candidate.'};
@@ -73,7 +75,11 @@ export function attachLocalAiController({form,goal,token,submit,cancel,status,re
       if(!response.ok){status.textContent=errors[output.code]||'The local request was rejected.';return;}
       if(response.status!==201)throw Error('Unexpected local response');
       result.textContent=formatQuarantinedCandidate(output);
-      status.textContent='Candidate saved to local quarantine. No code was executed or approved.';
+      status.textContent=output.preflight?.status==='FAIL'
+        ? 'Candidate saved to quarantine, but source checks found problems. No code was executed or approved.'
+        : output.preflight?.status==='PASS'
+          ? 'Candidate saved to quarantine. Source checks passed; independent QA has not run. No code was executed or approved.'
+          : 'Candidate saved to local quarantine. No code was executed or approved.';
     }catch{status.textContent=active.signal.aborted?
       'Stop requested. A candidate may already be in local quarantine; no code was executed or approved.':
       'Local AI could not complete the request. Check the local server and model.';}
@@ -85,3 +91,4 @@ export function attachLocalAiController({form,goal,token,submit,cancel,status,re
   });
   pageEvents.addEventListener('pagehide',()=>{controller?.abort();token.value='';});
 }
+
