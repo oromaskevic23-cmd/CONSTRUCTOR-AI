@@ -88,6 +88,25 @@ test('task source is quarantined with exact manifest and no execution',async t=>
  assert.equal(manifest.release,'DENIED');
  assert.deepEqual((await readdir(output.stage)).sort(),['app.mjs','stage-manifest.json','test']);
 });
+test('quarantine records whether generated tests are registered without executing them',async t=>{
+ const root=await mkdtemp(join(tmpdir(),'task-preflight-integration-'));
+ t.after(()=>rm(root,{recursive:true,force:true}));
+ const app='export function createTask(){}; export function completeTask(){}; export function filterOpen(){};';
+ const imports="import test from 'node:test'; import assert from 'node:assert/strict'; import {createTask,completeTask,filterOpen} from '../app.mjs';";
+ for(const [testBody,expected] of [
+   ["test.skip('not run',()=>assert.ok(createTask));",'FAIL'],
+   ["test('registered',()=>assert.ok(createTask));",'PASS'],
+ ]){
+   const input={...draft,files:[{path:'app.mjs',content:app},{path:'test/app.test.mjs',content:imports+testBody}]};
+   const output=await stageGeneratedTaskApp({receipt:await call({input}),outputRoot:root});
+   const manifest=JSON.parse(await readFile(join(output.stage,'stage-manifest.json'),'utf8'));
+   assert.equal(output.preflight.status,expected);
+   assert.equal(manifest.preflight.status,expected);
+   assert.equal(manifest.execution,'NOT_RUN');
+   assert.equal(manifest.release,'DENIED');
+   if(expected==='FAIL')assert.ok(manifest.preflight.issues.includes('TEST_REGISTRATION_MISSING'));
+ }
+});
 test('heuristics deny dangerous generated code; no sandbox bypass',async t=>{
  const root=await mkdtemp(join(tmpdir(),'task-deny-'));
  t.after(()=>rm(root,{recursive:true,force:true}));
@@ -134,3 +153,4 @@ test('Ed25519 Gateway denies absent Owner enrollment, forgery, replay, expiratio
  assert.throws(()=>verifyTaskOwnerApproval(args),/REPLAY_DENIED/);
  assert.throws(()=>verifyTaskOwnerApproval({...args,approval:{...approval,qaLogSha256:hash},consumedNonces:new Set()}),/TIME_DENIED|SCOPE_OR_TIME_DENIED/);
 });
+
