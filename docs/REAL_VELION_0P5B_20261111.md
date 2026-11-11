@@ -29,4 +29,4 @@ The source files use inert `.txt` suffixes for inspection; their bytes are uncha
 
 The proposed code distinguishes an incomplete token-limited response from a structured-schema rejection and from generic upstream failures. The local Studio also displays whether source preflight failed or passed and explicitly says independent QA has not run. Arbitrary provider messages remain filtered. The diagnostics do not improve model capability and do not authorize generated source.
 
-Focused local tests: VELION 16/16 and CONSTRUCTOR AI 42/42 with synthetic model responses and local HTTP. The CONSTRUCTOR run used Node.js 24.22.1's bundled Acorn 8.18.0 for the preflight dependency; these are not the full project suite, production browser acceptance or cloud CI.
+Focused local tests: VELION 17/17 and CONSTRUCTOR AI 42/42 with synthetic model responses and local HTTP. The CONSTRUCTOR run used Node.js 24.22.1's bundled Acorn 8.18.0 for the preflight dependency; these are not the full project suite, production browser acceptance or cloud CI.
