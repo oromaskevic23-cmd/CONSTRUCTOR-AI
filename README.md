@@ -52,6 +52,8 @@ An explicitly configured local VELION GGUF chat can also serve this restricted t
 
 **Real-model bridge status:** a schema-constrained Qwen trial produced a quarantined two-file domain draft. It failed isolated tests because of missing exports and an incorrect import path. An assistant-revised version of that domain module subsequently passed three isolated independent tests; it is not an autonomous model success or a full application. [Evidence and limits](docs/REAL_DRAFT_QA_20261111.md); [original observation](docs/STRUCTURED_GGUF_EVIDENCE_20261111.md).
 
+An isolated-review Task UI shell now exercises the same restricted domain contract. Real Chromium tested the shell with a synthetic fixture; a separate no-network container tested it with the assistant-revised module using DOM emulation. The shell is not a published app and does not bypass signed QA or Owner approval. [Test record and boundaries](docs/TASK_UI_EVIDENCE_20261111.md).
+
 ## Template Studio
 
 [Open the live Template Studio](https://oromaskevic23-cmd.github.io/Capital-Core-Public/reference/constructor-ai/studio/studio.html).

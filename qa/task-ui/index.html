@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>Tasks — CONSTRUCTOR AI</title>
+  <link rel="stylesheet" href="./style.css">
+  <script type="module" src="./start.mjs"></script>
+</head>
+<body>
+  <main class="workspace" id="task-workspace">
+    <header class="topbar">
+      <a class="brand" href="#task-workspace"><span class="brand-mark" aria-hidden="true">✦</span><span>CONSTRUCTOR <b>AI</b></span></a>
+      <span class="local-label"><span aria-hidden="true">●</span> Local workspace</span>
+    </header>
+    <section class="hero">
+      <p class="eyebrow">YOUR SPACE TO FOCUS</p>
+      <h1>Make room for <em>what matters.</em></h1>
+      <p>A clear view of your tasks, all in one place.</p>
+    </section>
+    <section class="summary" aria-label="Task summary">
+      <div><span>All tasks</span><strong id="count-all">0</strong></div>
+      <div><span>To do</span><strong id="count-open">0</strong></div>
+      <div><span>Completed</span><strong id="count-done">0</strong></div>
+    </section>
+    <section class="tasks-panel" aria-labelledby="task-heading">
+      <div class="panel-header"><div><p class="eyebrow">YOUR WORKSPACE</p><h2 id="task-heading">Tasks</h2></div><span class="panel-note">One step at a time</span></div>
+      <form id="task-form" autocomplete="off">
+        <label for="task-title">Add a task</label>
+        <div class="input-row"><input id="task-title" name="title" placeholder="What would you like to accomplish?" maxlength="120" required><button class="primary" type="submit"><span aria-hidden="true">＋</span> Add task</button></div>
+      </form>
+      <p id="notice" class="notice" role="status" aria-live="polite"></p>
+      <p id="storage-warning" class="storage-warning" role="alert" hidden></p>
+      <div class="list-heading"><h3>Your list</h3><div id="filters" class="filters" role="group" aria-label="Filter tasks"><button type="button" data-filter="all" aria-pressed="true">All</button><button type="button" data-filter="open" aria-pressed="false">To do</button><button type="button" data-filter="done" aria-pressed="false">Done</button></div></div>
+      <ul id="task-list" class="task-list" aria-label="Tasks"></ul>
+    </section>
+    <footer>CONSTRUCTOR AI <span>·</span> Your tasks stay in this browser.</footer>
+  </main>
+</body>
+</html>
