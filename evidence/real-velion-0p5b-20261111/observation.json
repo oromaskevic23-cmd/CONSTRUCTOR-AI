@@ -1,0 +1,46 @@
+{
+  "http": 201,
+  "code": null,
+  "status": "QUARANTINED_NOT_EXECUTED",
+  "model": "gguf-1d9614638d18",
+  "elapsedMs": 9870,
+  "preflight": {
+    "status": "FAIL",
+    "scope": "SYNTAX_AND_MODULE_SHAPE_ONLY_NOT_QA",
+    "issues": [
+      "APP_MISSING_EXPORT_COMPLETETASK",
+      "APP_MISSING_EXPORT_CREATETASK",
+      "APP_MISSING_EXPORT_FILTEROPEN",
+      "TEST_APP_IMPORT_MISSING",
+      "TEST_ASSERT_STRICT_IMPORT_MISSING",
+      "TEST_NODE_TEST_IMPORT_MISSING",
+      "TEST_REGISTRATION_MISSING",
+      "TEST_TASK_IMPORT_MISSING_COMPLETETASK",
+      "TEST_TASK_IMPORT_MISSING_CREATETASK",
+      "TEST_TASK_IMPORT_MISSING_FILTEROPEN"
+    ]
+  },
+  "draftSha256": "415ecdddc8adbc6f291015f693b183e3322cf082647450d4b0790aefcba9d986",
+  "modelReceipt": {
+    "provider": "llama-cpp-local",
+    "requestedModel": "gguf-1d9614638d18",
+    "returnedModel": "gguf-1d9614638d18",
+    "modelSha256": "1d9614638d18024d0fbb36575a15f1302a3adf044df10345688ec4f6e1c4ff32",
+    "startedAt": "2026-11-11T15:11:14.399Z",
+    "finishedAt": "2026-11-11T15:11:24.234Z",
+    "latencyMs": 9835,
+    "inputSha256": "38c94c084d25ee482384e396401b4973fd3c16809cfbb32ac01b7aca414c7e9a",
+    "outputSha256": "b81f517a9875566573ab453cee258c4ed9811d1fba1687deb467f59bc888c781",
+    "outcome": "MODEL_RESPONSE_RECEIVED",
+    "toolAccess": "NONE",
+    "approval": "NOT_GRANTED",
+    "responseFormat": "constructor_draft_v1",
+    "schemaSha256": "fd4d2ae555076aba433dae990ea9b83fc4405c917af43124deba6ccdf4f3cf4d"
+  },
+  "execution": "NOT_RUN",
+  "release": "DENIED",
+  "files": [
+    "app.mjs",
+    "test/app.test.mjs"
+  ]
+}
