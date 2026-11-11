@@ -55,9 +55,14 @@ imports `strictAssert` from `node:assert` and calls functions that return no
 test result. A schema-compliant answer alone therefore did not produce a
 usable implementation.
 
-The new preflight uses Acorn 8.19.0 (MIT) to parse source without executing it.
-It checks only syntax and a narrow module shape. A preflight PASS is **not**
-a functional test, a security review, a sandbox, or independent QA. Future
+The preflight uses Acorn 8.19.0 (MIT) to parse source without executing it.
+The original retained report above remains a historical result. The current
+preflight additionally checks for named imports of the three task functions and
+at least one direct top-level `node:test` registration with a function body.
+It does not count a visibly skipped or todo registration. This deliberately
+narrow contract may reject other valid test styles; it does not prove that a
+test is meaningful, executes, or passes. A preflight PASS is **not** a
+functional test, a security review, a sandbox, or independent QA. Future
 quarantine manifests include the preflight result, including FAIL results.
 
 At the time of the original local observation, Docker and Podman were
@@ -67,3 +72,4 @@ independent sandbox suite was not run **during that observation**. The later
 [isolated QA record](REAL_DRAFT_QA_20261111.md) reports the separate runs and
 their results. The original observation and quarantine manifest remain
 unchanged as historical records.
+

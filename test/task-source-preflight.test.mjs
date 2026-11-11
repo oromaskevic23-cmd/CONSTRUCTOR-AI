@@ -4,7 +4,7 @@ import {readFile} from 'node:fs/promises';
 import {inspectTaskSource} from '../engineering/task-source-preflight.mjs';
 
 const goodApp='export function createTask(){}; export const completeTask=()=>{}; function filterOpen(){}; export {filterOpen};';
-const goodTest="import test from 'node:test'; import assert from 'node:assert/strict'; import {createTask} from '../app.mjs';";
+const goodTest="import test from 'node:test'; import assert from 'node:assert/strict'; import {createTask,completeTask,filterOpen} from '../app.mjs'; test('create',()=>assert.ok(createTask));";
 const pair=(app=goodApp,test=goodTest)=>[{path:'app.mjs',content:app},{path:'test/app.test.mjs',content:test}];
 
 test('preflight checks syntax and exact module shape without running code',()=>{
@@ -36,3 +36,29 @@ test('the real quarantined model output is statically flagged without execution'
     'APP_MISSING_EXPORT_FILTEROPEN','TEST_NODE_TEST_IMPORT_MISSING','TEST_ASSERT_STRICT_IMPORT_MISSING',
     'TEST_APP_IMPORT_MISSING'])assert.ok(result.issues.includes(code),code);
 });
+
+test('preflight requires all named imports and a direct, enabled test registration',()=>{
+  const imports="import test from 'node:test'; import assert from 'node:assert/strict'; import {createTask,completeTask,filterOpen} from '../app.mjs';";
+  for(const candidate of [
+    imports,
+    imports+" // test('fake',()=>{})",
+    imports+" test.skip('skipped',()=>{});",
+    imports+" test('skipped',{skip:true},()=>{});",
+    imports+" test('todo',{todo:'later'},()=>{});",
+    imports+" function registerLater(){test('nested',()=>{});}",
+    imports+" test('missing body');",
+  ]){
+    const result=inspectTaskSource(pair(goodApp,candidate));
+    assert.equal(result.status,'FAIL');
+    assert.ok(result.issues.includes('TEST_REGISTRATION_MISSING'));
+  }
+  const partial=inspectTaskSource(pair(goodApp,
+    "import test from 'node:test'; import assert from 'node:assert/strict'; import {createTask} from '../app.mjs'; test('x',()=>{});"));
+  assert.ok(partial.issues.includes('TEST_TASK_IMPORT_MISSING_COMPLETETASK'));
+  assert.ok(partial.issues.includes('TEST_TASK_IMPORT_MISSING_FILTEROPEN'));
+  assert.equal(partial.issues.includes('TEST_TASK_IMPORT_MISSING_CREATETASK'),false);
+  const aliased=inspectTaskSource(pair(goodApp,
+    "import {test as check} from 'node:test'; import assert from 'node:assert/strict'; import {createTask as create,completeTask,filterOpen} from '../app.mjs'; check('ok',{skip:false},()=>assert.ok(create));"));
+  assert.equal(aliased.status,'PASS');
+});
+
