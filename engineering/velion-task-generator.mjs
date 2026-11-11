@@ -4,6 +4,7 @@
 import {createHash} from 'node:crypto';
 import {validateMission,parseModelDraft} from './draft-contract.mjs';
 import {verifyLocalDraftPermit,ROUTE_LOCAL_TASK} from './local-permit.mjs';
+import {VELION_DRAFT_FORMAT,VELION_DRAFT_SCHEMA_SHA256} from './velion-chat-transport.mjs';
 
 export const LOCAL_MODEL_URL='http://127.0.0.1:11434/api/generate';
 const MODEL=/^[A-Za-z0-9][A-Za-z0-9_.:/-]{1,90}$/;
@@ -48,7 +49,7 @@ export function validateTaskDraft(raw){
 }
 
 export async function requestVelionTaskDraft({mission,permit,permitSecret,consumedNonces,
-  model,fetchImpl=fetch,provider='VELION_LOCAL_OLLAMA_ADAPTER',now=Date.now(),timeoutMs=90000,signal}={}){
+  model,fetchImpl=fetch,provider='VELION_LOCAL_OLLAMA_ADAPTER',requireStructured=false,now=Date.now(),timeoutMs=90000,signal}={}){
   const m=validateMission(mission);
   if(!/\btask[\s-]*manager\b|менеджер\s+задач|управлени[ея]\s+задач/i.test(m.goal)){
     throw new TaskGenerationError('ONLY_TASK_MANAGER_V1_SUPPORTED');
@@ -58,6 +59,8 @@ export async function requestVelionTaskDraft({mission,permit,permitSecret,consum
   }
   if(typeof fetchImpl!=='function')throw new TaskGenerationError('FETCH_REQUIRED');
   if(!['VELION_LOCAL_OLLAMA_ADAPTER','VELION_LOCAL_GGUF_CHAT_ADAPTER'].includes(provider))
+    throw new TaskGenerationError('LOCAL_PROVIDER_INVALID');
+  if(typeof requireStructured!=='boolean'||(requireStructured&&provider!=='VELION_LOCAL_GGUF_CHAT_ADAPTER'))
     throw new TaskGenerationError('LOCAL_PROVIDER_INVALID');
   if(!Number.isSafeInteger(timeoutMs)||timeoutMs<1000||timeoutMs>120000){
     throw new TaskGenerationError('MODEL_TIMEOUT_INVALID');
@@ -71,9 +74,10 @@ export async function requestVelionTaskDraft({mission,permit,permitSecret,consum
     'Return one JSON object only, without Markdown fences, comments or surrounding text.',
     'The schema field must be the string "constructor_draft_v1"; summary must be a string.',
     'The steps field must be an array of objects with string fields id, action and acceptance.',
+    'Include exactly one step, with id "build".',
     'The files field must be an array of objects with string fields path and content.',
     'Put actual JavaScript source in each content string and escape newlines for JSON.',
-    'Files MUST be exactly app.mjs and test/app.test.mjs.',
+    'Files MUST be exactly app.mjs first and test/app.test.mjs second.',
     'app.mjs must export pure createTask(id,title), completeTask(task), filterOpen(tasks).',
     'createTask returns {id,title,done:false}; completeTask returns a NEW object with done:true;',
     'filterOpen returns a NEW array containing only unfinished tasks.',
@@ -109,7 +113,9 @@ export async function requestVelionTaskDraft({mission,permit,permitSecret,consum
       envelope.modelReceipt.requestedModel!==model||envelope.modelReceipt.returnedModel!==model||
       !/^[a-f0-9]{64}$/.test(envelope.modelReceipt.modelSha256)||
       model!=='gguf-'+envelope.modelReceipt.modelSha256.slice(0,12)||
-      envelope.modelReceipt.outputSha256!==HASH(envelope.response)))
+      envelope.modelReceipt.outputSha256!==HASH(envelope.response)||
+      (requireStructured&&(envelope.modelReceipt.responseFormat!==VELION_DRAFT_FORMAT||
+        envelope.modelReceipt.schemaSha256!==VELION_DRAFT_SCHEMA_SHA256))))
     throw new TaskGenerationError('LOCAL_MODEL_RECEIPT_INVALID');
   let validated;
   try{validated=validateTaskDraft(envelope.response);}

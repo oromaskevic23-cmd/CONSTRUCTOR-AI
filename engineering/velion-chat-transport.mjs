@@ -3,6 +3,8 @@
 // chat on the same machine. No external URL or paid fallback is accepted.
 import {createHash} from 'node:crypto';
 const TASK_URL='http://127.0.0.1:11434/api/generate';
+export const VELION_DRAFT_FORMAT='constructor_draft_v1';
+export const VELION_DRAFT_SCHEMA_SHA256='fd4d2ae555076aba433dae990ea9b83fc4405c917af43124deba6ccdf4f3cf4d';
 const error=code=>Object.assign(new Error(code),{code});
 const hash=value=>createHash('sha256').update(value).digest('hex');
 
@@ -22,11 +24,11 @@ async function readBounded(response){
   }finally{reader.releaseLock();}
 }
 
-export function createVelionChatTransport({port,accessToken,expectedModelSha256,fetchImpl=fetch}={}){
+export function createVelionChatTransport({port,accessToken,expectedModelSha256,structured=false,fetchImpl=fetch}={}){
   if(!Number.isInteger(port)||port<1||port>65535||
      typeof accessToken!=='string'||!/^[A-Za-z0-9_-]{32,128}$/.test(accessToken)||
      typeof expectedModelSha256!=='string'||!/^[a-f0-9]{64}$/.test(expectedModelSha256)||
-     typeof fetchImpl!=='function')throw error('VELION_CHAT_CONFIGURATION_INVALID');
+     typeof fetchImpl!=='function'||typeof structured!=='boolean')throw error('VELION_CHAT_CONFIGURATION_INVALID');
   const origin='http://127.0.0.1:'+port;
   const expectedModel='gguf-'+expectedModelSha256.slice(0,12);
   return async function transport(url,options={}){
@@ -40,7 +42,7 @@ export function createVelionChatTransport({port,accessToken,expectedModelSha256,
     const response=await fetchImpl(origin+'/api/chat',{method:'POST',redirect:'error',
       headers:{'Content-Type':'application/json','Accept':'application/json',
         'Origin':origin,'Authorization':'Bearer '+accessToken},
-      body:JSON.stringify({messages}),signal:options.signal});
+      body:JSON.stringify({messages,...(structured?{responseFormat:VELION_DRAFT_FORMAT}:{})}),signal:options.signal});
     if(!response?.ok)throw error('VELION_CHAT_UNAVAILABLE');
     const output=await readBounded(response),receipt=output?.receipt;
     if(typeof output?.answer!=='string'||!output.answer.trim()||output.answer.length>4000||
@@ -50,12 +52,14 @@ export function createVelionChatTransport({port,accessToken,expectedModelSha256,
        receipt.inputSha256!==hash(JSON.stringify(messages))||receipt.outputSha256!==hash(output.answer)||
        !Number.isFinite(Date.parse(receipt.startedAt))||!Number.isFinite(Date.parse(receipt.finishedAt))||
        Date.parse(receipt.finishedAt)<Date.parse(receipt.startedAt)||
-       !Number.isSafeInteger(receipt.latencyMs)||receipt.latencyMs<0||receipt.latencyMs>120000)
+       !Number.isSafeInteger(receipt.latencyMs)||receipt.latencyMs<0||receipt.latencyMs>120000||
+       (structured&&(receipt.responseFormat!==VELION_DRAFT_FORMAT||receipt.schemaSha256!==VELION_DRAFT_SCHEMA_SHA256)))
       throw error('VELION_CHAT_RESPONSE_INVALID');
     const modelReceipt={provider:receipt.provider,requestedModel:receipt.requestedModel,
       returnedModel:receipt.returnedModel,modelSha256:receipt.modelSha256,startedAt:receipt.startedAt,
       finishedAt:receipt.finishedAt,latencyMs:receipt.latencyMs,inputSha256:receipt.inputSha256,
       outputSha256:receipt.outputSha256,outcome:receipt.outcome,toolAccess:receipt.toolAccess,approval:receipt.approval};
+    if(structured){modelReceipt.responseFormat=receipt.responseFormat;modelReceipt.schemaSha256=receipt.schemaSha256;}
     // This converts the chat's untrusted answer into the existing task contract's
     // transport envelope. The contract and quarantine remain responsible for validation.
     return new Response(JSON.stringify({model:expectedModel,done:true,done_reason:'stop',response:output.answer,modelReceipt}),

@@ -1,0 +1,21 @@
+{
+  "schema": "constructor_task_static_preflight_v1",
+  "source": "RETAINED_UNTRUSTED_MODEL_DRAFT",
+  "appSha256": "8ebd73546a83ea7488d340e55c1913e197e77666f8899d518f91e0537be205c3",
+  "testSha256": "b53c51de6863ccaff26f17c68bc808f483694114abc65bb2b72f863471e05fba",
+  "result": {
+    "status": "FAIL",
+    "scope": "SYNTAX_AND_MODULE_SHAPE_ONLY_NOT_QA",
+    "issues": [
+      "APP_MISSING_EXPORT_COMPLETETASK",
+      "APP_MISSING_EXPORT_CREATETASK",
+      "APP_MISSING_EXPORT_FILTEROPEN",
+      "TEST_APP_IMPORT_MISSING",
+      "TEST_ASSERT_STRICT_IMPORT_MISSING",
+      "TEST_NODE_TEST_IMPORT_MISSING"
+    ]
+  },
+  "execution": "NOT_RUN",
+  "independentQa": "NOT_RUN",
+  "release": "DENIED"
+}

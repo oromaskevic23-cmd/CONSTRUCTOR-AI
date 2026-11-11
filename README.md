@@ -50,7 +50,7 @@ An opt-in, loopback-only local Studio form can request a **Task Manager candidat
 
 An explicitly configured local VELION GGUF chat can also serve this restricted task route. The adapter checks the model's reported file hash and response receipt and sends accepted source to the same quarantine; there is no paid or remote fallback. Model output remains untrusted and the receipt is local, unsigned evidence, not proof of model authorship or release approval. [Setup and limitations](docs/LOCAL_VELION_STUDIO.md#optional-velion-gguf-chat-route).
 
-**Real-model bridge status:** local Qwen trials reached the model but did not produce an accepted Task Manager candidate. No generated application was executed or independently tested. [Observed results and limits](docs/VELION_GGUF_BRIDGE_EVIDENCE_20261110.md).
+**Real-model bridge status:** a schema-constrained Qwen trial produced a quarantined two-file domain draft. A later non-executing preflight found missing exports and test imports. No generated application was executed or independently tested. [Observation, retained draft and limits](docs/STRUCTURED_GGUF_EVIDENCE_20261111.md); [earlier trials](docs/VELION_GGUF_BRIDGE_EVIDENCE_20261110.md).
 
 ## Template Studio
 

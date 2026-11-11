@@ -69,14 +69,28 @@ to `gguf-` followed by the first 12 lowercase hex digits of that hash.
 The VELION token must differ from both Constructor secrets. Keep all secrets
 local and use the separate VELION chat setup for launching that service.
 
+For the fixed-schema experiment, also set `VELION_GGUF_STRUCTURED_DRAFT=YES`
+on the VELION server and `CONSTRUCTOR_LOCAL_GGUF_STRUCTURED=YES` on the
+Constructor server. Both are explicit opt-ins. The Constructor adapter then
+requests the fixed `constructor_draft_v1` schema and rejects a response that
+does not carry the expected schema fingerprint; it never falls back to plain
+chat. Run `node tools/observe-structured-local.mjs` with the same local
+configuration for one synthetic request. It stages only an accepted draft and
+does not execute source, run QA, or grant a release.
+
 The adapter checks the local GGUF receipt's model identity, file hash, timing,
 and input/output hashes before passing the untrusted answer through the existing
 strict draft contract and quarantine. The receipt is local and unsigned: it is
 not independent attestation. It makes no fallback calls. VELION's chat output
 limits apply, so models may fail to produce a complete valid Task Manager draft.
+A syntactically valid response is not evidence that the code is correct or safe.
 A successful quarantine does not mean execution, independent QA or production
-approval. The [recorded real-model trials](VELION_GGUF_BRIDGE_EVIDENCE_20261110.md)
-did not produce an accepted candidate.
+approval. Later drafts also receive a non-executing syntax and module-shape
+preflight; PASS only covers those limited checks, not correctness or security.
+The [recorded structured trial](STRUCTURED_GGUF_EVIDENCE_20261111.md) produced
+a quarantined draft whose retrospective preflight failed. The
+[earlier real-model trials](VELION_GGUF_BRIDGE_EVIDENCE_20261110.md) did not
+produce an accepted candidate.
 
 ## Boundaries
 

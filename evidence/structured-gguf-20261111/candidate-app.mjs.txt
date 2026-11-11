@@ -1,0 +1,13 @@
+function createTask(id, title) {
+    if (!id || !title) throw new TypeError('Invalid task ID or title');
+    return {id, title, done: false};
+}
+
+function completeTask(task) {
+    if (!task) throw new TypeError('Invalid task object');
+    return {id: task.id, title: task.title, done: true};
+}
+
+function filterOpen(tasks) {
+    return tasks.filter(task => !task.done);
+}

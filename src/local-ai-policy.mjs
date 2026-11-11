@@ -10,6 +10,7 @@ export function localTaskApiUrl(pageUrl){
 // This returns plain text only. The caller must use textContent, never HTML.
 export function formatQuarantinedCandidate(result){
   const preview=result?.preview;
+  const preflight=result?.preflight;
   if(result?.status!=='QUARANTINED_NOT_EXECUTED'||result.execution!=='NOT_RUN'||
      result.independentQa!=='NOT_RUN'||result.approval!=='NOT_GRANTED'||result.release!=='DENIED'||
      !/^[a-f0-9]{64}$/.test(result.draftSha256)||
@@ -19,6 +20,11 @@ export function formatQuarantinedCandidate(result){
      !preview||preview.trust!=='UNTRUSTED_MODEL_TEXT'||typeof preview.summary!=='string'||
      preview.summary.length>1500||!Array.isArray(preview.files)||preview.files.length!==2)
     throw Error('INVALID_QUARANTINE_PREVIEW');
+  if(preflight!==undefined&&(!preflight||!['PASS','FAIL'].includes(preflight.status)||
+     preflight.scope!=='SYNTAX_AND_MODULE_SHAPE_ONLY_NOT_QA'||!Array.isArray(preflight.issues)||
+     preflight.issues.length>20||preflight.issues.some(code=>typeof code!=='string'||!/^[A-Z_]{1,80}$/.test(code))||
+     (preflight.status==='PASS'&&preflight.issues.length!==0)||
+     (preflight.status==='FAIL'&&preflight.issues.length===0)))throw Error('INVALID_QUARANTINE_PREVIEW');
   const expected=['app.mjs','test/app.test.mjs'];
   if(preview.files.map(file=>file?.path).sort().join('|')!==expected.join('|')||
      preview.files.some(file=>typeof file.content!=='string'||file.content.length>20000)||
@@ -26,6 +32,7 @@ export function formatQuarantinedCandidate(result){
     throw Error('INVALID_QUARANTINE_PREVIEW');
   const header='Quarantine: '+result.stageId+'\nDraft SHA-256: '+result.draftSha256+
     '\nModel reported: '+result.model+'\nIndependent QA: not run\nRelease: denied'+
+    '\nStatic syntax/module checks: '+(preflight?preflight.status+' '+preflight.issues.join(', '):'not available')+
     '\n\nUNTRUSTED MODEL OUTPUT — review only; never executed by this preview.\n'+preview.summary;
   return header+preview.files.map(file=>'\n\n--- '+file.path+' ---\n'+file.content).join('');
 }

@@ -1,0 +1,30 @@
+import { createTask, completeTask, filterOpen } from './app.mjs';
+
+import { strictAssert } from 'node:assert';
+
+function testCreateTask() {
+    const task = createTask('1', 'Task 1');
+    strictAssert(task.id === '1', 'Task ID is incorrect');
+    strictAssert(task.title === 'Task 1', 'Task title is incorrect');
+    strictAssert(task.done === false, 'Task is not done');
+}
+
+function testCompleteTask() {
+    const task = createTask('1', 'Task 1');
+    const completedTask = completeTask(task);
+    strictAssert(completedTask.id === '1', 'Task ID is incorrect after completion');
+    strictAssert(completedTask.title === 'Task 1', 'Task title is incorrect after completion');
+    strictAssert(completedTask.done === true, 'Task is not done after completion');
+}
+
+function testFilterOpen() {
+    const tasks = [{id: '1', title: 'Task 1', done: false}, {id: '2', title: 'Task 2', done: true}];
+    const openTasks = filterOpen(tasks);
+    strictAssert(openTasks.length === 1, 'Incorrect number of open tasks');
+    strictAssert(openTasks[0].id === '1', 'Incorrect task ID in open tasks');
+    strictAssert(openTasks[0].title === 'Task 1', 'Incorrect task title in open tasks');
+}
+
+strictAssert(testCreateTask(), 'Task creation test failed');
+strictAssert(testCompleteTask(), 'Task completion test failed');
+strictAssert(testFilterOpen(), 'Task filtering test failed');

@@ -100,13 +100,17 @@ test('synthetic request reaches the model adapter and creates quarantine only',a
   assert.equal(JSON.stringify(result).includes(token),false);
   assert.equal(result.preview.trust,'UNTRUSTED_MODEL_TEXT');
   assert.deepEqual(result.preview.files,draft.files);
+  assert.equal(result.preflight.status,'FAIL');
+  assert.ok(result.preflight.issues.includes('APP_MISSING_EXPORT_COMPLETETASK'));
   const shown=formatQuarantinedCandidate(result);
   assert.match(shown,/UNTRUSTED MODEL OUTPUT/);
+  assert.match(shown,/Static syntax\/module checks: FAIL/);
   assert.match(shown,/app\.mjs/);
   assert.match(shown,/createTask/);
   assert.equal(s.calls(),1);
   const manifest=JSON.parse(await readFile(join(s.outputRoot,result.stageId,'stage-manifest.json'),'utf8'));
   assert.equal(manifest.release,'DENIED');assert.equal(manifest.independentQa,'NOT_RUN');
+  assert.deepEqual(manifest.preflight,result.preflight);
 });
 
 test('candidate preview fails closed on changed state, unexpected files and excessive text',()=>{
@@ -118,6 +122,10 @@ test('candidate preview fails closed on changed state, unexpected files and exce
   for(const change of [
     {release:'ALLOWED'},
     {stageId:'../outside'},
+    {preflight:{status:'PASS',scope:'SYNTAX_AND_MODULE_SHAPE_ONLY_NOT_QA',issues:['APP_PARSE_ERROR']}},
+    {preflight:{status:'FAIL',scope:'SYNTAX_AND_MODULE_SHAPE_ONLY_NOT_QA',issues:[]}},
+    {preflight:{status:'FAIL',scope:'SYNTAX_AND_MODULE_SHAPE_ONLY_NOT_QA',issues:['<script>']}},
+    {preflight:{status:'PASS',scope:'INDEPENDENT_QA',issues:[]}},
     {preview:{...base.preview,files:[draft.files[0],{path:'other.mjs',content:'x'}]}},
     {preview:{...base.preview,files:[draft.files[0],{...draft.files[1],content:'x'.repeat(20001)}]}},
   ])assert.throws(()=>formatQuarantinedCandidate({...base,...change}),/INVALID_QUARANTINE_PREVIEW/);

@@ -1,0 +1,42 @@
+{
+  "schema": "constructor_task_stage_v1",
+  "missionId": "local-task-d305f3bf98dd03980e400091",
+  "goalSha256": "3ad281b8cfb0f9dd109d820faab26046b63cc13e1f50658a036a8c6cad991c94",
+  "model": "gguf-6a1a2eb6d156",
+  "modelReceipt": {
+    "provider": "llama-cpp-local",
+    "requestedModel": "gguf-6a1a2eb6d156",
+    "returnedModel": "gguf-6a1a2eb6d156",
+    "modelSha256": "6a1a2eb6d15622bf3c96857206351ba97e1af16c30d7a74ee38970e434e9407e",
+    "startedAt": "2026-11-11T02:52:02.815Z",
+    "finishedAt": "2026-11-11T02:52:54.335Z",
+    "latencyMs": 51520,
+    "inputSha256": "26155b980604d1a857e1b7ee431ba7ada18e1171d4f9858f2de3205049fdf9d2",
+    "outputSha256": "993cdb7476420c3effcbde428a37b86204a00b392cee7f8cc18ad13e3bf1037b",
+    "outcome": "MODEL_RESPONSE_RECEIVED",
+    "toolAccess": "NONE",
+    "approval": "NOT_GRANTED",
+    "responseFormat": "constructor_draft_v1",
+    "schemaSha256": "fd4d2ae555076aba433dae990ea9b83fc4405c917af43124deba6ccdf4f3cf4d"
+  },
+  "modelOutputSha256": "993cdb7476420c3effcbde428a37b86204a00b392cee7f8cc18ad13e3bf1037b",
+  "draftSha256": "5e7a85602450a358d4109754e54671eed78b69873ca464d46c9262acdce9330f",
+  "source": "UNTRUSTED_LOCAL_MODEL_PROPOSAL",
+  "files": [
+    {
+      "path": "app.mjs",
+      "bytes": 369,
+      "sha256": "8ebd73546a83ea7488d340e55c1913e197e77666f8899d518f91e0537be205c3"
+    },
+    {
+      "path": "test/app.test.mjs",
+      "bytes": 1366,
+      "sha256": "b53c51de6863ccaff26f17c68bc808f483694114abc65bb2b72f863471e05fba"
+    }
+  ],
+  "staticReview": "NO_HEURISTIC_FLAGS_NOT_A_SANDBOX",
+  "execution": "NOT_RUN",
+  "independentQa": "NOT_RUN",
+  "approval": "DENIED",
+  "release": "DENIED"
+}

@@ -6,7 +6,7 @@ import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {once} from 'node:events';
 import {createServer} from 'node:http';
-import {createVelionChatTransport} from '../engineering/velion-chat-transport.mjs';
+import {createVelionChatTransport,VELION_DRAFT_FORMAT,VELION_DRAFT_SCHEMA_SHA256} from '../engineering/velion-chat-transport.mjs';
 import {createLocalTaskService,localTaskServiceFromEnv} from '../engineering/local-task-service.mjs';
 import {createAppServer} from '../tools/serve.mjs';
 
@@ -119,6 +119,49 @@ test('bridge propagates cancellation to the VELION request',async()=>{
   cancel.abort();await assert.rejects(pending,/cancelled/);assert.equal(seen.aborted,true);
 });
 
+test('structured mode requests the pinned format and rejects any silent downgrade',async()=>{
+  let calls=0;
+  const bridge=createVelionChatTransport({port:4174,accessToken:chatToken,expectedModelSha256:hash,
+    structured:true,fetchImpl:async(_url,request)=>{
+      calls++;const body=JSON.parse(request.body);
+      assert.equal(body.responseFormat,VELION_DRAFT_FORMAT);
+      const answer=JSON.stringify(draft);
+      const proof={...receipt,inputSha256:digest(JSON.stringify(body.messages)),outputSha256:digest(answer)};
+      if(calls>1){proof.responseFormat=VELION_DRAFT_FORMAT;proof.schemaSha256=VELION_DRAFT_SCHEMA_SHA256;}
+      return new Response(JSON.stringify({answer,receipt:proof}));
+    }});
+  await assert.rejects(bridge(taskUrl,options),/VELION_CHAT_RESPONSE_INVALID/);
+  const reply=await bridge(taskUrl,options);const result=await reply.json();
+  assert.equal(result.modelReceipt.responseFormat,VELION_DRAFT_FORMAT);
+  assert.equal(result.modelReceipt.schemaSha256,VELION_DRAFT_SCHEMA_SHA256);
+  assert.equal(calls,2);
+});
+
+test('structured loopback task retains the pinned schema receipt through quarantine',async t=>{
+  const root=await mkdtemp(join(tmpdir(),'velion-schema-http-'));t.after(()=>rm(root,{recursive:true,force:true}));
+  const velion=createServer(async(req,res)=>{
+    let raw='';for await(const chunk of req)raw+=chunk;
+    const body=JSON.parse(raw);assert.equal(body.responseFormat,VELION_DRAFT_FORMAT);
+    assert.equal(req.headers.authorization,'Bearer '+chatToken);
+    const answer=JSON.stringify({...draft,steps:[{id:'build',action:'Build',acceptance:'Review'}]});
+    res.writeHead(200,{'Content-Type':'application/json'});
+    res.end(JSON.stringify({answer,receipt:{...receipt,inputSha256:digest(JSON.stringify(body.messages)),
+      outputSha256:digest(answer),responseFormat:VELION_DRAFT_FORMAT,schemaSha256:VELION_DRAFT_SCHEMA_SHA256}}));
+  });
+  velion.listen(0,'127.0.0.1');await once(velion,'listening');
+  t.after(()=>new Promise(resolve=>velion.close(resolve)));
+  const bridge=createVelionChatTransport({port:velion.address().port,accessToken:chatToken,
+    expectedModelSha256:hash,structured:true});
+  const service=createLocalTaskService({accessToken:appToken,permitSecret,model,outputRoot:root,
+    fetchImpl:bridge,provider:'VELION_LOCAL_GGUF_CHAT_ADAPTER',requireStructured:true});
+  const output=await service.generate('Build a task manager');
+  assert.equal(output.status,'QUARANTINED_NOT_EXECUTED');assert.equal(output.execution,'NOT_RUN');
+  assert.equal(output.modelReceipt.schemaSha256,VELION_DRAFT_SCHEMA_SHA256);
+  const manifest=JSON.parse(await readFile(join(root,output.stageId,'stage-manifest.json'),'utf8'));
+  assert.equal(manifest.modelReceipt.responseFormat,VELION_DRAFT_FORMAT);
+  assert.equal(manifest.release,'DENIED');
+});
+
 test('local GGUF route fails closed on bad configuration and secret reuse',()=>{
   const env={IMPERIAL_TASK_LOCAL_ONLY:'YES',CONSTRUCTOR_LOCAL_MODEL_ROUTE:'velion-gguf',
     CONSTRUCTOR_LOCAL_AI_TOKEN:appToken,VELION_LOCAL_PERMIT_SECRET:permitSecret,
@@ -126,6 +169,8 @@ test('local GGUF route fails closed on bad configuration and secret reuse',()=>{
     VELION_LOCAL_MODEL:model,CONSTRUCTOR_LOCAL_QUARANTINE:'/tmp'};
   assert.ok(localTaskServiceFromEnv(env));
   for(const change of [{VELION_CHAT_TOKEN:appToken},{VELION_LOCAL_MODEL:'different'},
-    {VELION_CHAT_PORT:'0'},{VELION_GGUF_SHA256:'bad'},{CONSTRUCTOR_LOCAL_MODEL_ROUTE:'https://outside.example'}])
+    {VELION_CHAT_PORT:'0'},{VELION_GGUF_SHA256:'bad'},{CONSTRUCTOR_LOCAL_MODEL_ROUTE:'https://outside.example'},
+    {CONSTRUCTOR_LOCAL_GGUF_STRUCTURED:'maybe'}])
     assert.throws(()=>localTaskServiceFromEnv({...env,...change}),/CONFIGURATION_INVALID/);
+  assert.ok(localTaskServiceFromEnv({...env,CONSTRUCTOR_LOCAL_GGUF_STRUCTURED:'YES'}));
 });

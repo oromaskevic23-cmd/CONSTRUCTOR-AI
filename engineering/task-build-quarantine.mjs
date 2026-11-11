@@ -6,6 +6,7 @@ import {constants} from 'node:fs';
 import {parseModelDraft} from './draft-contract.mjs';
 import {staticDraftReview} from './static-review.mjs';
 import {validateTaskDraft} from './velion-task-generator.mjs';
+import {inspectTaskSource} from './task-source-preflight.mjs';
 const hash=x=>createHash('sha256').update(x).digest('hex');
 
 export async function stageGeneratedTaskApp({receipt,outputRoot}={}){
@@ -16,6 +17,7 @@ export async function stageGeneratedTaskApp({receipt,outputRoot}={}){
   if(parsed.sha256!==receipt.draftSha256)throw Error('DRAFT_HASH_MISMATCH');
   const review=staticDraftReview(parsed.draft);
   if(review.forbidden.length||review.flags.length)throw Error('STATIC_REVIEW_BLOCKED');
+  const preflight=inspectTaskSource(parsed.draft.files);
   if(typeof outputRoot!=='string'||!outputRoot)throw Error('OUTPUT_ROOT_REQUIRED');
   const dest=resolve(outputRoot),info=await lstat(dest);
   if(!info.isDirectory()||info.isSymbolicLink())throw Error('UNSAFE_OUTPUT_ROOT');
@@ -33,10 +35,10 @@ export async function stageGeneratedTaskApp({receipt,outputRoot}={}){
     ...(receipt.modelReceipt?{modelReceipt:receipt.modelReceipt}:{}),
     modelOutputSha256:receipt.modelOutputSha256,draftSha256:receipt.draftSha256,
     source:'UNTRUSTED_LOCAL_MODEL_PROPOSAL',files:inventory.sort((a,b)=>a.path.localeCompare(b.path)),
-    staticReview:'NO_HEURISTIC_FLAGS_NOT_A_SANDBOX',execution:'NOT_RUN',
+    staticReview:'NO_HEURISTIC_FLAGS_NOT_A_SANDBOX',preflight,execution:'NOT_RUN',
     independentQa:'NOT_RUN',approval:'DENIED',release:'DENIED'};
   const manifestText=JSON.stringify(evidence,null,2)+'\n';
   const handle=await open(join(stage,'stage-manifest.json'),constants.O_CREAT|constants.O_EXCL|constants.O_WRONLY|constants.O_NOFOLLOW,0o644);
   try{await handle.writeFile(manifestText);await handle.sync();}finally{await handle.close();}
-  return Object.freeze({stage,stageManifestSha256:hash(manifestText),status:'QUARANTINED_NOT_EXECUTED',release:'DENIED'});
+  return Object.freeze({stage,stageManifestSha256:hash(manifestText),preflight,status:'QUARANTINED_NOT_EXECUTED',release:'DENIED'});
 }
