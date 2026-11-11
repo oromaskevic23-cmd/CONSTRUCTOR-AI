@@ -3,7 +3,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
-import {Window} from '/deps/happy-dom/lib/index.js';
+import {Window} from '/deps/node_modules/happy-dom/lib/index.js';
 import {mountTaskUi} from '/ui/ui.mjs';
 import * as candidate from '/work/app.mjs';
 

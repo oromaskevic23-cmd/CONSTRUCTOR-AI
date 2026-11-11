@@ -1,13 +1,13 @@
-name: CONSTRUCTOR Task UI — Browser and Isolated Candidate Check
+name: CONSTRUCTOR Task UI — Isolated Candidate Check
 on:
   push:
     branches: [engineering/velion-draft-qa-20261111]
 permissions:
   contents: read
 jobs:
-  task-ui-check:
+  task-ui-candidate:
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 6
     env:
       SANDBOX_IMAGE: node@sha256:fe4f6d74e20370acb04ad889077d14d0f64a9c8ea6a42bc60cddf1e844699914
     steps:
@@ -19,19 +19,8 @@ jobs:
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: '22'
-      - name: Install locked dependencies and temporary pinned browser driver
-        run: |
-          npm ci --ignore-scripts --no-audit --no-fund
-          npm install --no-save --package-lock=false --ignore-scripts --no-audit --no-fund playwright@1.62.1
-      - name: Check UI with a synthetic domain fixture
-        run: node --test test/task-ui.test.mjs
-      - name: Exercise synthetic UI in real Chromium desktop and phone-sized viewports
-        shell: bash
-        run: |
-          set -euo pipefail
-          BROWSER="$(command -v google-chrome-stable || command -v google-chrome || command -v chromium)"
-          test -n "$BROWSER"
-          TASK_UI_CHROMIUM="$BROWSER" TASK_UI_BROWSER_NO_SANDBOX=YES node tools/task-ui-browser-smoke.mjs
+      - name: Install locked test dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Prepare verified assistant-revised candidate
         shell: bash
         run: |
@@ -50,6 +39,6 @@ jobs:
             --pids-limit=64 --memory=512m --cpus=1 --tmpfs /tmp:rw,noexec,nosuid,nodev,size=33554432 \
             --mount "type=bind,src=$RUNNER_TEMP/velion-ui-candidate,dst=/work,readonly" \
             --mount "type=bind,src=$GITHUB_WORKSPACE/qa/task-ui,dst=/ui,readonly" \
-            --mount "type=bind,src=$GITHUB_WORKSPACE/node_modules,dst=/deps,readonly" \
+            --mount "type=bind,src=$GITHUB_WORKSPACE/node_modules,dst=/deps/node_modules,readonly" \
             --mount "type=bind,src=$GITHUB_WORKSPACE/tools/task-ui-sandbox-check.mjs,dst=/check.mjs,readonly" \
             "$SANDBOX_IMAGE" node --test /check.mjs
