@@ -1,0 +1,26 @@
+{
+  "observedAt": "2026-11-10T21:50:48.643Z",
+  "elapsedMs": 38904,
+  "modelSha256": "6a1a2eb6d15622bf3c96857206351ba97e1af16c30d7a74ee38970e434e9407e",
+  "httpStatus": 502,
+  "outcome": "LOCAL_MODEL_UNAVAILABLE",
+  "modelAnswered": false,
+  "modelReceipt": null,
+  "outputSha256": null,
+  "stagedCount": 0,
+  "stageId": null,
+  "independentQa": "NOT_RUN",
+  "execution": "NOT_RUN",
+  "approval": "NOT_GRANTED",
+  "release": "DENIED",
+  "scope": "ONE_SYNTHETIC_REQUEST_LOCAL_GGUF",
+  "modelOutput": null,
+  "velionHttpStatus": 502,
+  "velionError": "CHAT_MODEL_RESPONSE_INVALID",
+  "ggufError": "CHAT_MODEL_RESPONSE_INVALID",
+  "generation": {
+    "stopReason": "maxTokens",
+    "length": 1871,
+    "outputSha256": "5d4343d745ca3c8754b8325f4327bc0636c55d57774fdef819b2a146cc1afc53"
+  }
+}

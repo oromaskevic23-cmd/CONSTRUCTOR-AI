@@ -1,0 +1,39 @@
+{
+  "observedAt": "2026-11-10T21:49:17.061Z",
+  "elapsedMs": 13367,
+  "modelSha256": "6a1a2eb6d15622bf3c96857206351ba97e1af16c30d7a74ee38970e434e9407e",
+  "httpStatus": 422,
+  "outcome": "MODEL_DRAFT_OR_QUARANTINE_REJECTED",
+  "modelAnswered": true,
+  "modelReceipt": {
+    "provider": "llama-cpp-local",
+    "requestedModel": "gguf-6a1a2eb6d156",
+    "returnedModel": "gguf-6a1a2eb6d156",
+    "startedAt": "2026-11-10T21:49:06.912Z",
+    "finishedAt": "2026-11-10T21:49:17.050Z",
+    "latencyMs": 10138,
+    "inputSha256": "12bf5840b1b004aa2ab62e3a25665a2d119fe004e3384f20433c9e3ec9f3f391",
+    "outputSha256": "aeaec2c46c9fcc49da8a282b47f763d9de7d469187952ae256d932ce0c54d7e3",
+    "outcome": "MODEL_RESPONSE_RECEIVED",
+    "toolAccess": "NONE",
+    "approval": "NOT_GRANTED",
+    "modelSha256": "6a1a2eb6d15622bf3c96857206351ba97e1af16c30d7a74ee38970e434e9407e"
+  },
+  "outputSha256": "aeaec2c46c9fcc49da8a282b47f763d9de7d469187952ae256d932ce0c54d7e3",
+  "stagedCount": 0,
+  "stageId": null,
+  "independentQa": "NOT_RUN",
+  "execution": "NOT_RUN",
+  "approval": "NOT_GRANTED",
+  "release": "DENIED",
+  "scope": "ONE_SYNTHETIC_REQUEST_LOCAL_GGUF",
+  "modelOutput": "```json\n{\n  \"schema\": {\n    \"Task\": {\n      \"id\": String,\n      \"title\": String,\n      \"done\": Boolean\n    }\n  },\n  \"summary\": \"A simple task manager with completed tasks.\",\n  \"steps\": [\n    \"Define the Task model with id, title, and done fields.\",\n    \"Create a function to add a new task.\",\n    \"Create a function to mark a task as completed.\",\n    \"Create a function to filter open tasks.\"\n  ],\n  \"files\": [\n    \"app.mjs\",\n    \"test/app.test.mjs\"\n  ]\n}\n```",
+  "velionHttpStatus": 200,
+  "velionError": null,
+  "ggufError": null,
+  "generation": {
+    "stopReason": "eogToken",
+    "length": 459,
+    "outputSha256": "aeaec2c46c9fcc49da8a282b47f763d9de7d469187952ae256d932ce0c54d7e3"
+  }
+}

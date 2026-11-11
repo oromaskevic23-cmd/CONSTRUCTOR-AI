@@ -48,7 +48,7 @@ export function validateTaskDraft(raw){
 }
 
 export async function requestVelionTaskDraft({mission,permit,permitSecret,consumedNonces,
-  model,fetchImpl=fetch,now=Date.now(),timeoutMs=90000,signal}={}){
+  model,fetchImpl=fetch,provider='VELION_LOCAL_OLLAMA_ADAPTER',now=Date.now(),timeoutMs=90000,signal}={}){
   const m=validateMission(mission);
   if(!/\btask[\s-]*manager\b|менеджер\s+задач|управлени[ея]\s+задач/i.test(m.goal)){
     throw new TaskGenerationError('ONLY_TASK_MANAGER_V1_SUPPORTED');
@@ -57,6 +57,8 @@ export async function requestVelionTaskDraft({mission,permit,permitSecret,consum
     throw new TaskGenerationError('LOCAL_MODEL_IDENTIFIER_INVALID');
   }
   if(typeof fetchImpl!=='function')throw new TaskGenerationError('FETCH_REQUIRED');
+  if(!['VELION_LOCAL_OLLAMA_ADAPTER','VELION_LOCAL_GGUF_CHAT_ADAPTER'].includes(provider))
+    throw new TaskGenerationError('LOCAL_PROVIDER_INVALID');
   if(!Number.isSafeInteger(timeoutMs)||timeoutMs<1000||timeoutMs>120000){
     throw new TaskGenerationError('MODEL_TIMEOUT_INVALID');
   }
@@ -66,7 +68,11 @@ export async function requestVelionTaskDraft({mission,permit,permitSecret,consum
   const system=[
     'You are the VELION-controlled, restricted CONSTRUCTOR AI local engineering generator.',
     'Generate new JavaScript code for a small task-manager domain module, not a built-in template.',
-    'Return exactly constructor_draft_v1 JSON: schema, summary, steps and files.',
+    'Return one JSON object only, without Markdown fences, comments or surrounding text.',
+    'The schema field must be the string "constructor_draft_v1"; summary must be a string.',
+    'The steps field must be an array of objects with string fields id, action and acceptance.',
+    'The files field must be an array of objects with string fields path and content.',
+    'Put actual JavaScript source in each content string and escape newlines for JSON.',
     'Files MUST be exactly app.mjs and test/app.test.mjs.',
     'app.mjs must export pure createTask(id,title), completeTask(task), filterOpen(tasks).',
     'createTask returns {id,title,done:false}; completeTask returns a NEW object with done:true;',
@@ -98,10 +104,25 @@ export async function requestVelionTaskDraft({mission,permit,permitSecret,consum
   if(!envelope||envelope.done!==true||envelope.model!==model||typeof envelope.response!=='string'||
     (Object.hasOwn(envelope,'done_reason')&&envelope.done_reason!=='stop'))
     throw new TaskGenerationError('LOCAL_MODEL_INCOMPLETE_OR_MISMATCHED');
-  const validated=validateTaskDraft(envelope.response);
+  if(provider==='VELION_LOCAL_GGUF_CHAT_ADAPTER'&&
+     (!envelope.modelReceipt||envelope.modelReceipt.provider!=='llama-cpp-local'||
+      envelope.modelReceipt.requestedModel!==model||envelope.modelReceipt.returnedModel!==model||
+      !/^[a-f0-9]{64}$/.test(envelope.modelReceipt.modelSha256)||
+      model!=='gguf-'+envelope.modelReceipt.modelSha256.slice(0,12)||
+      envelope.modelReceipt.outputSha256!==HASH(envelope.response)))
+    throw new TaskGenerationError('LOCAL_MODEL_RECEIPT_INVALID');
+  let validated;
+  try{validated=validateTaskDraft(envelope.response);}
+  catch(error){
+    // A malformed model answer is not an invalid user request. Preserve the
+    // fail-closed outcome without misdirecting the user or echoing model text.
+    if(error?.name==='DraftContractError')throw new TaskGenerationError('LOCAL_MODEL_DRAFT_INVALID');
+    throw error;
+  }
   return Object.freeze({status:'UNTRUSTED_GENERATED_TASK_APP',missionId:m.id,
-    goalSha256:HASH(m.goal),model,provider:'VELION_LOCAL_OLLAMA_ADAPTER',
+    goalSha256:HASH(m.goal),model,provider,
     modelOutputSha256:HASH(envelope.response),draftSha256:validated.sha256,
+    ...(provider==='VELION_LOCAL_GGUF_CHAT_ADAPTER'?{modelReceipt:envelope.modelReceipt}:{}),
     draft:validated.draft,execution:'NOT_RUN',independentQa:'NOT_RUN',
     approval:'DENIED',release:'DENIED',modelIdentity:'THIRD_PARTY_WEIGHTS_NOT_ATTESTED'});
 }

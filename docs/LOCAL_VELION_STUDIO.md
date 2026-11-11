@@ -50,11 +50,33 @@ The local controller issues a one-time mission-scoped v2 HMAC permit bound to th
 
 If the client disconnects while a request is running, the server sends an abort signal to the local model request and releases its one-request slot after the provider returns. Actual cancellation depends on the local model server honoring the disconnected request. A disconnect that occurs during filesystem staging can still leave a quarantined draft; no execution or release is authorized.
 
-The model must already be reachable at `http://127.0.0.1:11434/api/generate`.
+The default Ollama route requires a model already reachable at `http://127.0.0.1:11434/api/generate`.
 No remote provider, paid fallback, model download or model installation is
 performed by this feature. Model availability and its terms remain operator
 responsibilities. The local form supports only the existing Task Manager domain
 module contract; arbitrary application generation is not provided.
+
+## Optional VELION GGUF chat route
+
+On the same trusted computer, a separately started VELION chat with the GGUF
+backend can be used instead of Ollama. This route is disabled by default, uses
+only `127.0.0.1`, and requires its own VELION session token and expected model
+SHA-256. In the Constructor server environment, in addition to the settings
+above, set `CONSTRUCTOR_LOCAL_MODEL_ROUTE=velion-gguf`, `VELION_CHAT_PORT` to
+the VELION server's port, `VELION_CHAT_TOKEN` to that server's token, and
+`VELION_GGUF_SHA256` to the verified model-file hash. Set `VELION_LOCAL_MODEL`
+to `gguf-` followed by the first 12 lowercase hex digits of that hash.
+The VELION token must differ from both Constructor secrets. Keep all secrets
+local and use the separate VELION chat setup for launching that service.
+
+The adapter checks the local GGUF receipt's model identity, file hash, timing,
+and input/output hashes before passing the untrusted answer through the existing
+strict draft contract and quarantine. The receipt is local and unsigned: it is
+not independent attestation. It makes no fallback calls. VELION's chat output
+limits apply, so models may fail to produce a complete valid Task Manager draft.
+A successful quarantine does not mean execution, independent QA or production
+approval. The [recorded real-model trials](VELION_GGUF_BRIDGE_EVIDENCE_20261110.md)
+did not produce an accepted candidate.
 
 ## Boundaries
 

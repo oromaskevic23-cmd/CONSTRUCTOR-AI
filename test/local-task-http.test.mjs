@@ -141,6 +141,13 @@ test('dangerous model output is blocked before quarantine',async t=>{
   assert.deepEqual(await readdir(s.outputRoot),[]);
 });
 
+test('malformed model output is reported as a model rejection, not a user error',async t=>{
+  const s=await setup(t,async()=>new Response(JSON.stringify({model,done:true,response:'not valid JSON'}),{status:200}));
+  const res=await s.post(JSON.stringify({goal:'Build a task manager'}));
+  assert.equal(res.status,422);assert.equal((await res.json()).code,'MODEL_DRAFT_OR_QUARANTINE_REJECTED');
+  assert.deepEqual(await readdir(s.outputRoot),[]);
+});
+
 test('chunked request size is bounded even without Content-Length',async t=>{
   const s=await setup(t);
   const result=await new Promise((resolve,reject)=>{

@@ -25,6 +25,9 @@ async function call({now=Date.now(),input=draft,model='fixture:task-v1',fetchImp
      const body=JSON.parse(request.body);
      assert.equal(body.options.num_predict,4096);
      assert.equal(body.options.max_predict,undefined);
+     assert.match(body.prompt,/schema field must be the string "constructor_draft_v1"/);
+     assert.match(body.prompt,/objects with string fields path and content/);
+     assert.match(body.prompt,/without Markdown fences/);
      return new Response(JSON.stringify({done:true,model,response:JSON.stringify(input)}),{status:200});
    })});
 }
@@ -41,7 +44,7 @@ test('local VELION adapter denies unsupported tasks, model IDs and partial respo
  const permit=issueLocalDraftPermit({mission,route:ROUTE_LOCAL_TASK,model:'local-v1',secret,now});
  await assert.rejects(requestVelionTaskDraft({mission:{...mission,goal:'Build a banking app'},permit,permitSecret:secret,model:'local-v1',now,consumedNonces:new Set()}),/ONLY_TASK_MANAGER/);
  await assert.rejects(call({model:'https://evil.example/api'}),/INVALID_MODEL_SCOPE|LOCAL_MODEL/);
- await assert.rejects(call({input:{...draft,files:[{path:'run.sh',content:'x'}]}}),/TASK_CONTRACT|Disallowed artifact type/);
+ await assert.rejects(call({input:{...draft,files:[{path:'run.sh',content:'x'}]}}),/TASK_CONTRACT|LOCAL_MODEL_DRAFT_INVALID/);
  await assert.rejects(call({fetchImpl:async()=>new Response(JSON.stringify({done:false,model:'fixture:task-v1',response:JSON.stringify(draft)}),{status:200})}),/INCOMPLETE/);
  await assert.rejects(call({fetchImpl:async()=>new Response(JSON.stringify({done:true,done_reason:'length',model:'fixture:task-v1',response:JSON.stringify(draft)}),{status:200})}),/INCOMPLETE/);
  await assert.rejects(call({fetchImpl:async()=>{throw Error('offline');}}),/LOCAL_MODEL_UNAVAILABLE/);

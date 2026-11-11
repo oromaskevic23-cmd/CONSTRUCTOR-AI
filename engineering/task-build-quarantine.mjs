@@ -30,6 +30,7 @@ export async function stageGeneratedTaskApp({receipt,outputRoot}={}){
   }
   const evidence={schema:'constructor_task_stage_v1',missionId:receipt.missionId,
     goalSha256:receipt.goalSha256,model:receipt.model,
+    ...(receipt.modelReceipt?{modelReceipt:receipt.modelReceipt}:{}),
     modelOutputSha256:receipt.modelOutputSha256,draftSha256:receipt.draftSha256,
     source:'UNTRUSTED_LOCAL_MODEL_PROPOSAL',files:inventory.sort((a,b)=>a.path.localeCompare(b.path)),
     staticReview:'NO_HEURISTIC_FLAGS_NOT_A_SANDBOX',execution:'NOT_RUN',

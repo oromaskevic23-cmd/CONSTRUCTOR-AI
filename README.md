@@ -48,6 +48,10 @@ export; the trusted key enrollment and live QA signer are not implemented.
 
 An opt-in, loopback-only local Studio form can request a **Task Manager candidate** from an already installed Ollama model. The server uses a one-time mission-scoped v2 permit and quarantines validated source without executing it. It requires an independent local session token, disallows hosted-site token submission, and has bounded request/response sizes. This is not production AI Passport, independent QA, or a working prompt-to-any-app factory. [Configuration and security limits](docs/LOCAL_VELION_STUDIO.md).
 
+An explicitly configured local VELION GGUF chat can also serve this restricted task route. The adapter checks the model's reported file hash and response receipt and sends accepted source to the same quarantine; there is no paid or remote fallback. Model output remains untrusted and the receipt is local, unsigned evidence, not proof of model authorship or release approval. [Setup and limitations](docs/LOCAL_VELION_STUDIO.md#optional-velion-gguf-chat-route).
+
+**Real-model bridge status:** local Qwen trials reached the model but did not produce an accepted Task Manager candidate. No generated application was executed or independently tested. [Observed results and limits](docs/VELION_GGUF_BRIDGE_EVIDENCE_20261110.md).
+
 ## Template Studio
 
 [Open the live Template Studio](https://oromaskevic23-cmd.github.io/Capital-Core-Public/reference/constructor-ai/studio/studio.html).
