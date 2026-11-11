@@ -1,0 +1,51 @@
+name: VELION Real Draft Independent Sandbox QA
+on:
+  push:
+    branches: [engineering/velion-draft-qa-20261111]
+permissions:
+  contents: read
+jobs:
+  isolated-real-draft:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      SANDBOX_IMAGE: node@sha256:fe4f6d74e20370acb04ad889077d14d0f64a9c8ea6a42bc60cddf1e844699914
+    steps:
+      - name: Checkout exact source without saved credentials
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Prepare and verify the real model draft
+        id: prepare
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/velion-draft/test"
+          cp evidence/structured-gguf-20261111/candidate-app.mjs.txt "$RUNNER_TEMP/velion-draft/app.mjs"
+          cp evidence/structured-gguf-20261111/candidate-test.mjs.txt "$RUNNER_TEMP/velion-draft/test/app.test.mjs"
+          printf '%s  %s\n' '8ebd73546a83ea7488d340e55c1913e197e77666f8899d518f91e0537be205c3' "$RUNNER_TEMP/velion-draft/app.mjs" | sha256sum --check
+          printf '%s  %s\n' 'b53c51de6863ccaff26f17c68bc808f483694114abc65bb2b72f863471e05fba' "$RUNNER_TEMP/velion-draft/test/app.test.mjs" | sha256sum --check
+      - name: Pull pinned sandbox image
+        id: image
+        run: docker pull "$SANDBOX_IMAGE"
+      - name: Run model-proposed tests in an isolated container
+        if: always() && steps.prepare.outcome == 'success' && steps.image.outcome == 'success'
+        shell: bash
+        run: |
+          set -euo pipefail
+          timeout --kill-after=5s 60s docker run --rm --pull=never --network=none --read-only \
+            --user "$(id -u):$(id -g)" --cap-drop=ALL --security-opt=no-new-privileges \
+            --pids-limit=64 --memory=256m --cpus=1 --tmpfs /tmp:rw,noexec,nosuid,nodev,size=33554432 \
+            --mount "type=bind,src=$RUNNER_TEMP/velion-draft,dst=/work,readonly" \
+            "$SANDBOX_IMAGE" node --test /work/test/app.test.mjs
+      - name: Run independently authored tests in an isolated container
+        if: always() && steps.prepare.outcome == 'success' && steps.image.outcome == 'success'
+        shell: bash
+        run: |
+          set -euo pipefail
+          timeout --kill-after=5s 60s docker run --rm --pull=never --network=none --read-only \
+            --user "$(id -u):$(id -g)" --cap-drop=ALL --security-opt=no-new-privileges \
+            --pids-limit=64 --memory=256m --cpus=1 --tmpfs /tmp:rw,noexec,nosuid,nodev,size=33554432 \
+            --mount "type=bind,src=$RUNNER_TEMP/velion-draft,dst=/work,readonly" \
+            --mount "type=bind,src=$GITHUB_WORKSPACE/qa,dst=/qa,readonly" \
+            "$SANDBOX_IMAGE" node --test /qa/independent-task-suite.mjs
