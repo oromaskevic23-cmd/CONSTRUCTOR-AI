@@ -16,5 +16,6 @@ const result=await requestVelionTaskDraft({mission,permit,permitSecret:secret,
 const staged=await stageGeneratedTaskApp({receipt:result,outputRoot});
 console.log(JSON.stringify({status:'UNTRUSTED_MODEL_OUTPUT_QUARANTINED',
  mode:'REAL_LOCAL_MODEL_REQUEST_NOT_INDEPENDENTLY_ATTESTED',missionId:result.missionId,
- stage:staged.stage,draftSha256:result.draftSha256,execution:'NOT_RUN',
+ stage:staged.stage,draftSha256:result.draftSha256,preflight:staged.preflight,execution:'NOT_RUN',
  independentQa:'NOT_RUN',ownerApproval:'NOT_GRANTED',release:'DENIED'}));
+
