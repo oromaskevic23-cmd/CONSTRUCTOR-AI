@@ -1,0 +1,35 @@
+// Revised by the assistant after inspecting the retained model draft.
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {createTask, completeTask, filterOpen} from '../app.mjs';
+
+test('creation preserves valid fields and rejects invalid identifiers and titles', () => {
+  assert.deepEqual(createTask('a-1', 'Task 1'), {id: 'a-1', title: 'Task 1', done: false});
+  for (const id of ['', '../escape', 'line\n', 'x'.repeat(65), 3, null]) {
+    assert.throws(() => createTask(id, 'Valid'), TypeError);
+  }
+  for (const title of ['', '  ', null, 4]) assert.throws(() => createTask('valid', title), TypeError);
+});
+
+test('completion validates the entire task and leaves the original untouched', () => {
+  const original = createTask('1', 'Task 1');
+  const completed = completeTask(original);
+  assert.deepEqual(completed, {id: '1', title: 'Task 1', done: true});
+  assert.equal(original.done, false);
+  assert.notEqual(original, completed);
+  for (const task of [null, {}, {id: '1', title: 'Task', done: 'yes'}]) {
+    assert.throws(() => completeTask(task), TypeError);
+  }
+});
+
+test('filtering creates a new array and rejects malformed task lists', () => {
+  const open = createTask('1', 'Open');
+  const done = completeTask(createTask('2', 'Done'));
+  const source = [open, done];
+  const filtered = filterOpen(source);
+  assert.deepEqual(filtered, [open]);
+  assert.notEqual(filtered, source);
+  assert.equal(source.length, 2);
+  assert.throws(() => filterOpen(null), TypeError);
+  assert.throws(() => filterOpen([open, {}]), TypeError);
+});

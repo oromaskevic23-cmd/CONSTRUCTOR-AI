@@ -1,8 +1,10 @@
 # VELION structured draft: local observation, 2026-11-11
 
-**Status: an untrusted two-file domain draft was quarantined. Its module-shape
-preflight failed. It is not a finished Task Manager application, has not been
-executed, and has not passed independent QA or release approval.**
+**Status at the original observation: an untrusted two-file domain draft was
+quarantined without execution. Its later module-shape preflight failed. A later
+isolated QA run also failed; an assistant-revised domain module passed a limited
+independent suite. Neither is a finished Task Manager application or release.**
+See the [subsequent isolated QA record](REAL_DRAFT_QA_20261111.md).
 
 ## What was observed
 
@@ -58,8 +60,10 @@ It checks only syntax and a narrow module shape. A preflight PASS is **not**
 a functional test, a security review, a sandbox, or independent QA. Future
 quarantine manifests include the preflight result, including FAIL results.
 
-At the time of this observation, Docker and Podman were unavailable and the
-available `bwrap` isolation attempt was denied by the environment. Consequently
-the generated files were not executed and the independent sandbox suite was not
-run. A new run should use a working isolated runner and a candidate that passes
-the preliminary checks, while respecting free-tier limits.
+At the time of the original local observation, Docker and Podman were
+unavailable and the available `bwrap` isolation attempt was denied by the
+environment. Consequently the generated files were not executed and the
+independent sandbox suite was not run **during that observation**. The later
+[isolated QA record](REAL_DRAFT_QA_20261111.md) reports the separate runs and
+their results. The original observation and quarantine manifest remain
+unchanged as historical records.

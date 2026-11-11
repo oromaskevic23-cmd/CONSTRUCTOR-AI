@@ -43,7 +43,19 @@ export function createVelionChatTransport({port,accessToken,expectedModelSha256,
       headers:{'Content-Type':'application/json','Accept':'application/json',
         'Origin':origin,'Authorization':'Bearer '+accessToken},
       body:JSON.stringify({messages,...(structured?{responseFormat:VELION_DRAFT_FORMAT}:{})}),signal:options.signal});
-    if(!response?.ok)throw error('VELION_CHAT_UNAVAILABLE');
+    if(!response?.ok){
+      // Only fixed, bounded diagnostic codes cross the local boundary. Never
+      // forward provider text, paths, secrets or arbitrary error properties.
+      let detail;
+      try{detail=await readBounded(response);}catch{detail=null;}
+      const diagnostic={
+        '502:CHAT_MODEL_RESPONSE_INVALID':'VELION_CHAT_MODEL_RESPONSE_REJECTED',
+        '502:CHAT_MODEL_RESPONSE_TOO_LARGE':'VELION_CHAT_MODEL_RESPONSE_REJECTED',
+        '503:CHAT_FORMAT_DISABLED':'VELION_CHAT_FORMAT_DISABLED',
+        '409:CHAT_BUSY':'VELION_CHAT_BUSY',
+      }[response?.status+':'+detail?.code];
+      throw error(diagnostic||'VELION_CHAT_UNAVAILABLE');
+    }
     const output=await readBounded(response),receipt=output?.receipt;
     if(typeof output?.answer!=='string'||!output.answer.trim()||output.answer.length>4000||
        receipt?.provider!=='llama-cpp-local'||receipt.modelSha256!==expectedModelSha256||

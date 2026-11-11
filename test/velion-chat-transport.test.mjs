@@ -108,6 +108,46 @@ test('bridge refuses incorrect model identity, privileges, oversized bodies and 
   }
 });
 
+test('bounded error codes survive both local services without leaking arbitrary provider text',async t=>{
+  const root=await mkdtemp(join(tmpdir(),'velion-errors-'));t.after(()=>rm(root,{recursive:true,force:true}));
+  let upstream={status:502,code:'CHAT_MODEL_RESPONSE_INVALID'};
+  const bridge=createVelionChatTransport({port:4174,accessToken:chatToken,expectedModelSha256:hash,
+    fetchImpl:async()=>new Response(JSON.stringify({code:upstream.code,detail:'private provider detail'}),{status:upstream.status})});
+  const service=createLocalTaskService({accessToken:appToken,permitSecret,model,outputRoot:root,
+    fetchImpl:bridge,provider:'VELION_LOCAL_GGUF_CHAT_ADAPTER',requireStructured:true});
+  const server=createAppServer({localTaskService:service});server.listen(0,'127.0.0.1');await once(server,'listening');
+  t.after(()=>new Promise(resolve=>server.close(resolve)));
+  const origin='http://127.0.0.1:'+server.address().port;
+  for(const [status,code,expectedStatus,expectedCode] of [
+    [502,'CHAT_MODEL_RESPONSE_INVALID',502,'LOCAL_MODEL_RESPONSE_REJECTED'],
+    [502,'CHAT_MODEL_RESPONSE_TOO_LARGE',502,'LOCAL_MODEL_RESPONSE_REJECTED'],
+    [503,'CHAT_FORMAT_DISABLED',503,'LOCAL_MODEL_FORMAT_DISABLED'],
+    [409,'CHAT_BUSY',409,'LOCAL_MODEL_BUSY'],
+    [502,'private arbitrary value',502,'LOCAL_MODEL_UNAVAILABLE'],
+    [200,'CHAT_BUSY',502,'LOCAL_MODEL_UNAVAILABLE'],
+  ]){
+    upstream={status,code};
+    const res=await fetch(origin+'/api/local-velion/task-draft',{method:'POST',headers:{
+      'Content-Type':'application/json',Origin:origin,Authorization:'Bearer '+appToken},
+      body:JSON.stringify({goal:'Build a task manager'})});
+    const text=await res.text();
+    assert.equal(res.status,expectedStatus);assert.equal(JSON.parse(text).code,expectedCode);
+    assert.equal(text.includes('private provider detail'),false);
+    assert.equal(text.includes('private arbitrary value'),false);
+  }
+  assert.deepEqual(await readdir(root),[]);
+});
+
+test('oversized upstream error bodies are cancelled and hidden',async()=>{
+  let chunks=0,cancelled=false;
+  const body=new ReadableStream({pull(controller){chunks++;controller.enqueue(new Uint8Array(8192));},
+    cancel(){cancelled=true;}});
+  const bridge=createVelionChatTransport({port:4174,accessToken:chatToken,expectedModelSha256:hash,
+    fetchImpl:async()=>new Response(body,{status:502})});
+  await assert.rejects(bridge(taskUrl,options),/VELION_CHAT_UNAVAILABLE/);
+  assert.equal(cancelled,true);assert.ok(chunks<20);
+});
+
 test('bridge propagates cancellation to the VELION request',async()=>{
   const cancel=new AbortController();let seen;
   const bridge=createVelionChatTransport({port:4174,accessToken:chatToken,expectedModelSha256:hash,

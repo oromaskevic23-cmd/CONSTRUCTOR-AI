@@ -28,6 +28,9 @@ async function call({now=Date.now(),input=draft,model='fixture:task-v1',fetchImp
      assert.match(body.prompt,/schema field must be the string "constructor_draft_v1"/);
      assert.match(body.prompt,/objects with string fields path and content/);
      assert.match(body.prompt,/without Markdown fences/);
+     assert.match(body.prompt,/export function createTask\(id,title\)/);
+     assert.match(body.prompt,/from '\.\.\/app\.mjs'/);
+     assert.match(body.prompt,/Register concise tests by calling test/);
      return new Response(JSON.stringify({done:true,model,response:JSON.stringify(input)}),{status:200});
    })});
 }

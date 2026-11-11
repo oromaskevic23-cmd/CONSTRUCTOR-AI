@@ -50,6 +50,9 @@ export function attachLocalAiController({form,goal,token,submit,cancel,status,re
     LOCAL_ORIGIN_REQUIRED:'Open Studio using the local 127.0.0.1 address.',
     INVALID_OR_UNSUPPORTED_TASK_REQUEST:'Use a supported Task Manager request.',
     LOCAL_GENERATION_BUSY:'A generation is already in progress.',
+    LOCAL_MODEL_BUSY:'The VELION model is busy.',
+    LOCAL_MODEL_FORMAT_DISABLED:'The required structured format is not enabled on VELION.',
+    LOCAL_MODEL_RESPONSE_REJECTED:'The local model response was incomplete or did not pass validation.',
     LOCAL_MODEL_UNAVAILABLE:'The local model service is unavailable.',
     LOCAL_MODEL_HTTP_FAILED:'The local model service rejected the request.',
     MODEL_DRAFT_OR_QUARANTINE_REJECTED:'The model output or quarantine check rejected the candidate.'};

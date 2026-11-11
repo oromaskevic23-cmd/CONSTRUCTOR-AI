@@ -72,3 +72,11 @@ test('leaving the page requests cancellation and clears an entered token',async(
   assert.equal(signal.aborted,true);assert.equal(ui.token.value,'');
   await tick();assert.match(ui.status.textContent,/Stop requested/);
 });
+
+test('local model validation errors have a helpful bounded message',async()=>{
+  const ui=setup('http://127.0.0.1:4173/studio',async()=>new Response(
+    JSON.stringify({code:'LOCAL_MODEL_RESPONSE_REJECTED'}),{status:502}));
+  ui.token.value='fixture-local-token';ui.goal.value='Build a task manager';ui.send();await tick();
+  assert.match(ui.status.textContent,/incomplete or did not pass validation/);
+  assert.equal(ui.result.textContent,'');assert.equal(ui.token.value,'');
+});

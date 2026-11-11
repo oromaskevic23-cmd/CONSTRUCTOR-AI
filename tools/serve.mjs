@@ -78,11 +78,12 @@ export function createAppServer({localTaskService=null}={}) {
       catch(error){
         if(controller.signal.aborted)return;
         const code=error?.code;
-        if(code==='LOCAL_GENERATION_BUSY'){reply(res,409,{code});return;}
+        if(code==='LOCAL_GENERATION_BUSY'||code==='LOCAL_MODEL_BUSY'){reply(res,409,{code});return;}
+        if(code==='LOCAL_MODEL_FORMAT_DISABLED'){reply(res,503,{code});return;}
         if(code==='ONLY_TASK_MANAGER_V1_SUPPORTED'||error?.name==='DraftContractError'){
           reply(res,422,{code:'INVALID_OR_UNSUPPORTED_TASK_REQUEST'});return;
         }
-        if(code==='LOCAL_MODEL_UNAVAILABLE'||code==='LOCAL_MODEL_HTTP_FAILED'){
+        if(code==='LOCAL_MODEL_UNAVAILABLE'||code==='LOCAL_MODEL_HTTP_FAILED'||code==='LOCAL_MODEL_RESPONSE_REJECTED'){
           reply(res,502,{code});return;
         }
         reply(res,422,{code:'MODEL_DRAFT_OR_QUARANTINE_REJECTED'});
