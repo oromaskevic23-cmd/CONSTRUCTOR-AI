@@ -59,3 +59,11 @@ test('invalid stored data and stale tabs never overwrite previously saved data',
   assert.equal(shared.snapshot(),stored);assert.match(second.el('#storage-warning').textContent,/another tab/);
   assert.equal(second.el('.task-title').textContent,'Second tab');
 });
+
+test('a bad model filter result does not hide the display error after saving',()=>{
+  const storage=memoryStorage();
+  const s=setup(storage,{...fixture,filterOpen:()=>[]});
+  s.click('button[data-filter="open"]');s.add('Saved task');
+  assert.match(s.el('#notice').textContent,/could not be displayed/);
+  assert.match(storage.snapshot(),/Saved task/);
+});
