@@ -1,7 +1,6 @@
 name: CONSTRUCTOR Task UI — Browser and Isolated Candidate Check
 on:
-  push:
-    branches: [engineering/velion-draft-qa-20261111]
+  workflow_dispatch:
 permissions:
   contents: read
 jobs:
