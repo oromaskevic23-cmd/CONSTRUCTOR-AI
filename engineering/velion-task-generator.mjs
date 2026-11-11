@@ -105,6 +105,8 @@ export async function requestVelionTaskDraft({mission,permit,permitSecret,consum
     if(signal?.aborted)throw new TaskGenerationError('LOCAL_MODEL_CANCELLED');
     const diagnostic=provider==='VELION_LOCAL_GGUF_CHAT_ADAPTER'&&{
       VELION_CHAT_MODEL_RESPONSE_REJECTED:'LOCAL_MODEL_RESPONSE_REJECTED',
+      VELION_CHAT_MODEL_RESPONSE_INCOMPLETE:'LOCAL_MODEL_RESPONSE_INCOMPLETE',
+      VELION_CHAT_MODEL_RESPONSE_SCHEMA_INVALID:'LOCAL_MODEL_RESPONSE_SCHEMA_INVALID',
       VELION_CHAT_FORMAT_DISABLED:'LOCAL_MODEL_FORMAT_DISABLED',
       VELION_CHAT_BUSY:'LOCAL_MODEL_BUSY',
     }[cause?.code];
@@ -145,3 +147,4 @@ export async function requestVelionTaskDraft({mission,permit,permitSecret,consum
     draft:validated.draft,execution:'NOT_RUN',independentQa:'NOT_RUN',
     approval:'DENIED',release:'DENIED',modelIdentity:'THIRD_PARTY_WEIGHTS_NOT_ATTESTED'});
 }
+

@@ -121,6 +121,8 @@ test('bounded error codes survive both local services without leaking arbitrary 
   for(const [status,code,expectedStatus,expectedCode] of [
     [502,'CHAT_MODEL_RESPONSE_INVALID',502,'LOCAL_MODEL_RESPONSE_REJECTED'],
     [502,'CHAT_MODEL_RESPONSE_TOO_LARGE',502,'LOCAL_MODEL_RESPONSE_REJECTED'],
+    [502,'CHAT_MODEL_RESPONSE_INCOMPLETE',502,'LOCAL_MODEL_RESPONSE_INCOMPLETE'],
+    [502,'CHAT_MODEL_RESPONSE_SCHEMA_INVALID',502,'LOCAL_MODEL_RESPONSE_SCHEMA_INVALID'],
     [503,'CHAT_FORMAT_DISABLED',503,'LOCAL_MODEL_FORMAT_DISABLED'],
     [409,'CHAT_BUSY',409,'LOCAL_MODEL_BUSY'],
     [502,'private arbitrary value',502,'LOCAL_MODEL_UNAVAILABLE'],
@@ -214,3 +216,4 @@ test('local GGUF route fails closed on bad configuration and secret reuse',()=>{
     assert.throws(()=>localTaskServiceFromEnv({...env,...change}),/CONFIGURATION_INVALID/);
   assert.ok(localTaskServiceFromEnv({...env,CONSTRUCTOR_LOCAL_GGUF_STRUCTURED:'YES'}));
 });
+

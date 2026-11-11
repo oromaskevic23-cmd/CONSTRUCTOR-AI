@@ -80,3 +80,31 @@ test('local model validation errors have a helpful bounded message',async()=>{
   assert.match(ui.status.textContent,/incomplete or did not pass validation/);
   assert.equal(ui.result.textContent,'');assert.equal(ui.token.value,'');
 });
+
+test('generation failures distinguish incomplete output from an invalid draft schema',async()=>{
+  for(const [code,message] of [
+    ['LOCAL_MODEL_RESPONSE_INCOMPLETE',/stopped before finishing.*output limit/],
+    ['LOCAL_MODEL_RESPONSE_SCHEMA_INVALID',/did not match the required draft format/],
+  ]){
+    const ui=setup('http://127.0.0.1:4173/studio',async()=>new Response(JSON.stringify({code}),{status:502}));
+    ui.token.value='fixture-local-token';ui.goal.value='Build a task manager';ui.send();await tick();
+    assert.match(ui.status.textContent,message);
+    assert.match(ui.status.textContent,/No source was executed/);
+    assert.equal(ui.result.textContent,'');assert.equal(ui.token.value,'');
+  }
+});
+
+test('quarantined candidates show source-check failures without claiming independent QA',async()=>{
+  for(const [state,issues,message] of [
+    ['FAIL',['APP_MISSING_EXPORT_CREATETASK'],/source checks found problems/],
+    ['PASS',[],/source checks passed; independent QA has not run/i],
+  ]){
+    const output={...validResult,preflight:{status:state,scope:'SYNTAX_AND_MODULE_SHAPE_ONLY_NOT_QA',issues}};
+    const ui=setup('http://127.0.0.1:4173/studio',async()=>new Response(JSON.stringify(output),{status:201}));
+    ui.token.value='fixture-local-token';ui.goal.value='Build a task manager';ui.send();await tick();
+    assert.match(ui.status.textContent,message);
+    assert.match(ui.status.textContent,/No code was executed or approved/);
+    assert.match(ui.result.textContent,/Independent QA: not run/);
+  }
+});
+
