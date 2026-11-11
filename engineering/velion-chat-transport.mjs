@@ -50,6 +50,8 @@ export function createVelionChatTransport({port,accessToken,expectedModelSha256,
       try{detail=await readBounded(response);}catch{detail=null;}
       const diagnostic={
         '502:CHAT_MODEL_RESPONSE_INVALID':'VELION_CHAT_MODEL_RESPONSE_REJECTED',
+        '502:CHAT_MODEL_RESPONSE_INCOMPLETE':'VELION_CHAT_MODEL_RESPONSE_INCOMPLETE',
+        '502:CHAT_MODEL_RESPONSE_SCHEMA_INVALID':'VELION_CHAT_MODEL_RESPONSE_SCHEMA_INVALID',
         '502:CHAT_MODEL_RESPONSE_TOO_LARGE':'VELION_CHAT_MODEL_RESPONSE_REJECTED',
         '503:CHAT_FORMAT_DISABLED':'VELION_CHAT_FORMAT_DISABLED',
         '409:CHAT_BUSY':'VELION_CHAT_BUSY',
@@ -78,3 +80,4 @@ export function createVelionChatTransport({port,accessToken,expectedModelSha256,
       {status:200,headers:{'Content-Type':'application/json'}});
   };
 }
+
