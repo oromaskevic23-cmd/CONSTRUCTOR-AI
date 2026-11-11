@@ -3,7 +3,8 @@
 import {readFile, stat} from "node:fs/promises";
 import {createHash} from "node:crypto";
 const required=[
-  "engineering/local-task-service.mjs","engineering/velion-chat-transport.mjs","engineering/task-source-preflight.mjs","src/local-ai-policy.mjs","test/local-task-http.test.mjs","test/local-ai-controller.test.mjs","test/velion-chat-transport.test.mjs","test/task-source-preflight.test.mjs","tools/observe-structured-local.mjs","docs/LOCAL_VELION_STUDIO.md","docs/VELION_GGUF_BRIDGE_EVIDENCE_20261110.md","docs/STRUCTURED_GGUF_EVIDENCE_20261111.md",
+  "engineering/local-task-service.mjs","engineering/velion-chat-transport.mjs","engineering/task-source-preflight.mjs","src/local-ai-policy.mjs","test/local-task-http.test.mjs","test/local-ai-controller.test.mjs","test/velion-chat-transport.test.mjs","test/task-source-preflight.test.mjs","tools/observe-structured-local.mjs","docs/LOCAL_VELION_STUDIO.md","docs/VELION_GGUF_BRIDGE_EVIDENCE_20261110.md","docs/STRUCTURED_GGUF_EVIDENCE_20261111.md","docs/REAL_DRAFT_QA_20261111.md",
+  "qa/task-ui/index.html","qa/task-ui/style.css","qa/task-ui/start.mjs","qa/task-ui/ui.mjs","qa/task-ui/README.md","test/fixtures/task-ui-domain.mjs","test/task-ui.test.mjs","tools/task-ui-browser-smoke.mjs","tools/task-ui-sandbox-check.mjs",
   "engineering/velion-task-generator.mjs","engineering/task-build-quarantine.mjs",
   "engineering/task-approval-gateway.mjs","engineering/task-qa-attestation.mjs","engineering/task-review-export.mjs",
   "tools/prepare-synthetic-task-build.mjs","tools/local-velion-task-build.mjs",

@@ -1,0 +1,17 @@
+{
+  "schema": "constructor_local_structured_observation_v1",
+  "observedAt": "2026-11-11T03:13:29.338Z",
+  "elapsedMs": 72918,
+  "httpStatus": 502,
+  "outcome": "LOCAL_MODEL_UNAVAILABLE",
+  "model": "gguf-6a1a2eb6d156",
+  "modelReceipt": null,
+  "stageId": null,
+  "stageManifestSha256": null,
+  "preflight": null,
+  "execution": "NOT_RUN",
+  "independentQa": "NOT_RUN",
+  "approval": "NOT_GRANTED",
+  "release": "DENIED",
+  "scope": "ONE_SYNTHETIC_LOCAL_STRUCTURED_TASK_DOMAIN_NOT_FINISHED_APP"
+}

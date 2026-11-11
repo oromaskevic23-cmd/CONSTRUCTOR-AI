@@ -1,0 +1,55 @@
+name: CONSTRUCTOR Task UI — Browser and Isolated Candidate Check
+on:
+  push:
+    branches: [engineering/velion-draft-qa-20261111]
+permissions:
+  contents: read
+jobs:
+  task-ui-check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      SANDBOX_IMAGE: node@sha256:fe4f6d74e20370acb04ad889077d14d0f64a9c8ea6a42bc60cddf1e844699914
+    steps:
+      - name: Checkout exact source without saved credentials
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Set up Node 22
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Install locked dependencies and temporary pinned browser driver
+        run: |
+          npm ci --ignore-scripts --no-audit --no-fund
+          npm install --no-save --package-lock=false --ignore-scripts --no-audit --no-fund playwright@1.62.1
+      - name: Check UI with a synthetic domain fixture
+        run: node --test test/task-ui.test.mjs
+      - name: Exercise synthetic UI in real Chromium desktop and phone-sized viewports
+        shell: bash
+        run: |
+          set -euo pipefail
+          BROWSER="$(command -v google-chrome-stable || command -v google-chrome || command -v chromium)"
+          test -n "$BROWSER"
+          TASK_UI_CHROMIUM="$BROWSER" TASK_UI_BROWSER_NO_SANDBOX=YES node tools/task-ui-browser-smoke.mjs
+      - name: Prepare verified assistant-revised candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/velion-ui-candidate"
+          cp evidence/structured-repaired-20261111/repaired-app.mjs.txt "$RUNNER_TEMP/velion-ui-candidate/app.mjs"
+          printf '%s  %s\n' '022f8954aa80572201cd39941636d084e756a57bf8c2bcfbeccbe325afd98305' "$RUNNER_TEMP/velion-ui-candidate/app.mjs" | sha256sum --check
+      - name: Pull pinned Node image
+        run: docker pull "$SANDBOX_IMAGE"
+      - name: Exercise UI and assistant-revised candidate in an isolated container
+        shell: bash
+        run: |
+          set -euo pipefail
+          timeout --kill-after=5s 60s docker run --rm --pull=never --network=none --read-only \
+            --user "$(id -u):$(id -g)" --cap-drop=ALL --security-opt=no-new-privileges \
+            --pids-limit=64 --memory=512m --cpus=1 --tmpfs /tmp:rw,noexec,nosuid,nodev,size=33554432 \
+            --mount "type=bind,src=$RUNNER_TEMP/velion-ui-candidate,dst=/work,readonly" \
+            --mount "type=bind,src=$GITHUB_WORKSPACE/qa/task-ui,dst=/ui,readonly" \
+            --mount "type=bind,src=$GITHUB_WORKSPACE/node_modules,dst=/deps,readonly" \
+            --mount "type=bind,src=$GITHUB_WORKSPACE/tools/task-ui-sandbox-check.mjs,dst=/check.mjs,readonly" \
+            "$SANDBOX_IMAGE" node --test /check.mjs

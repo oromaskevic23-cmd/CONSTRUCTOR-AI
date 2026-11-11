@@ -88,7 +88,9 @@ A successful quarantine does not mean execution, independent QA or production
 approval. Later drafts also receive a non-executing syntax and module-shape
 preflight; PASS only covers those limited checks, not correctness or security.
 The [recorded structured trial](STRUCTURED_GGUF_EVIDENCE_20261111.md) produced
-a quarantined draft whose retrospective preflight failed. The
+a quarantined draft whose retrospective preflight failed. A later isolated QA
+run confirmed failure; a separately identified assistant-revised domain module
+passed the limited independent suite. [Details](REAL_DRAFT_QA_20261111.md). The
 [earlier real-model trials](VELION_GGUF_BRIDGE_EVIDENCE_20261110.md) did not
 produce an accepted candidate.
 
