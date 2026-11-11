@@ -1,7 +1,6 @@
 name: VELION Repaired Draft Independent Sandbox QA
 on:
-  push:
-    branches: [engineering/velion-draft-qa-20261111]
+  workflow_dispatch:
 permissions:
   contents: read
 jobs:
