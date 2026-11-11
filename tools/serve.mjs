@@ -83,7 +83,8 @@ export function createAppServer({localTaskService=null}={}) {
         if(code==='ONLY_TASK_MANAGER_V1_SUPPORTED'||error?.name==='DraftContractError'){
           reply(res,422,{code:'INVALID_OR_UNSUPPORTED_TASK_REQUEST'});return;
         }
-        if(code==='LOCAL_MODEL_UNAVAILABLE'||code==='LOCAL_MODEL_HTTP_FAILED'||code==='LOCAL_MODEL_RESPONSE_REJECTED'){
+        if(code==='LOCAL_MODEL_UNAVAILABLE'||code==='LOCAL_MODEL_HTTP_FAILED'||code==='LOCAL_MODEL_RESPONSE_REJECTED'||
+           code==='LOCAL_MODEL_RESPONSE_INCOMPLETE'||code==='LOCAL_MODEL_RESPONSE_SCHEMA_INVALID'){
           reply(res,502,{code});return;
         }
         reply(res,422,{code:'MODEL_DRAFT_OR_QUARANTINE_REJECTED'});
@@ -117,3 +118,4 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
     process.stdout.write("CONSTRUCTOR AI reference running at http://127.0.0.1:" + port + "\n");
   });
 }
+
