@@ -1,0 +1,67 @@
+{
+  "schema": "constructor_ci_evidence_index_v1",
+  "source_sha": "790f2d6c4b294af732c4b8d6c833e6fd5114fcec",
+  "tree_sha": "9da2f505d3a4104ea6a353ef56212b602c86833f",
+  "observed_on": "2026-11-12",
+  "reference_tests": {
+    "passed": 239,
+    "failed": 0
+  },
+  "workflows": [
+    {
+      "name": "reference",
+      "run_id": 43222067586,
+      "conclusion": "success"
+    },
+    {
+      "name": "chromium",
+      "run_id": 43222067553,
+      "conclusion": "success"
+    },
+    {
+      "name": "sandbox",
+      "run_id": 43222067916,
+      "conclusion": "success"
+    },
+    {
+      "name": "cyber_hak",
+      "run_id": 43222067697,
+      "conclusion": "success"
+    },
+    {
+      "name": "public_delivery",
+      "run_id": 43222067886,
+      "conclusion": "success"
+    },
+    {
+      "name": "enterprise",
+      "run_id": 43222068242,
+      "conclusion": "success"
+    },
+    {
+      "name": "authorship_license",
+      "run_id": 43222068481,
+      "conclusion": "success"
+    },
+    {
+      "name": "ip_rights",
+      "run_id": 43222067880,
+      "conclusion": "success"
+    }
+  ],
+  "artifacts": [
+    {
+      "id": 13945829334,
+      "run_id": 43222067586,
+      "digest": "sha256:c566a3ff3fe15e9d61538aafe2002c4d374863d7b2bcad773e6756413c473298"
+    },
+    {
+      "id": 13944673672,
+      "run_id": 43222067916,
+      "digest": "sha256:742a07bced6146aa5e38bc667f6a8b4058c3395538be85f5247f28e101f9d6b7"
+    }
+  ],
+  "digest_source": "GitHub Actions artifact API; archive digests not independently attested",
+  "real_groq_inference": "NOT_RUN",
+  "release": "DENIED"
+}

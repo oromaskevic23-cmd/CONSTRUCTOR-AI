@@ -1,0 +1,154 @@
+name: CONSTRUCTOR AI - Owner authorized Groq plan evidence
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_free_tier:
+        description: Confirm Free tier and sufficient quota for one request
+        required: true
+        type: boolean
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: constructor-groq-plan-owner
+  cancel-in-progress: false
+jobs:
+  plan:
+    if: github.repository == 'oromaskevic23-cmd/CONSTRUCTOR-AI' && github.ref == 'refs/heads/main' && github.actor == 'oromaskevic23-cmd' && github.triggering_actor == 'oromaskevic23-cmd' && github.run_attempt == 1 && inputs.confirm_free_tier
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout verified merged engineering revision
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: 790f2d6c4b294af732c4b8d6c833e6fd5114fcec
+          persist-credentials: false
+      - name: Node 22
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Verify checkout and prepare private directories
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = '790f2d6c4b294af732c4b8d6c833e6fd5114fcec'
+          umask 077
+          mkdir -p "$RUNNER_TEMP/constructor-groq/ledger" "$RUNNER_TEMP/constructor-groq/quarantine" "$RUNNER_TEMP/constructor-groq/export"
+          npm ci --ignore-scripts --no-audit --no-fund
+      - name: One real provider request without execution or retry
+        shell: bash
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          GROQ_MODEL: ${{ vars.GROQ_MODEL }}
+        run: |
+          set -euo pipefail
+          umask 077
+          if [[ -z "$GROQ_API_KEY" || -z "$GROQ_MODEL" ]]; then
+            printf '%s\n' 'BLOCKED: CONFIGURATION_MISSING'
+            exit 2
+          fi
+          PLAN_AUTH_KEY="$(openssl rand -hex 32)"
+          printf '::add-mask::%s\n' "$PLAN_AUTH_KEY"
+          export PLAN_AUTH_KEY
+          rc=0
+          npm run --silent plan -- --goal "Create a small offline task manager with a JavaScript domain module and tests. Return only the bounded draft." --confirm-inference --ledger-root "$RUNNER_TEMP/constructor-groq/ledger" --quarantine-root "$RUNNER_TEMP/constructor-groq/quarantine" --confirm-quarantine > "$RUNNER_TEMP/constructor-groq/private-result.json" 2> "$RUNNER_TEMP/constructor-groq/private-error.txt" || rc=$?
+          unset GROQ_API_KEY PLAN_AUTH_KEY
+          printf '%s\n' "$rc" > "$RUNNER_TEMP/constructor-groq/exit-code"
+          exit "$rc"
+      - name: Verify and export metadata only
+        if: always()
+        shell: bash
+        env:
+          GROQ_MODEL: ${{ vars.GROQ_MODEL }}
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir -p "$RUNNER_TEMP/constructor-groq/export"
+          node --input-type=module <<'NODE'
+          import {readFile,readdir,writeFile,stat} from 'node:fs/promises';
+          import {join,dirname,basename} from 'node:path';
+          import {createHash} from 'node:crypto';
+          const root=join(process.env.RUNNER_TEMP,'constructor-groq');
+          const out=join(root,'export');
+          const hash=v=>createHash('sha256').update(v).digest('hex');
+          const hex=v=>typeof v==='string'&&/^[0-9a-f]{64}$/.test(v);
+          const check=condition=>{if(!condition)throw Error('EVIDENCE_REJECTED');};
+          const safe={schema:'constructor_real_groq_plan_receipt_v1',
+            source_sha:'790f2d6c4b294af732c4b8d6c833e6fd5114fcec',
+            workflow_sha:process.env.GITHUB_SHA,run_id:process.env.GITHUB_RUN_ID,
+            run_attempt:process.env.GITHUB_RUN_ATTEMPT,
+            provider:'groq',release:'DENIED',release_allowed:false,
+            execution:'NOT_RUN',independent_qa:'NOT_RUN',
+            status:'BLOCKED_NO_VERIFIED_RECEIPT',provider_response_observed:false};
+          let success=false;
+          try{
+            check(/^[0-9a-f]{40}$/.test(safe.workflow_sha)&&safe.run_attempt==='1');
+            const names=await readdir(join(root,'ledger'));
+            check(names.length===1&&/^mission-plan-[a-f0-9-]{36}\.jsonl$/.test(names[0]));
+            const path=join(root,'ledger',names[0]);
+            check((await stat(path)).size<=16384);
+            const raw=await readFile(path,'utf8');
+            const rows=raw.trim().split('\n').map(JSON.parse);
+            check(rows.length===2);
+            const allowed=['schema','sequence','previous_sha256','mission_id','mission_sha','attempt_index','event','permit_scope_hash','model_id','requested_output_tokens','measured','measured_null_reason','conservative_output_charge','returned_model','latency_ms','bytes_read','response_sha256','outcome_code','terminated_reason','release','record_sha256'];
+            let prev=null;
+            for(const [i,row] of rows.entries()){
+              check(Object.keys(row).length===allowed.length&&Object.keys(row).every(k=>allowed.includes(k)));
+              const {record_sha256,...body}=row;
+              check(record_sha256===hash(JSON.stringify(body))&&row.previous_sha256===prev&&row.sequence===i+1&&row.release==='DENIED');
+              check(row.schema==='constructor_mission_ledger_v1'&&row.attempt_index===1&&row.requested_output_tokens===4000&&hex(row.mission_sha)&&hex(row.permit_scope_hash));
+              check(row.model_id===process.env.GROQ_MODEL&&/^[A-Za-z0-9][A-Za-z0-9/_.-]{1,119}$/.test(row.model_id)&&!row.model_id.startsWith('gsk_'));
+              check(row.mission_id===rows[0].mission_id&&row.mission_sha===rows[0].mission_sha&&row.permit_scope_hash===rows[0].permit_scope_hash);
+              check(row.event===(i===0?'STARTED':'TERMINAL')&&/^[A-Z][A-Z0-9_]{1,80}$/.test(row.outcome_code));
+              check(row.terminated_reason===null||/^[A-Z][A-Z0-9_]{1,80}$/.test(row.terminated_reason));
+              check(row.returned_model===null||row.returned_model===row.model_id);
+              check(row.response_sha256===null||hex(row.response_sha256));
+              check(row.latency_ms===null||Number.isSafeInteger(row.latency_ms)&&row.latency_ms>=0);
+              check(row.bytes_read===null||Number.isSafeInteger(row.bytes_read)&&row.bytes_read>=0);
+              if(row.measured===null){
+                check(['NO_PROVIDER_OBSERVATION','NO_PROVIDER_USAGE','NO_COMPLETE_PROVIDER_RESPONSE','HTTP_REJECTED_BEFORE_USAGE','INVALID_PROVIDER_USAGE'].includes(row.measured_null_reason)&&row.conservative_output_charge===4000);
+              }else{
+                check(Object.keys(row.measured).sort().join(',')==='input_tokens,output_tokens'&&Object.values(row.measured).every(n=>Number.isSafeInteger(n)&&n>=0)&&row.measured_null_reason===null&&row.conservative_output_charge===row.measured.output_tokens);
+              }
+              prev=record_sha256;
+            }
+            const last=rows[1];
+            await writeFile(join(out,'mission-ledger.jsonl'),raw,{mode:0o600,flag:'wx'});
+            Object.assign(safe,{status:last.outcome_code,mission_id:last.mission_id,mission_sha:last.mission_sha,
+              permit_scope_hash:last.permit_scope_hash,model_id:last.model_id,returned_model:last.returned_model,
+              requested_output_tokens:last.requested_output_tokens,measured:last.measured,
+              measured_null_reason:last.measured_null_reason,conservative_output_charge:last.conservative_output_charge,
+              bytes_read:last.bytes_read,latency_ms:last.latency_ms,response_sha256:last.response_sha256,
+              provider_response_observed:hex(last.response_sha256),ledger_sha256:hash(raw),terminal_record_sha256:prev});
+            if(last.outcome_code==='QUARANTINED_NOT_EXECUTED'){
+              check(last.returned_model===last.model_id&&hex(last.response_sha256)&&last.terminated_reason===null);
+              check((await readFile(join(root,'exit-code'),'utf8')).trim()==='0');
+              const resultPath=join(root,'private-result.json');
+              check((await stat(resultPath)).size<=16384);
+              const receipt=JSON.parse(await readFile(resultPath,'utf8'));
+              check(receipt.status==='QUARANTINED_NOT_EXECUTED'&&receipt.release==='DENIED'&&hex(receipt.manifest_sha256));
+              check(dirname(receipt.bundle_path)===join(root,'quarantine')&&/^constructor-quarantine-[A-Za-z0-9]+$/.test(basename(receipt.bundle_path)));
+              const {verifyProofBundle}=await import('./engineering/proof-bundle.mjs');
+              const proof=await verifyProofBundle(receipt.bundle_path);
+              check(proof.manifest_sha256===receipt.manifest_sha256&&proof.execution==='NOT_RUN'&&proof.independent_qa==='NOT_RUN'&&proof.release==='DENIED');
+              safe.quarantine_manifest_sha256=proof.manifest_sha256;
+              safe.quarantine_verified=true;
+              success=true;
+            }
+          }catch{
+            safe.status='BLOCKED_NO_VERIFIED_RECEIPT';
+          }
+          await writeFile(join(out,'receipt.json'),JSON.stringify(safe,null,2)+'\n',{mode:0o600,flag:'wx'});
+          console.log('PLAN_EVIDENCE_STATUS:',safe.status,'RELEASE_DENIED');
+          if(!success)process.exitCode=1;
+          NODE
+      - name: Upload only safe receipt and validated ledger
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: real-groq-plan-evidence-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/constructor-groq/export/receipt.json
+            ${{ runner.temp }}/constructor-groq/export/mission-ledger.jsonl
+          if-no-files-found: error
+          retention-days: 14
