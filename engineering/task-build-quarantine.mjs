@@ -30,7 +30,8 @@ export async function stageGeneratedTaskApp({receipt,outputRoot}={}){
     try{await handle.writeFile(file.content);await handle.sync();}finally{await handle.close();}
     inventory.push({path:file.path,bytes:Buffer.byteLength(file.content),sha256:hash(file.content)});
   }
-  const evidence={schema:'constructor_task_stage_v1',missionId:receipt.missionId,
+  const artifactState=preflight.status==='FAIL'?'QUARANTINED_PREFLIGHT_FAILED':'QUARANTINED_DENIED';
+  const evidence={schema:'constructor_task_stage_v1',artifactState,release_allowed:false,missionId:receipt.missionId,
     goalSha256:receipt.goalSha256,model:receipt.model,
     ...(receipt.modelReceipt?{modelReceipt:receipt.modelReceipt}:{}),
     modelOutputSha256:receipt.modelOutputSha256,draftSha256:receipt.draftSha256,
@@ -40,5 +41,5 @@ export async function stageGeneratedTaskApp({receipt,outputRoot}={}){
   const manifestText=JSON.stringify(evidence,null,2)+'\n';
   const handle=await open(join(stage,'stage-manifest.json'),constants.O_CREAT|constants.O_EXCL|constants.O_WRONLY|constants.O_NOFOLLOW,0o644);
   try{await handle.writeFile(manifestText);await handle.sync();}finally{await handle.close();}
-  return Object.freeze({stage,stageManifestSha256:hash(manifestText),preflight,status:'QUARANTINED_NOT_EXECUTED',release:'DENIED'});
+  return Object.freeze({stage,stageManifestSha256:hash(manifestText),preflight,artifactState,release_allowed:false,status:'QUARANTINED_NOT_EXECUTED',release:'DENIED'});
 }

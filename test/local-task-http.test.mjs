@@ -100,7 +100,7 @@ test('synthetic request reaches the model adapter and creates quarantine only',a
   assert.equal(JSON.stringify(result).includes(token),false);
   assert.equal(result.preview.trust,'UNTRUSTED_MODEL_TEXT');
   assert.deepEqual(result.preview.files,draft.files);
-  assert.equal(result.preflight.status,'FAIL');
+  assert.equal(result.preflight.status,'FAIL');assert.equal(result.artifactState,'QUARANTINED_PREFLIGHT_FAILED');assert.equal(result.release_allowed,false);
   assert.ok(result.preflight.issues.includes('APP_MISSING_EXPORT_COMPLETETASK'));
   const shown=formatQuarantinedCandidate(result);
   assert.match(shown,/UNTRUSTED MODEL OUTPUT/);
@@ -110,17 +110,17 @@ test('synthetic request reaches the model adapter and creates quarantine only',a
   assert.equal(s.calls(),1);
   const manifest=JSON.parse(await readFile(join(s.outputRoot,result.stageId,'stage-manifest.json'),'utf8'));
   assert.equal(manifest.release,'DENIED');assert.equal(manifest.independentQa,'NOT_RUN');
-  assert.deepEqual(manifest.preflight,result.preflight);
+  assert.deepEqual(manifest.preflight,result.preflight);assert.equal(manifest.artifactState,result.artifactState);assert.equal(manifest.release_allowed,false);
 });
 
 test('candidate preview fails closed on changed state, unexpected files and excessive text',()=>{
   const base={status:'QUARANTINED_NOT_EXECUTED',execution:'NOT_RUN',independentQa:'NOT_RUN',
-    approval:'NOT_GRANTED',release:'DENIED',draftSha256:'a'.repeat(64),
+    approval:'NOT_GRANTED',release:'DENIED',release_allowed:false,artifactState:'QUARANTINED_DENIED',draftSha256:'a'.repeat(64),
     stageManifestSha256:'b'.repeat(64),stageId:'constructor-task-quarantine-Ab12',model:'fixture:local-v1',
     preview:{trust:'UNTRUSTED_MODEL_TEXT',summary:'Example',files:draft.files}};
   assert.match(formatQuarantinedCandidate(base),/review only/);
   for(const change of [
-    {release:'ALLOWED'},
+    {release:'ALLOWED'}, {release_allowed:true}, {artifactState:'REJECTED_NO_ARTIFACT'},
     {stageId:'../outside'},
     {preflight:{status:'PASS',scope:'SYNTAX_AND_MODULE_SHAPE_ONLY_NOT_QA',issues:['APP_PARSE_ERROR']}},
     {preflight:{status:'FAIL',scope:'SYNTAX_AND_MODULE_SHAPE_ONLY_NOT_QA',issues:[]}},

@@ -4,7 +4,7 @@ import { chromium } from 'playwright';
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
 import { once } from 'node:events';
-import { mkdtemp, mkdir, readFile, stat, rm } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, readdir, stat, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createAppServer } from '../tools/serve.mjs';
@@ -142,8 +142,13 @@ async function runLocalAi(){
     steps:[{id:'create',action:'Prepare a task API',acceptance:'Independent QA remains separate'}],
     files:[{path:'app.mjs',content:'export const fixture=true;\n'},
       {path:'test/app.test.mjs',content:'export const fixtureTest=true;\n'}]};
+  const passing={...draft,files:[
+    {path:'app.mjs',content:'export function createTask(){}; export function completeTask(){}; export function filterOpen(){};'},
+    {path:'test/app.test.mjs',content:"import test from 'node:test'; import assert from 'node:assert/strict'; import {createTask,completeTask,filterOpen} from '../app.mjs'; test('fixture',()=>assert.ok(createTask));"}]};
+  const unsafe={...draft,files:[{path:'app.mjs',content:'process.env.SECRET;'},draft.files[1]]};
+  let calls=0;
   const service=createLocalTaskService({accessToken,permitSecret,model,outputRoot:quarantine,
-    fetchImpl:async()=>new Response(JSON.stringify({model,done:true,response:JSON.stringify(draft)}),{status:200})});
+    fetchImpl:async()=>new Response(JSON.stringify({model,done:true,response:JSON.stringify([draft,passing,unsafe][calls++])}),{status:200})});
   const server=createAppServer({localTaskService:service});server.listen(0,'127.0.0.1');await once(server,'listening');
   const localOrigin='http://127.0.0.1:'+server.address().port;
   const page=await browser.newPage();
@@ -157,13 +162,28 @@ async function runLocalAi(){
     ]);
     assert.equal(response.status(),201);const receipt=await response.json();
     assert.equal(receipt.preflight.status,'FAIL');
-    await page.getByRole('status').filter({hasText:'Candidate saved to quarantine, but source checks found problems. No code was executed or approved.'}).waitFor();
+    assert.equal(receipt.artifactState,'QUARANTINED_PREFLIGHT_FAILED');assert.equal(receipt.release_allowed,false);
+    await page.locator('[data-status="QUARANTINED_PREFLIGHT_FAILED"][data-release-allowed="false"]').waitFor();
     assert.equal(await page.locator('#local-ai-token').inputValue(),'');
     check((await page.locator('#local-ai-result').innerText()).includes(receipt.draftSha256),'Missing digest');
     assert.equal((await page.locator('body').innerText()).includes(accessToken),false);
     assert.equal(receipt.execution,'NOT_RUN');assert.equal(receipt.release,'DENIED');
     const manifest=JSON.parse(await readFile(join(quarantine,receipt.stageId,'stage-manifest.json'),'utf8'));
-    assert.equal(manifest.independentQa,'NOT_RUN');
+    assert.equal(manifest.independentQa,'NOT_RUN');assert.equal(manifest.artifactState,receipt.artifactState);assert.equal(manifest.release_allowed,false);
+    await page.locator('#local-ai-token').fill(accessToken);
+    const [passed]=await Promise.all([page.waitForResponse(r=>r.url().endsWith('/api/local-velion/task-draft')),page.getByRole('button',{name:'Generate candidate'}).click()]);
+    assert.equal(passed.status(),201);const good=await passed.json();
+    assert.equal(good.preflight.status,'PASS');assert.equal(good.artifactState,'QUARANTINED_DENIED');assert.equal(good.release_allowed,false);assert.equal(good.release,'DENIED');assert.equal(good.execution,'NOT_RUN');
+    await page.locator('[data-status="QUARANTINED_DENIED"][data-release-allowed="false"]').waitFor();
+    const goodManifest=JSON.parse(await readFile(join(quarantine,good.stageId,'stage-manifest.json'),'utf8'));
+    assert.equal(goodManifest.artifactState,'QUARANTINED_DENIED');assert.equal(goodManifest.independentQa,'NOT_RUN');assert.equal(goodManifest.release_allowed,false);
+    const before=(await readdir(quarantine)).sort();
+    await page.locator('#local-ai-token').fill(accessToken);
+    const [blocked]=await Promise.all([page.waitForResponse(r=>r.url().endsWith('/api/local-velion/task-draft')),page.getByRole('button',{name:'Generate candidate'}).click()]);
+    assert.equal(blocked.status(),422);const denied=await blocked.json();
+    assert.equal(denied.artifactState,'REJECTED_NO_ARTIFACT');assert.equal(denied.release_allowed,false);
+    await page.locator('[data-status="REJECTED_NO_ARTIFACT"][data-release-allowed="false"]').waitFor();
+    assert.deepEqual((await readdir(quarantine)).sort(),before);assert.equal(await page.locator('#local-ai-result').innerText(),'');
     outcomes.push({template:'local-ai-fixture',status:'PASS',checks:['browser-request','loopback-auth','quarantine','no-execution','token-cleared']});
   }finally{await page.close();await new Promise(resolve=>server.close(resolve));}
 }
