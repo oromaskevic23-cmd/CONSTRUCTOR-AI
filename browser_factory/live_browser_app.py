@@ -176,10 +176,19 @@ def qa_docker(case: Path, playwright_image: str, qa_modules: Path) -> dict:
     proc=subprocess.run(cmd,stdout=subprocess.PIPE,stderr=subprocess.PIPE,
                         text=True,timeout=110,check=False,
                         env={"PATH":os.environ.get("PATH","/usr/bin:/bin")})
-    failures=[name for name in CHECKS if name in proc.stdout and
-              ("FAIL "+name) in proc.stdout]
+    lines=proc.stdout.splitlines()
+    passed_names=[name for name in CHECKS if lines.count("PASS "+name)==1]
+    failures=[name for name in CHECKS if
+              sum(line.startswith("FAIL "+name+" :: ") for line in lines)==1]
+    complete=(len(passed_names)+len(failures)==len(CHECKS)
+              and not set(passed_names).intersection(failures)
+              and lines.count(f"browser_qa_cases={len(CHECKS)} browser_qa_failed={len(failures)}")==1)
+    outcome=("PASS" if complete and not failures and proc.returncode==0 else
+             "CANDIDATE_FAILED" if complete and failures and proc.returncode==1 else
+             "INFRASTRUCTURE_FAILED")
     return {
-        "passed":proc.returncode == 0,
+        "passed":outcome=="PASS",
+        "outcome":outcome,
         "exit_code":proc.returncode,
         "failed_check_names":failures,
         "qa_log_sha256":digest((proc.stdout+proc.stderr).encode()),
@@ -244,6 +253,9 @@ def main() -> None:
                     success=True
                     report["status"]="VERIFIED_SYNTHETIC_BROWSER_APP"
                     break
+                if qa["outcome"]=="INFRASTRUCTURE_FAILED":
+                    item["result"]="INFRASTRUCTURE_FAILED"
+                    break  # Repeating inference cannot repair the verifier.
             except Exception as error:
                 item["result"]="FAIL_CLOSED"
                 item["error_type"]=type(error).__name__
