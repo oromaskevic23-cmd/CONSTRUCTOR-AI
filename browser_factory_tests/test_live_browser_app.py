@@ -89,7 +89,7 @@ class BrowserFactoryOfflineTests(unittest.TestCase):
  def test_docker_command_has_network_off_and_readonly_mounts(self):
   class Done:
    returncode=0
-   stdout="PASS one"
+   stdout="\n".join(["PASS "+name for name in app.CHECKS]+["browser_qa_cases=11 browser_qa_failed=0"])
    stderr=""
   with patch.object(app.subprocess,'run',return_value=Done()) as run:
    result=app.qa_docker(Path('/tmp/demo'),"mcr.microsoft.com/playwright@sha256:"+"f"*64,Path('/tmp/deps'))
@@ -101,6 +101,27 @@ class BrowserFactoryOfflineTests(unittest.TestCase):
   self.assertIn('--security-opt=no-new-privileges',cmd)
   self.assertIn('readonly',cmd[cmd.index('--mount')+1])
   self.assertTrue(result['passed'])
+ def test_empty_or_partial_qa_output_cannot_pass(self):
+  from types import SimpleNamespace
+  for output in ("", "PASS "+app.CHECKS[0], "browser_qa_cases=11 browser_qa_failed=0"):
+   with self.subTest(output=output), patch.object(app.subprocess,'run',return_value=SimpleNamespace(returncode=0,stdout=output,stderr="")):
+    result=app.qa_docker(Path('/tmp/demo'),"image",Path('/tmp/deps'))
+    self.assertFalse(result['passed'])
+    self.assertEqual(result['outcome'],'INFRASTRUCTURE_FAILED')
+ def test_missing_playwright_is_infrastructure_not_model_failure(self):
+  from types import SimpleNamespace
+  with patch.object(app.subprocess,'run',return_value=SimpleNamespace(returncode=1,stdout="",stderr="MODULE_NOT_FOUND")):
+   result=app.qa_docker(Path('/tmp/demo'),"image",Path('/tmp/deps'))
+  self.assertEqual(result['outcome'],'INFRASTRUCTURE_FAILED')
+  self.assertEqual(result['failed_check_names'],[])
+ def test_complete_named_failure_can_be_repaired(self):
+  from types import SimpleNamespace
+  output="\n".join(["FAIL "+app.CHECKS[0]+" :: assertion"]+["PASS "+name for name in app.CHECKS[1:]]+["browser_qa_cases=11 browser_qa_failed=1"])
+  with patch.object(app.subprocess,'run',return_value=SimpleNamespace(returncode=1,stdout=output,stderr="")):
+   result=app.qa_docker(Path('/tmp/demo'),"image",Path('/tmp/deps'))
+  self.assertFalse(result['passed'])
+  self.assertEqual(result['outcome'],'CANDIDATE_FAILED')
+  self.assertEqual(result['failed_check_names'],[app.CHECKS[0]])
  def test_source_file_safety_limit_enforced(self):
   with self.assertRaisesRegex(app.AppBuildDenied,'INVALID_ARTIFACT_BYTES'):
    app.validate_generated({**GOOD,'app.js':'x'})
