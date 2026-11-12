@@ -1,13 +1,6 @@
 name: CONSTRUCTOR real LLM three-file browser app and Chromium proof
 
 on:
-  pull_request:
-    paths:
-      - 'browser_factory/**'
-      - 'browser_factory_tests/**'
-      - 'browser_factory_qa/**'
-      - '.github/workflows/constructor-browser-app.yml'
-      - 'docs/VERIFIED_BROWSER_APP_SPRINT.md'
   workflow_dispatch:
 
 permissions:
@@ -36,6 +29,31 @@ jobs:
           set -euo pipefail
           python3 -m compileall -q browser_factory browser_factory_tests
           python3 -m unittest discover -s browser_factory_tests -p 'test_*.py' -v
+      - name: Prepare pinned browser container and trusted Playwright test dependency
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker info >/dev/null
+          docker pull mcr.microsoft.com/playwright:v1.56.1-noble
+          IMAGE="$(docker image inspect mcr.microsoft.com/playwright:v1.56.1-noble --format '{{index .RepoDigests 0}}')"
+          [[ "$IMAGE" =~ ^mcr.microsoft.com/playwright@sha256:[a-f0-9]{64}$ ]]
+          echo "CONSTRUCTOR_BROWSER_IMAGE=$IMAGE" >> "$GITHUB_ENV"
+          mkdir -p /tmp/constructor-trusted-browser-deps
+          npm --prefix /tmp/constructor-trusted-browser-deps install \
+            --ignore-scripts --no-audit --no-fund --no-save playwright@1.56.1 playwright-core@1.56.1
+          test -f /tmp/constructor-trusted-browser-deps/node_modules/playwright/index.js
+          echo "CONSTRUCTOR_QA_MODULES=/tmp/constructor-trusted-browser-deps/node_modules" >> "$GITHUB_ENV"
+      - name: Fail-fast isolated Chromium preflight before model download
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --rm --network none --read-only \
+            --cap-drop=ALL --security-opt=no-new-privileges \
+            --pids-limit=160 --memory=1400m --cpus=2 --user 1000:1000 \
+            --shm-size=256m --tmpfs /tmp:rw,nosuid,nodev,size=128m \
+            --mount "type=bind,src=$CONSTRUCTOR_QA_MODULES,dst=/qa_modules,readonly" \
+            -e HOME=/tmp "$CONSTRUCTOR_BROWSER_IMAGE" node -e \
+            'const {chromium}=require("/qa_modules/playwright"); (async()=>{const b=await chromium.launch({headless:true,args:["--no-sandbox","--disable-dev-shm-usage"]});try{const p=await b.newPage();await p.goto("about:blank");if(await p.title()!=="")throw Error("unexpected title");}finally{await b.close();}})().catch(e=>{console.error(e);process.exitCode=1;})'
       - name: Install checksum-verified Ollama to disposable runner
         shell: bash
         run: |
@@ -51,20 +69,6 @@ jobs:
           mkdir -p "$RUNNER_TEMP/ollama-bin"
           tar --zstd -xf "$RUNNER_TEMP/ollama-v0.40.11.tar.zst" -C "$RUNNER_TEMP/ollama-bin"
           test -x "$RUNNER_TEMP/ollama-bin/bin/ollama"
-      - name: Prepare pinned browser container and trusted Playwright test dependency
-        shell: bash
-        run: |
-          set -euo pipefail
-          docker info >/dev/null
-          docker pull mcr.microsoft.com/playwright:v1.56.1-noble
-          IMAGE="$(docker image inspect mcr.microsoft.com/playwright:v1.56.1-noble --format '{{index .RepoDigests 0}}')"
-          [[ "$IMAGE" =~ ^mcr.microsoft.com/playwright@sha256:[a-f0-9]{64}$ ]]
-          echo "CONSTRUCTOR_BROWSER_IMAGE=$IMAGE" >> "$GITHUB_ENV"
-          mkdir -p /tmp/constructor-trusted-browser-deps
-          npm --prefix /tmp/constructor-trusted-browser-deps install \
-            --ignore-scripts --no-audit --no-fund --no-save playwright@1.56.1
-          test -f /tmp/constructor-trusted-browser-deps/node_modules/playwright/index.js
-          echo "CONSTRUCTOR_QA_MODULES=/tmp/constructor-trusted-browser-deps/node_modules" >> "$GITHUB_ENV"
       - name: Start loopback-only Ollama and pull third-party local coder model
         shell: bash
         run: |
