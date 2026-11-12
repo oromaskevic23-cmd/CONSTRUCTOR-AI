@@ -240,7 +240,12 @@ def main() -> None:
                     path.chmod(0o644)
                 (case/"browser-qa.cjs").write_bytes(qa_source)
                 (case/"browser-qa.cjs").chmod(0o644)
-                qa=qa_docker(case,playwright_image,qa_modules)
+                try:
+                    qa=qa_docker(case,playwright_image,qa_modules)
+                except (OSError, subprocess.TimeoutExpired) as error:
+                    item["result"]="INFRASTRUCTURE_FAILED"
+                    item["error_type"]=type(error).__name__
+                    break
                 report["real_browser_qa_runs"]+=1
                 item["browser_qa"]=qa
                 failed_checks=tuple(qa["failed_check_names"])
