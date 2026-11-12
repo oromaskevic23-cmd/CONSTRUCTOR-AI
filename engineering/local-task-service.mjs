@@ -37,7 +37,7 @@ export function createLocalTaskService({accessToken,permitSecret,model,outputRoo
         const staged=await stageGeneratedTaskApp({receipt:candidate,outputRoot});
         return Object.freeze({status:staged.status,missionId:candidate.missionId,
           stageId:basename(staged.stage),stageManifestSha256:staged.stageManifestSha256,
-          preflight:staged.preflight,
+          preflight:staged.preflight,artifactState:staged.artifactState,release_allowed:false,
           draftSha256:candidate.draftSha256,provider:candidate.provider,model:candidate.model,
           ...(candidate.modelReceipt?{modelReceipt:candidate.modelReceipt}:{}),
           modelIdentity:candidate.modelIdentity,

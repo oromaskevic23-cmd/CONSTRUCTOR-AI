@@ -1,3 +1,4 @@
+import {parseBoundedJson,MAX_DRAFT_TEXT_UNITS} from './model-response-boundary.mjs';
 // CONSTRUCTOR AI | validated AI-generation draft contract. NO execution or filesystem writes.
 import {createHash} from "node:crypto";
 
@@ -44,11 +45,11 @@ function path(value) {
 }
 
 export function parseModelDraft(text) {
-  if (typeof text !== "string" || text.length > 64000 || !text.trim()) {
+  if (typeof text !== "string" || text.length > MAX_DRAFT_TEXT_UNITS || !text.trim()) {
     throw new DraftContractError("Missing or excessive model response");
   }
   let raw;
-  try { raw = JSON.parse(text); }
+  try { raw = parseBoundedJson(text); }
   catch { throw new DraftContractError("Model must return strict JSON, without fences"); }
   if (!raw || typeof raw !== "object" || Array.isArray(raw) || raw.schema !== "constructor_draft_v1") {
     throw new DraftContractError("Unexpected model schema");

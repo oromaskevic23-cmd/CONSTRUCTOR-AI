@@ -25,6 +25,7 @@ export function formatQuarantinedCandidate(result){
      preflight.issues.length>20||preflight.issues.some(code=>typeof code!=='string'||!/^[A-Z_]{1,80}$/.test(code))||
      (preflight.status==='PASS'&&preflight.issues.length!==0)||
      (preflight.status==='FAIL'&&preflight.issues.length===0)))throw Error('INVALID_QUARANTINE_PREVIEW');
+  if(result.release_allowed!==false||result.artifactState!==(preflight?.status==='FAIL'?'QUARANTINED_PREFLIGHT_FAILED':'QUARANTINED_DENIED'))throw Error('INVALID_QUARANTINE_PREVIEW');
   const expected=['app.mjs','test/app.test.mjs'];
   if(preview.files.map(file=>file?.path).sort().join('|')!==expected.join('|')||
      preview.files.some(file=>typeof file.content!=='string'||file.content.length>20000)||
@@ -41,6 +42,8 @@ export function formatQuarantinedCandidate(result){
 // behavior can be verified without a model, a browser dependency, or live services.
 export function attachLocalAiController({form,goal,token,submit,cancel,status,result,pageUrl,pageEvents,fetchImpl=fetch}){
   let controller=null;
+  const machineState=value=>{status.dataset.status=value;status.dataset.releaseAllowed='false';};
+  machineState('IDLE');
   if(localTaskApiUrl(pageUrl)){
     goal.disabled=false;token.disabled=false;submit.disabled=false;
     status.textContent='Local service must be explicitly configured before use.';
@@ -65,6 +68,7 @@ export function attachLocalAiController({form,goal,token,submit,cancel,status,re
     if(!endpoint){status.textContent='Open the local Studio to use local AI.';return;}
     const tokenValue=token.value,goalValue=goal.value;token.value='';submit.disabled=true;result.textContent='';
     const active=new AbortController();controller=active;cancel.disabled=false;
+    machineState('REQUESTING');
     status.textContent='Requesting a local candidate; it will remain unexecuted.';
     try{
       const response=await fetchImpl(endpoint,{method:'POST',mode:'same-origin',credentials:'omit',cache:'no-store',
@@ -72,15 +76,16 @@ export function attachLocalAiController({form,goal,token,submit,cancel,status,re
         headers:{'Content-Type':'application/json','Authorization':'Bearer '+tokenValue},body:JSON.stringify({goal:goalValue})});
       const output=await response.json();
       if(active.signal.aborted)throw Error('Local request stopped');
-      if(!response.ok){status.textContent=errors[output.code]||'The local request was rejected.';return;}
+      if(!response.ok){machineState(output.artifactState==='REJECTED_NO_ARTIFACT'&&output.release_allowed===false?'REJECTED_NO_ARTIFACT':'REQUEST_REJECTED');status.textContent=errors[output.code]||'The local request was rejected.';return;}
       if(response.status!==201)throw Error('Unexpected local response');
       result.textContent=formatQuarantinedCandidate(output);
+      machineState(output.artifactState);
       status.textContent=output.preflight?.status==='FAIL'
         ? 'Candidate saved to quarantine, but source checks found problems. No code was executed or approved.'
         : output.preflight?.status==='PASS'
           ? 'Candidate saved to quarantine. Source checks passed; independent QA has not run. No code was executed or approved.'
           : 'Candidate saved to local quarantine. No code was executed or approved.';
-    }catch{status.textContent=active.signal.aborted?
+    }catch{machineState(active.signal.aborted?'CANCELLED':'REQUEST_FAILED');status.textContent=active.signal.aborted?
       'Stop requested. A candidate may already be in local quarantine; no code was executed or approved.':
       'Local AI could not complete the request. Check the local server and model.';}
     finally{controller=null;cancel.disabled=true;submit.disabled=false;}

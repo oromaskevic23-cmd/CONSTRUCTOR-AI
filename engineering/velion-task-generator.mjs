@@ -1,3 +1,4 @@
+import {fetchBounded,parseBoundedJson,DRAFT_ENVELOPE_BYTES} from './model-response-boundary.mjs';
 // Project author and founding architect: Alexander Nikolaevich Romaskevich (RomaskevicH).
 // VELION local model adapter. Real local inference is opt-in; no paid or remote endpoint.
 // Output is untrusted source, never an execution authorization. This is NOT proprietary VELION weights.
@@ -11,31 +12,6 @@ const MODEL=/^[A-Za-z0-9][A-Za-z0-9_.:/-]{1,90}$/;
 const HASH=x=>createHash('sha256').update(x).digest('hex');
 export class TaskGenerationError extends Error {
   constructor(code){super(code);this.name='TaskGenerationError';this.code=code;}
-}
-
-// Reject excessive model output WHILE receiving it, not after reading it all.
-// Stream is required for real transport; never fall back to unbounded response.text().
-async function boundedModelBody(response){
-  const reader=response?.body?.getReader?.();
-  if(!reader)throw new TaskGenerationError('LOCAL_MODEL_BODY_UNREADABLE');
-  const chunks=[];let total=0;
-  try{
-    for(;;){
-      const {value,done}=await reader.read();
-      if(done)break;
-      if(!(value instanceof Uint8Array))throw new TaskGenerationError('LOCAL_MODEL_BODY_UNREADABLE');
-      total+=value.byteLength;
-      if(total>100000){
-        try{await reader.cancel();}catch{}
-        throw new TaskGenerationError('LOCAL_MODEL_BODY_TOO_LARGE');
-      }
-      chunks.push(value);
-    }
-    return new TextDecoder('utf-8',{fatal:true}).decode(Buffer.concat(chunks));
-  }catch(error){
-    if(error instanceof TaskGenerationError)throw error;
-    throw new TaskGenerationError('LOCAL_MODEL_BODY_UNREADABLE');
-  }finally{reader.releaseLock();}
 }
 
 export function validateTaskDraft(raw){
@@ -95,14 +71,17 @@ export async function requestVelionTaskDraft({mission,permit,permitSecret,consum
   const payload={model,stream:false,format:'json',
     options:{temperature:0,num_predict:4096},
     prompt:system+'\nMission ID: '+m.id+'\nUser request: '+m.goal};
-  let response;
+  let response,raw;
   try{
-    const timeout=AbortSignal.timeout(timeoutMs);
-    response=await fetchImpl(LOCAL_MODEL_URL,{method:'POST',redirect:'error',
+    const bounded=await fetchBounded({fetchImpl,url:LOCAL_MODEL_URL,maxBytes:DRAFT_ENVELOPE_BYTES,requireJson:true,timeoutMs,
+      options:{method:'POST',redirect:'error',
       headers:{'Content-Type':'application/json','Accept':'application/json'},
-      body:JSON.stringify(payload),signal:signal?AbortSignal.any([signal,timeout]):timeout});
+      body:JSON.stringify(payload),signal}});
+    response=bounded.response;raw=bounded.text;
   }catch(cause){
     if(signal?.aborted)throw new TaskGenerationError('LOCAL_MODEL_CANCELLED');
+    if(cause?.code==='RESPONSE_TOO_LARGE')throw new TaskGenerationError('LOCAL_MODEL_BODY_TOO_LARGE');
+    if(cause?.code==='RESPONSE_BODY_UNREADABLE')throw new TaskGenerationError('LOCAL_MODEL_BODY_UNREADABLE');
     const diagnostic=provider==='VELION_LOCAL_GGUF_CHAT_ADAPTER'&&{
       VELION_CHAT_MODEL_RESPONSE_REJECTED:'LOCAL_MODEL_RESPONSE_REJECTED',
       VELION_CHAT_MODEL_RESPONSE_INCOMPLETE:'LOCAL_MODEL_RESPONSE_INCOMPLETE',
@@ -114,12 +93,8 @@ export async function requestVelionTaskDraft({mission,permit,permitSecret,consum
   }
   if(signal?.aborted)throw new TaskGenerationError('LOCAL_MODEL_CANCELLED');
   if(!response?.ok)throw new TaskGenerationError('LOCAL_MODEL_HTTP_FAILED');
-  let raw;
-  try{raw=await boundedModelBody(response);}
-  catch(error){if(signal?.aborted)throw new TaskGenerationError('LOCAL_MODEL_CANCELLED');throw error;}
-  if(signal?.aborted)throw new TaskGenerationError('LOCAL_MODEL_CANCELLED');
   let envelope;
-  try{envelope=JSON.parse(raw);}catch{throw new TaskGenerationError('LOCAL_MODEL_ENVELOPE_INVALID');}
+  try{envelope=parseBoundedJson(raw);}catch{throw new TaskGenerationError('LOCAL_MODEL_ENVELOPE_INVALID');}
   if(!envelope||envelope.done!==true||envelope.model!==model||typeof envelope.response!=='string'||
     (Object.hasOwn(envelope,'done_reason')&&envelope.done_reason!=='stop'))
     throw new TaskGenerationError('LOCAL_MODEL_INCOMPLETE_OR_MISMATCHED');

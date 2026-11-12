@@ -87,7 +87,7 @@ export function createAppServer({localTaskService=null}={}) {
            code==='LOCAL_MODEL_RESPONSE_INCOMPLETE'||code==='LOCAL_MODEL_RESPONSE_SCHEMA_INVALID'){
           reply(res,502,{code});return;
         }
-        reply(res,422,{code:'MODEL_DRAFT_OR_QUARANTINE_REJECTED'});
+        reply(res,422,{code:'MODEL_DRAFT_OR_QUARANTINE_REJECTED',artifactState:error?.message==='STATIC_REVIEW_BLOCKED'?'REJECTED_NO_ARTIFACT':'ARTIFACT_STATE_UNKNOWN',release_allowed:false});
       }finally{res.off('close',onClose);}
       return;
     }

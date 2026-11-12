@@ -1,6 +1,7 @@
 // Project author and founding architect: Alexander Nikolaevich Romaskevich (RomaskevicH).
 import test from "node:test";
 import assert from "node:assert/strict";
+import {DRAFT_ENVELOPE_BYTES} from '../engineering/model-response-boundary.mjs';
 import {generateGroqDraft,ModelGatewayError} from "../engineering/groq-gateway.mjs";
 import {issueLocalDraftPermit,ROUTE_GROQ_PLAN} from "../engineering/local-permit.mjs";
 import {runPlanOnlyMission} from "../engineering/plan-only.mjs";
@@ -9,7 +10,7 @@ const key = "gsk_TEST_ONLY_VALID_LENGTH_NOT_REAL_TOKEN_1234";
 const model = "openai/gpt-oss-20b";
 const mission = {id:"mission-123",goal:"Make a small offline task app",allowModel:true};
 const draft = {schema:"constructor_draft_v1",summary:"Generate a task tracker",steps:[{id:"step-1",action:"Design local state",acceptance:"Can add and list tasks"}],files:[{path:"src/main.js",content:"export const task = true;"}]};
-const reply = (body = draft, finish = "stop", status = 200) => new Response(JSON.stringify({id:"chat-test",choices:[{finish_reason:finish,message:{role:"assistant",content:JSON.stringify(body)}}]}),{status,headers:{"Content-Type":"application/json"}});
+const reply = (body = draft, finish = "stop", status = 200) => new Response(JSON.stringify({id:"chat-test",model,choices:[{finish_reason:finish,message:{role:"assistant",content:JSON.stringify(body)}}]}),{status,headers:{"Content-Type":"application/json"}});
 const options = {mission,apiKey:key,model};
 
 test("mock Groq POST uses fixed HTTPS origin and no tools",async()=>{
@@ -68,7 +69,7 @@ test("upstream errors and secret-bearing exceptions are not revealed",async()=>{
   });
 });
 test("oversized provider payload fails closed",async()=>{
-  await assert.rejects(()=>generateGroqDraft({...options,fetchImpl:async()=>new Response("x".repeat(96001),{status:200})}),/TOO_LARGE/);
+  await assert.rejects(()=>generateGroqDraft({...options,fetchImpl:async()=>new Response("x".repeat(DRAFT_ENVELOPE_BYTES+1),{status:200})}),/TOO_LARGE/);
 });
 test("valid local permit gates a plan-only provider call and stops replay",async()=>{
   const secret="local-demo-signing-secret-not-production-001";
@@ -95,3 +96,17 @@ test("goal and model substitution are denied before any Groq request",async()=>{
   await assert.rejects(runPlanOnlyMission({...base,model:"other-model"}),/SCOPE/);
   assert.equal(calls,0);
 });
+
+test("Groq reports usage separately and rejects over-budget or wrong model receipts",async()=>{
+ const response=(usage,returned=model)=>new Response(JSON.stringify({model:returned,usage,choices:[{finish_reason:"stop",message:{content:JSON.stringify(draft)}}]}));
+ const r=await generateGroqDraft({...options,fetchImpl:async()=>response({prompt_tokens:100,completion_tokens:40})});
+ assert.deepEqual(r.usage.measured,{input_tokens:100,output_tokens:40});assert.equal(r.usage.requested_output_tokens,4000);assert.equal(r.returned_model,model);
+ await assert.rejects(generateGroqDraft({...options,fetchImpl:async()=>response({prompt_tokens:1,completion_tokens:4001})}),/OVER_BUDGET/);
+ await assert.rejects(generateGroqDraft({...options,fetchImpl:async()=>response({prompt_tokens:1,completion_tokens:2},"other")}),/MODEL_MISMATCH/);
+ const missing=await generateGroqDraft({...options,fetchImpl:async()=>reply()});assert.equal(missing.usage.measured,null);
+});
+test("402 and 429 are terminal, with bounded retry-after metadata",async()=>{
+ let calls=0;for(const status of [402,429])await assert.rejects(generateGroqDraft({...options,fetchImpl:async()=>{calls++;return new Response("sensitive response",{status,headers:{"Retry-After":"30"}});}}),e=>e.code===(status===402?"PROVIDER_PAYMENT_REQUIRED":"PROVIDER_RATE_LIMITED")&&(status!==429||e.retryAfterSeconds===30));assert.equal(calls,2);
+});
+
+test("failed provider call emits safe observation even when rate limited",async()=>{let observed;await assert.rejects(generateGroqDraft({...options,onObservation:o=>{observed=o;},fetchImpl:async()=>new Response("private error",{status:429})}),/RATE_LIMITED/);assert.equal(observed.measured,null);assert.equal(observed.measured_null_reason,"HTTP_REJECTED_BEFORE_USAGE");assert.equal(observed.bytes_read,0);assert.equal(JSON.stringify(observed).includes("private error"),false);});

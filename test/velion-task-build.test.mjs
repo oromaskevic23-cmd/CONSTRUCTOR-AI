@@ -73,10 +73,10 @@ test('already cancelled model requests never contact the provider',async()=>{
 });
 test('local model response is bounded while streaming, before JSON parsing',async()=>{
  let chunks=0,cancelled=false;
- const stream=new ReadableStream({pull(controller){if(chunks===40){controller.close();return;}chunks++;controller.enqueue(new Uint8Array(8192));},
+ const stream=new ReadableStream({pull(controller){if(chunks===100){controller.close();return;}chunks++;controller.enqueue(new Uint8Array(8192));},
    cancel(){cancelled=true;}});
  await assert.rejects(call({fetchImpl:async()=>new Response(stream,{status:200})}),/LOCAL_MODEL_BODY_TOO_LARGE/);
- assert.equal(cancelled,true);assert.ok(chunks<30);
+ assert.equal(cancelled,true);assert.ok(chunks<60);
 });
 test('task source is quarantined with exact manifest and no execution',async t=>{
  const root=await mkdtemp(join(tmpdir(),'task-contract-'));

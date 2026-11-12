@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {attachLocalAiController} from '../src/local-ai-policy.mjs';
 
 class Element extends EventTarget {
-  constructor(){super();this.value='';this.textContent='';this.disabled=true;}
+  constructor(){super();this.value='';this.textContent='';this.disabled=true;this.dataset={};}
 }
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
 function setup(pageUrl,fetchImpl){
@@ -14,7 +14,7 @@ function setup(pageUrl,fetchImpl){
   return {form,goal,token,submit,cancel,status,result,pageEvents,send};
 }
 const validResult={status:'QUARANTINED_NOT_EXECUTED',execution:'NOT_RUN',independentQa:'NOT_RUN',
-  approval:'NOT_GRANTED',release:'DENIED',draftSha256:'a'.repeat(64),stageManifestSha256:'b'.repeat(64),
+  approval:'NOT_GRANTED',release:'DENIED',release_allowed:false,artifactState:'QUARANTINED_DENIED',draftSha256:'a'.repeat(64),stageManifestSha256:'b'.repeat(64),
   stageId:'constructor-task-quarantine-ABC123',model:'fixture:local',
   preview:{trust:'UNTRUSTED_MODEL_TEXT',summary:'Synthetic result',files:[
     {path:'app.mjs',content:'export const example=true;'},
@@ -99,10 +99,11 @@ test('quarantined candidates show source-check failures without claiming indepen
     ['FAIL',['APP_MISSING_EXPORT_CREATETASK'],/source checks found problems/],
     ['PASS',[],/source checks passed; independent QA has not run/i],
   ]){
-    const output={...validResult,preflight:{status:state,scope:'SYNTAX_AND_MODULE_SHAPE_ONLY_NOT_QA',issues}};
+    const output={...validResult,artifactState:state==='FAIL'?'QUARANTINED_PREFLIGHT_FAILED':'QUARANTINED_DENIED',preflight:{status:state,scope:'SYNTAX_AND_MODULE_SHAPE_ONLY_NOT_QA',issues}};
     const ui=setup('http://127.0.0.1:4173/studio',async()=>new Response(JSON.stringify(output),{status:201}));
     ui.token.value='fixture-local-token';ui.goal.value='Build a task manager';ui.send();await tick();
     assert.match(ui.status.textContent,message);
+    assert.equal(ui.status.dataset.status,output.artifactState);assert.equal(ui.status.dataset.releaseAllowed,'false');
     assert.match(ui.status.textContent,/No code was executed or approved/);
     assert.match(ui.result.textContent,/Independent QA: not run/);
   }
