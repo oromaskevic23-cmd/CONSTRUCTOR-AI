@@ -10,7 +10,7 @@ const key = "gsk_TEST_ONLY_VALID_LENGTH_NOT_REAL_TOKEN_1234";
 const model = "openai/gpt-oss-20b";
 const mission = {id:"mission-123",goal:"Make a small offline task app",allowModel:true};
 const draft = {schema:"constructor_draft_v1",summary:"Generate a task tracker",steps:[{id:"step-1",action:"Design local state",acceptance:"Can add and list tasks"}],files:[{path:"src/main.js",content:"export const task = true;"}]};
-const reply = (body = draft, finish = "stop", status = 200) => new Response(JSON.stringify({id:"chat-test",choices:[{finish_reason:finish,message:{role:"assistant",content:JSON.stringify(body)}}]}),{status,headers:{"Content-Type":"application/json"}});
+const reply = (body = draft, finish = "stop", status = 200) => new Response(JSON.stringify({id:"chat-test",model,choices:[{finish_reason:finish,message:{role:"assistant",content:JSON.stringify(body)}}]}),{status,headers:{"Content-Type":"application/json"}});
 const options = {mission,apiKey:key,model};
 
 test("mock Groq POST uses fixed HTTPS origin and no tools",async()=>{
@@ -108,3 +108,5 @@ test("Groq reports usage separately and rejects over-budget or wrong model recei
 test("402 and 429 are terminal, with bounded retry-after metadata",async()=>{
  let calls=0;for(const status of [402,429])await assert.rejects(generateGroqDraft({...options,fetchImpl:async()=>{calls++;return new Response("sensitive response",{status,headers:{"Retry-After":"30"}});}}),e=>e.code===(status===402?"PROVIDER_PAYMENT_REQUIRED":"PROVIDER_RATE_LIMITED")&&(status!==429||e.retryAfterSeconds===30));assert.equal(calls,2);
 });
+
+test("failed provider call emits safe observation even when rate limited",async()=>{let observed;await assert.rejects(generateGroqDraft({...options,onObservation:o=>{observed=o;},fetchImpl:async()=>new Response("private error",{status:429})}),/RATE_LIMITED/);assert.equal(observed.measured,null);assert.equal(observed.measured_null_reason,"HTTP_REJECTED_BEFORE_USAGE");assert.equal(observed.bytes_read,0);assert.equal(JSON.stringify(observed).includes("private error"),false);});

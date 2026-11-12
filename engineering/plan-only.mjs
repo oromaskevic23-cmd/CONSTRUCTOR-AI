@@ -6,19 +6,21 @@ import {generateGroqDraft} from "./groq-gateway.mjs";
 
 export async function runPlanOnlyMission({
   mission, permit, permitSecret, consumedNonces,
-  apiKey, model, fetchImpl, timeoutMs = 20000, now = Date.now()
+  apiKey, model, fetchImpl, timeoutMs = 20000, now = Date.now(),onObservation,onAuthorization=()=>{}
 }) {
   const m = validateMission(mission);
   const authorization = verifyLocalDraftPermit({
     token: permit, mission: m, route: ROUTE_GROQ_PLAN, model,
     secret: permitSecret, consumedNonces, now
   });
-  const result = await generateGroqDraft({mission: m, apiKey, model, fetchImpl, timeoutMs});
+  onAuthorization(authorization);
+  const result = await generateGroqDraft({mission: m, apiKey, model, fetchImpl, timeoutMs,onObservation});
   return Object.freeze({
     ...result,
     authorization: {
       stage: "PLAN_ONLY",
       action: authorization.action,
+      scope_sha256:authorization.scope_sha256,
       status: "LOCAL_HMAC_PERMIT_VERIFIED",
       note: "No independent human identity, production approval or sandbox authorization has been verified"
     }

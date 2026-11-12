@@ -36,7 +36,7 @@ export async function fetchBounded({fetchImpl=fetch,url,options={},maxBytes,time
      ![timeoutMs,ttfbMs,idleMs].every(n=>Number.isSafeInteger(n)&&n>0&&n<=180000))
     throw fail('RESPONSE_BOUNDARY_CONFIG_INVALID');
   const controller=new AbortController(),parent=options.signal;
-  let reader,response,phaseTimer,totalTimer,reason;
+  let reader,response,phaseTimer,totalTimer,reason,bytes=0;
   const stop=code=>{
     if(controller.signal.aborted)return;
     reason=code;
@@ -72,11 +72,11 @@ export async function fetchBounded({fetchImpl=fetch,url,options={},maxBytes,time
     }
     if(!response.ok&&!readErrorBody){
       try{response.body?.cancel().catch(()=>{});}catch{}
-      return {response,text:null};
+      return {response,text:null,decodedBytes:0};
     }
     reader=response.body?.getReader?.();
     if(!reader)throw fail('RESPONSE_BODY_UNREADABLE');
-    const chunks=[];let bytes=0;
+    const chunks=[];
     for(;;){
       const {done,value}=await guard(reader.read());
       if(controller.signal.aborted)throw fail(reason);
@@ -95,7 +95,7 @@ export async function fetchBounded({fetchImpl=fetch,url,options={},maxBytes,time
     return {response,text,decodedBytes:bytes};
   }catch(error){
     stop(error instanceof ResponseBoundaryError||bridgeCodes.has(error?.code)?error.code:'RESPONSE_TRANSPORT_FAILED');
-    throw fail(reason||'RESPONSE_TRANSPORT_FAILED');
+    const errorOut=fail(reason||'RESPONSE_TRANSPORT_FAILED');errorOut.bytesRead=bytes;throw errorOut;
   }finally{
     clearTimeout(phaseTimer);clearTimeout(totalTimer);
     parent?.removeEventListener('abort',onParent);

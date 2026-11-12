@@ -15,7 +15,7 @@ const required=[
   "package.json","index.html","styles.css","src/tasks.js","src/app.js",
   "test/tasks.test.js","test/server.test.js","tools/serve.mjs",
   "SECURITY.md","docs/VERIFIED_ENGINEERING_STANDARD.md",
-  "engineering/draft-contract.mjs","engineering/groq-gateway.mjs",
+  "engineering/draft-contract.mjs","engineering/groq-gateway.mjs","engineering/model-response-boundary.mjs","engineering/mission-ledger.mjs","engineering/task-repair-loop.mjs","tools/local-velion-task-repair.mjs","test/model-response-boundary.test.mjs","test/mission-ledger.test.mjs","test/task-repair-loop.test.mjs",
   "engineering/local-permit.mjs","engineering/plan-only.mjs",
   "tools/generate-plan.mjs","tools/build-acceptance.mjs","tools/verify-acceptance.mjs","tools/verify-public-studio.mjs","docs/FLAGSHIP_ACCEPTANCE.md","test/plan-contract.test.js","test/groq-gateway.test.js",
   "test/local-permit.test.js","test/cli.test.js",

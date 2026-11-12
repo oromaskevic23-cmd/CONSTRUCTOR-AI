@@ -26,7 +26,7 @@ test("full OFFLINE mocked model→permit→draft→quarantine→proof roundtrip"
  const fakeProvider=async (_url,request)=>{
    requests++;
    assert.match(request.headers.Authorization,/^Bearer gsk_/);
-   return new Response(JSON.stringify({id:"mock-only",choices:[{finish_reason:"stop",message:{role:"assistant",content:JSON.stringify(draft)}}]}),{status:200});
+   return new Response(JSON.stringify({id:"mock-only",model:"model-testing-only",choices:[{finish_reason:"stop",message:{role:"assistant",content:JSON.stringify(draft)}}]}),{status:200});
  };
  const plan=await runPlanOnlyMission({mission,permit,permitSecret:secret,
    consumedNonces:new Set(),apiKey:"gsk_TEST_ONLY_VALID_LENGTH_NOT_REAL_TOKEN_1234",
