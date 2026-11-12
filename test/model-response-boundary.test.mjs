@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createServer} from 'node:http';
 import {once} from 'node:events';
-import {gzipSync} from 'node:zlib';
+import {gzipSync,brotliCompressSync} from 'node:zlib';
 import {fetchBounded,parseBoundedJson} from '../engineering/model-response-boundary.mjs';
 const base={url:'http://fixture.invalid',maxBytes:1024,timeoutMs:2000,ttfbMs:500,idleMs:100};
 test('overflow mid-stream ignores false Content-Length and cancels the reader',async()=>{
@@ -53,4 +53,25 @@ test('error body not read for terminal HTTP response',async()=>{
  let cancelled=false;const body=new ReadableStream({cancel(){cancelled=true;}});
  const r=await fetchBounded({...base,fetchImpl:async()=>new Response(body,{status:429})});
  assert.equal(r.text,null);assert.equal(r.response.status,429);assert.equal(cancelled,true);
+});
+
+test('real Brotli response is bounded after decompression',async t=>{
+ const packed=brotliCompressSync(Buffer.alloc(100000,65));assert.ok(packed.length<1024);
+ const url=await server(t,(_,res)=>{res.writeHead(200,{'Content-Encoding':'br','Content-Length':packed.length});res.end(packed);});
+ await assert.rejects(fetchBounded({...base,url}),/RESPONSE_TOO_LARGE/);
+});
+test('real network rejects unsupported compression, wrong MIME and redirect',async t=>{
+ const url=await server(t,(req,res)=>{
+ if(req.url==='/redirect'){res.writeHead(302,{Location:'/other'});res.end();return;}
+ res.writeHead(200,req.url==='/encoding'?{'Content-Encoding':'zstd','Content-Type':'application/json'}:{'Content-Type':'text/html'});res.end('{}');
+ });
+ await assert.rejects(fetchBounded({...base,url:url+'/encoding',requireJson:true}),/RESPONSE_ENCODING_UNSUPPORTED/);
+ await assert.rejects(fetchBounded({...base,url:url+'/mime',requireJson:true}),/RESPONSE_CONTENT_TYPE_INVALID/);
+ await assert.rejects(fetchBounded({...base,url:url+'/redirect',requireJson:true}),/RESPONSE_TRANSPORT_FAILED/);
+});
+test('bounded JSON rejects dangerous keys and overlarge containers',()=>{
+ for(const raw of ['{"__proto__":{}}','{"constructor":1}','{"nested":{"prototype":1}}'])assert.throws(()=>parseBoundedJson(raw),/JSON_FORBIDDEN_KEY/);
+ assert.throws(()=>parseBoundedJson(JSON.stringify(Array(129).fill(0))),/JSON_ARRAY_LIMIT/);
+ assert.throws(()=>parseBoundedJson(JSON.stringify(Object.fromEntries(Array.from({length:129},(_,i)=>['k'+i,i])))),/JSON_KEY_LIMIT/);
+ assert.throws(()=>parseBoundedJson(JSON.stringify('a'.repeat(64001))),/JSON_STRING_LIMIT/);
 });

@@ -1,4 +1,4 @@
-import {fetchBounded,parseBoundedJson} from './model-response-boundary.mjs';
+import {fetchBounded,parseBoundedJson,DRAFT_ENVELOPE_BYTES} from './model-response-boundary.mjs';
 // Fixed-origin Groq adapter. Produces untrusted proposals, not executable actions.
 import {createHash} from "node:crypto";
 import {parseModelDraft, validateMission} from "./draft-contract.mjs";
@@ -55,7 +55,7 @@ export async function generateGroqDraft({mission, apiKey, model, fetchImpl = fet
   const started=Date.now();
   let response,raw;
   try {
-    const bounded=await fetchBounded({fetchImpl,url:GROQ_ENDPOINT,maxBytes:96000,timeoutMs,
+    const bounded=await fetchBounded({fetchImpl,url:GROQ_ENDPOINT,maxBytes:DRAFT_ENVELOPE_BYTES,requireJson:true,timeoutMs,
       options:{method:"POST",redirect:"error",headers:{
         "Authorization":"Bearer "+apiKey,"Content-Type":"application/json","Accept":"application/json"
       },body:JSON.stringify(body)}});

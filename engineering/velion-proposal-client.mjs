@@ -1,4 +1,4 @@
-import {fetchBounded,parseBoundedJson} from './model-response-boundary.mjs';
+import {fetchBounded,parseBoundedJson,REVIEW_RECEIPT_BYTES} from './model-response-boundary.mjs';
 // Project author and founding architect: Alexander Nikolaevich Romaskevich (RomaskevicH).
 // CONSTRUCTOR AI -> VELION reviewed private proposal. No general-purpose model access.
 // Local-only shared-secret HMAC + existing single-use local draft permit.
@@ -68,7 +68,7 @@ export async function runApprovedVelionProposal({
   const signature=createHmac("sha256",bridgeSecret).update(signed).digest("hex");
   let response,text;
   try{
-    const bounded=await fetchBounded({fetchImpl,url:URL,maxBytes:16000,timeoutMs,
+    const bounded=await fetchBounded({fetchImpl,url:URL,maxBytes:REVIEW_RECEIPT_BYTES,requireJson:true,timeoutMs,
       options:{method:"POST",redirect:"error",
       headers:{"Content-Type":"application/json","Accept":"application/json",
         "X-Velion-Timestamp":timestamp,"X-Velion-Nonce":nonce,"X-Velion-Signature":signature},

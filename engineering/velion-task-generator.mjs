@@ -1,4 +1,4 @@
-import {fetchBounded,parseBoundedJson} from './model-response-boundary.mjs';
+import {fetchBounded,parseBoundedJson,DRAFT_ENVELOPE_BYTES} from './model-response-boundary.mjs';
 // Project author and founding architect: Alexander Nikolaevich Romaskevich (RomaskevicH).
 // VELION local model adapter. Real local inference is opt-in; no paid or remote endpoint.
 // Output is untrusted source, never an execution authorization. This is NOT proprietary VELION weights.
@@ -73,7 +73,7 @@ export async function requestVelionTaskDraft({mission,permit,permitSecret,consum
     prompt:system+'\nMission ID: '+m.id+'\nUser request: '+m.goal};
   let response,raw;
   try{
-    const bounded=await fetchBounded({fetchImpl,url:LOCAL_MODEL_URL,maxBytes:100000,timeoutMs,
+    const bounded=await fetchBounded({fetchImpl,url:LOCAL_MODEL_URL,maxBytes:DRAFT_ENVELOPE_BYTES,requireJson:true,timeoutMs,
       options:{method:'POST',redirect:'error',
       headers:{'Content-Type':'application/json','Accept':'application/json'},
       body:JSON.stringify(payload),signal}});

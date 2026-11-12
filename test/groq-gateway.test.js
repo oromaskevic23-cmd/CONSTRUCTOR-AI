@@ -1,6 +1,7 @@
 // Project author and founding architect: Alexander Nikolaevich Romaskevich (RomaskevicH).
 import test from "node:test";
 import assert from "node:assert/strict";
+import {DRAFT_ENVELOPE_BYTES} from '../engineering/model-response-boundary.mjs';
 import {generateGroqDraft,ModelGatewayError} from "../engineering/groq-gateway.mjs";
 import {issueLocalDraftPermit,ROUTE_GROQ_PLAN} from "../engineering/local-permit.mjs";
 import {runPlanOnlyMission} from "../engineering/plan-only.mjs";
@@ -68,7 +69,7 @@ test("upstream errors and secret-bearing exceptions are not revealed",async()=>{
   });
 });
 test("oversized provider payload fails closed",async()=>{
-  await assert.rejects(()=>generateGroqDraft({...options,fetchImpl:async()=>new Response("x".repeat(96001),{status:200})}),/TOO_LARGE/);
+  await assert.rejects(()=>generateGroqDraft({...options,fetchImpl:async()=>new Response("x".repeat(DRAFT_ENVELOPE_BYTES+1),{status:200})}),/TOO_LARGE/);
 });
 test("valid local permit gates a plan-only provider call and stops replay",async()=>{
   const secret="local-demo-signing-secret-not-production-001";

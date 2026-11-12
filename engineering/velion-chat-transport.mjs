@@ -1,4 +1,4 @@
-import {fetchBounded,parseBoundedJson} from './model-response-boundary.mjs';
+import {fetchBounded,parseBoundedJson,DRAFT_ENVELOPE_BYTES} from './model-response-boundary.mjs';
 // Project author and founding architect: Alexander Nikolaevich Romaskevich (RomaskevicH).
 // Connect the Constructor task contract to an explicitly configured VELION GGUF
 // chat on the same machine. No external URL or paid fallback is accepted.
@@ -26,7 +26,7 @@ export function createVelionChatTransport({port,accessToken,expectedModelSha256,
     const messages=[{role:'user',content:input.prompt}];
     let response,raw;
     try{
-    const bounded=await fetchBounded({fetchImpl,url:origin+'/api/chat',maxBytes:65536,timeoutMs:120000,readErrorBody:true,
+    const bounded=await fetchBounded({fetchImpl,url:origin+'/api/chat',maxBytes:DRAFT_ENVELOPE_BYTES,requireJson:true,timeoutMs:120000,readErrorBody:true,
       options:{method:'POST',redirect:'error',
       headers:{'Content-Type':'application/json','Accept':'application/json',
         'Origin':origin,'Authorization':'Bearer '+accessToken},
