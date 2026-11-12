@@ -1,3 +1,4 @@
+import {fetchBounded,parseBoundedJson} from './model-response-boundary.mjs';
 // Fixed-origin Groq adapter. Produces untrusted proposals, not executable actions.
 import {createHash} from "node:crypto";
 import {parseModelDraft, validateMission} from "./draft-contract.mjs";
@@ -51,40 +52,31 @@ export async function generateGroqDraft({mission, apiKey, model, fetchImpl = fet
     max_completion_tokens: 4000,
     stream: false
   };
-  let response;
+  const started=Date.now();
+  let response,raw;
   try {
-    response = await fetchImpl(GROQ_ENDPOINT, {
-      method: "POST",
-      redirect: "error",
-      headers: {
-        "Authorization": "Bearer " + apiKey,
-        "Content-Type": "application/json",
-        "Accept": "application/json"
-      },
-      body: JSON.stringify(body),
-      signal: AbortSignal.timeout(timeoutMs)
-    });
-  } catch {
-    // Deliberately hide upstream error text. Libraries sometimes include credentials/URLs.
-    throw new ModelGatewayError("PROVIDER_TRANSPORT_FAILED");
-  }
-  if (!response || typeof response.ok !== "boolean") {
-    throw new ModelGatewayError("PROVIDER_PROTOCOL_INVALID");
+    const bounded=await fetchBounded({fetchImpl,url:GROQ_ENDPOINT,maxBytes:96000,timeoutMs,
+      options:{method:"POST",redirect:"error",headers:{
+        "Authorization":"Bearer "+apiKey,"Content-Type":"application/json","Accept":"application/json"
+      },body:JSON.stringify(body)}});
+    response=bounded.response;raw=bounded.text;
+  } catch(error) {
+    throw new ModelGatewayError(error.code==="RESPONSE_TOO_LARGE"?"PROVIDER_BODY_TOO_LARGE":
+      error.code==="RESPONSE_BODY_UNREADABLE"?"PROVIDER_BODY_UNREADABLE":
+      ["RESPONSE_TTFB_TIMEOUT","RESPONSE_IDLE_TIMEOUT","RESPONSE_TOTAL_TIMEOUT"].includes(error.code)?error.code:
+      "PROVIDER_TRANSPORT_FAILED");
   }
   if (!response.ok) {
-    throw new ModelGatewayError(response.status === 401 || response.status === 403 ?
-      "PROVIDER_CREDENTIAL_REJECTED" : response.status === 429 ?
-      "PROVIDER_RATE_LIMITED" : "PROVIDER_HTTP_FAILED");
-  }
-  let raw;
-  try { raw = await response.text(); }
-  catch { throw new ModelGatewayError("PROVIDER_BODY_UNREADABLE"); }
-  if (typeof raw !== "string" || raw.length > 96000) {
-    throw new ModelGatewayError("PROVIDER_BODY_TOO_LARGE");
+    const error=new ModelGatewayError(response.status===401||response.status===403?
+      "PROVIDER_CREDENTIAL_REJECTED":response.status===429?"PROVIDER_RATE_LIMITED":
+      response.status===402?"PROVIDER_PAYMENT_REQUIRED":"PROVIDER_HTTP_FAILED");
+    const retry=response.headers?.get("retry-after");
+    if(response.status===429&&/^\d{1,9}$/.test(retry||""))error.retryAfterSeconds=Number(retry);
+    throw error; // terminal, no retry or paid fallback
   }
   let payload;
-  try { payload = JSON.parse(raw); }
-  catch { throw new ModelGatewayError("PROVIDER_JSON_INVALID"); }
+  try { payload=parseBoundedJson(raw); }
+  catch(error) { throw new ModelGatewayError(error.code==="JSON_DEPTH_EXCEEDED"?"PROVIDER_JSON_DEPTH_EXCEEDED":"PROVIDER_JSON_INVALID"); }
   const choice = payload?.choices?.[0];
   const answer = choice?.message?.content;
   // Truncation is never a successful generation.
@@ -92,12 +84,22 @@ export async function generateGroqDraft({mission, apiKey, model, fetchImpl = fet
     throw new ModelGatewayError("PROVIDER_INCOMPLETE_RESPONSE");
   }
   const checked = parseModelDraft(answer);
+  if(payload.model!==undefined&&payload.model!==model)throw new ModelGatewayError("PROVIDER_MODEL_MISMATCH");
+  const usage=payload.usage;
+  const count=n=>Number.isSafeInteger(n)&&n>=0&&n<=10000000;
+  const measured=usage===undefined?null:(count(usage?.prompt_tokens)&&count(usage?.completion_tokens)?
+    {input_tokens:usage.prompt_tokens,output_tokens:usage.completion_tokens}:false);
+  if(measured===false||measured?.output_tokens>body.max_completion_tokens)throw new ModelGatewayError("PROVIDER_USAGE_INVALID_OR_OVER_BUDGET");
   return Object.freeze({
     status: "DRAFT_VALIDATED_NOT_EXECUTED",
     mission_id: validated.id,
     input_sha256: stableHash(JSON.stringify({id: validated.id, goal: validated.goal})),
     model_provider: "groq",
     model,
+    returned_model:payload.model??null,
+    usage:{requested_output_tokens:body.max_completion_tokens,measured,source:measured?"PROVIDER_REPORTED_NOT_INDEPENDENTLY_ATTESTED":"NOT_REPORTED"},
+    latency_ms:Date.now()-started,
+    response_sha256:stableHash(raw),
     model_response_id: typeof payload.id === "string" ? payload.id.slice(0,128) : null,
     model_output_sha256: stableHash(answer),
     validated_draft_sha256: checked.sha256,

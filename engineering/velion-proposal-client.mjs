@@ -1,3 +1,4 @@
+import {fetchBounded,parseBoundedJson} from './model-response-boundary.mjs';
 // Project author and founding architect: Alexander Nikolaevich Romaskevich (RomaskevicH).
 // CONSTRUCTOR AI -> VELION reviewed private proposal. No general-purpose model access.
 // Local-only shared-secret HMAC + existing single-use local draft permit.
@@ -65,24 +66,20 @@ export async function runApprovedVelionProposal({
   const signed=["POST","/v1/model/proposals",timestamp,nonce,
     createHash("sha256").update(payload).digest("hex")].join("\n");
   const signature=createHmac("sha256",bridgeSecret).update(signed).digest("hex");
-  let response;
+  let response,text;
   try{
-    response=await fetchImpl(URL,{
-      method:"POST",redirect:"error",
+    const bounded=await fetchBounded({fetchImpl,url:URL,maxBytes:16000,timeoutMs,
+      options:{method:"POST",redirect:"error",
       headers:{"Content-Type":"application/json","Accept":"application/json",
-        "X-Velion-Timestamp":timestamp,"X-Velion-Nonce":nonce,
-        "X-Velion-Signature":signature},
-      body:payload,signal:AbortSignal.timeout(timeoutMs)
-    });
-  }catch{throw new VelionProposalError("LOCAL_BRIDGE_UNAVAILABLE");}
+        "X-Velion-Timestamp":timestamp,"X-Velion-Nonce":nonce,"X-Velion-Signature":signature},
+      body:payload}});
+    response=bounded.response;text=bounded.text;
+  }catch(error){
+    throw new VelionProposalError(error.code==="RESPONSE_TOO_LARGE"?"LOCAL_BRIDGE_RESPONSE_TOO_LARGE":"LOCAL_BRIDGE_UNAVAILABLE");
+  }
   if(!response?.ok)throw new VelionProposalError("LOCAL_BRIDGE_REFUSED");
-  let text;
-  try{text=await response.text();}
-  catch{throw new VelionProposalError("LOCAL_BRIDGE_BODY_UNREADABLE");}
-  if(typeof text!=="string"||text.length>16000)
-    throw new VelionProposalError("LOCAL_BRIDGE_RESPONSE_TOO_LARGE");
   let parsed;
-  try{parsed=JSON.parse(text);}
+  try{parsed=parseBoundedJson(text);}
   catch{throw new VelionProposalError("LOCAL_BRIDGE_JSON_INVALID");}
   return verifyReceipt(parsed);
 }

@@ -156,7 +156,8 @@ async function runLocalAi(){
       page.getByRole('button',{name:'Generate candidate'}).click()
     ]);
     assert.equal(response.status(),201);const receipt=await response.json();
-    await page.getByRole('status').filter({hasText:'Candidate saved to local quarantine'}).waitFor();
+    assert.equal(receipt.preflight.status,'FAIL');
+    await page.getByRole('status').filter({hasText:'Candidate saved to quarantine, but source checks found problems. No code was executed or approved.'}).waitFor();
     assert.equal(await page.locator('#local-ai-token').inputValue(),'');
     check((await page.locator('#local-ai-result').innerText()).includes(receipt.draftSha256),'Missing digest');
     assert.equal((await page.locator('body').innerText()).includes(accessToken),false);

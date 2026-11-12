@@ -95,3 +95,15 @@ test("goal and model substitution are denied before any Groq request",async()=>{
   await assert.rejects(runPlanOnlyMission({...base,model:"other-model"}),/SCOPE/);
   assert.equal(calls,0);
 });
+
+test("Groq reports usage separately and rejects over-budget or wrong model receipts",async()=>{
+ const response=(usage,returned=model)=>new Response(JSON.stringify({model:returned,usage,choices:[{finish_reason:"stop",message:{content:JSON.stringify(draft)}}]}));
+ const r=await generateGroqDraft({...options,fetchImpl:async()=>response({prompt_tokens:100,completion_tokens:40})});
+ assert.deepEqual(r.usage.measured,{input_tokens:100,output_tokens:40});assert.equal(r.usage.requested_output_tokens,4000);assert.equal(r.returned_model,model);
+ await assert.rejects(generateGroqDraft({...options,fetchImpl:async()=>response({prompt_tokens:1,completion_tokens:4001})}),/OVER_BUDGET/);
+ await assert.rejects(generateGroqDraft({...options,fetchImpl:async()=>response({prompt_tokens:1,completion_tokens:2},"other")}),/MODEL_MISMATCH/);
+ const missing=await generateGroqDraft({...options,fetchImpl:async()=>reply()});assert.equal(missing.usage.measured,null);
+});
+test("402 and 429 are terminal, with bounded retry-after metadata",async()=>{
+ let calls=0;for(const status of [402,429])await assert.rejects(generateGroqDraft({...options,fetchImpl:async()=>{calls++;return new Response("sensitive response",{status,headers:{"Retry-After":"30"}});}}),e=>e.code===(status===402?"PROVIDER_PAYMENT_REQUIRED":"PROVIDER_RATE_LIMITED")&&(status!==429||e.retryAfterSeconds===30));assert.equal(calls,2);
+});

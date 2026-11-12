@@ -23,7 +23,7 @@ function receipt(){
     human_approval:"NOT_GRANTED_BY_ROUTER",request_sha256:"a".repeat(64),
     output_sha256:"b".repeat(64),model_size_bytes:2837597147,generated_tokens:33};
 }
-const fake=(r)=>async()=>({ok:true,text:async()=>JSON.stringify(r)});
+const fake=(r)=>async()=>new Response(JSON.stringify(r));
 test("permit-backed signed request is bound to reviewed VELION task",async()=>{
   const result=await runApprovedVelionProposal({...args(),fetchImpl:async(url,options)=>{
     assert.equal(url,"http://127.0.0.1:8765/v1/model/proposals");
@@ -34,7 +34,7 @@ test("permit-backed signed request is bound to reviewed VELION task",async()=>{
     const canonical=["POST","/v1/model/proposals",h["X-Velion-Timestamp"],h["X-Velion-Nonce"],
       createHash("sha256").update(options.body).digest("hex")].join("\n");
     assert.equal(h["X-Velion-Signature"],createHmac("sha256",BRIDGE).update(canonical).digest("hex"));
-    return {ok:true,text:async()=>JSON.stringify(receipt())};
+    return new Response(JSON.stringify(receipt()));
   }});
   assert.equal(result.status,"VERIFIED_PROPOSAL_NOT_EXECUTED");
   assert.equal(result.release,"DENIED");

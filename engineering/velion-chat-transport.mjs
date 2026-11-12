@@ -1,3 +1,4 @@
+import {fetchBounded,parseBoundedJson} from './model-response-boundary.mjs';
 // Project author and founding architect: Alexander Nikolaevich Romaskevich (RomaskevicH).
 // Connect the Constructor task contract to an explicitly configured VELION GGUF
 // chat on the same machine. No external URL or paid fallback is accepted.
@@ -7,22 +8,6 @@ export const VELION_DRAFT_FORMAT='constructor_draft_v1';
 export const VELION_DRAFT_SCHEMA_SHA256='fd4d2ae555076aba433dae990ea9b83fc4405c917af43124deba6ccdf4f3cf4d';
 const error=code=>Object.assign(new Error(code),{code});
 const hash=value=>createHash('sha256').update(value).digest('hex');
-
-async function readBounded(response){
-  const reader=response?.body?.getReader?.();
-  if(!reader)throw error('VELION_CHAT_RESPONSE_INVALID');
-  const chunks=[];let size=0;
-  try{
-    for(;;){
-      const {value,done}=await reader.read();if(done)break;
-      if(!(value instanceof Uint8Array))throw error('VELION_CHAT_RESPONSE_INVALID');
-      size+=value.byteLength;
-      if(size>65536){try{await reader.cancel();}catch{}throw error('VELION_CHAT_RESPONSE_TOO_LARGE');}
-      chunks.push(value);
-    }
-    return JSON.parse(new TextDecoder('utf8',{fatal:true}).decode(Buffer.concat(chunks)));
-  }finally{reader.releaseLock();}
-}
 
 export function createVelionChatTransport({port,accessToken,expectedModelSha256,structured=false,fetchImpl=fetch}={}){
   if(!Number.isInteger(port)||port<1||port>65535||
@@ -39,15 +24,20 @@ export function createVelionChatTransport({port,accessToken,expectedModelSha256,
        typeof input.prompt!=='string'||!input.prompt.trim()||input.prompt.length>4000)
       throw error('VELION_CHAT_REQUEST_INVALID');
     const messages=[{role:'user',content:input.prompt}];
-    const response=await fetchImpl(origin+'/api/chat',{method:'POST',redirect:'error',
+    let response,raw;
+    try{
+    const bounded=await fetchBounded({fetchImpl,url:origin+'/api/chat',maxBytes:65536,timeoutMs:120000,readErrorBody:true,
+      options:{method:'POST',redirect:'error',
       headers:{'Content-Type':'application/json','Accept':'application/json',
         'Origin':origin,'Authorization':'Bearer '+accessToken},
-      body:JSON.stringify({messages,...(structured?{responseFormat:VELION_DRAFT_FORMAT}:{})}),signal:options.signal});
+      body:JSON.stringify({messages,...(structured?{responseFormat:VELION_DRAFT_FORMAT}:{})}),signal:options.signal}});
+    response=bounded.response;raw=bounded.text;
+    }catch{if(options.signal?.aborted)throw error('VELION_CHAT_CANCELLED');throw error('VELION_CHAT_UNAVAILABLE');}
     if(!response?.ok){
       // Only fixed, bounded diagnostic codes cross the local boundary. Never
       // forward provider text, paths, secrets or arbitrary error properties.
       let detail;
-      try{detail=await readBounded(response);}catch{detail=null;}
+      try{detail=parseBoundedJson(raw);}catch{detail=null;}
       const diagnostic={
         '502:CHAT_MODEL_RESPONSE_INVALID':'VELION_CHAT_MODEL_RESPONSE_REJECTED',
         '502:CHAT_MODEL_RESPONSE_INCOMPLETE':'VELION_CHAT_MODEL_RESPONSE_INCOMPLETE',
@@ -58,7 +48,8 @@ export function createVelionChatTransport({port,accessToken,expectedModelSha256,
       }[response?.status+':'+detail?.code];
       throw error(diagnostic||'VELION_CHAT_UNAVAILABLE');
     }
-    const output=await readBounded(response),receipt=output?.receipt;
+    let output;try{output=parseBoundedJson(raw);}catch{throw error('VELION_CHAT_RESPONSE_INVALID');}
+    const receipt=output?.receipt;
     if(typeof output?.answer!=='string'||!output.answer.trim()||output.answer.length>4000||
        receipt?.provider!=='llama-cpp-local'||receipt.modelSha256!==expectedModelSha256||
        receipt.requestedModel!==expectedModel||receipt.returnedModel!==expectedModel||

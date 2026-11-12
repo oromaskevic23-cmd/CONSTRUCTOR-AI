@@ -158,7 +158,7 @@ test('bridge propagates cancellation to the VELION request',async()=>{
       return new Promise((_resolve,reject)=>seen.addEventListener('abort',()=>reject(Error('cancelled')),{once:true}));
     }});
   const pending=bridge(taskUrl,{...options,signal:cancel.signal});
-  cancel.abort();await assert.rejects(pending,/cancelled/);assert.equal(seen.aborted,true);
+  cancel.abort();await assert.rejects(pending,/VELION_CHAT_CANCELLED/);assert.equal(seen.aborted,true);
 });
 
 test('structured mode requests the pinned format and rejects any silent downgrade',async()=>{
