@@ -3,6 +3,8 @@ export class ResponseBoundaryError extends Error {
   constructor(code){super(code);this.name='ResponseBoundaryError';this.code=code;}
 }
 const fail=code=>new ResponseBoundaryError(code);
+// Nested trusted bridge emits only these fixed codes; never propagate raw provider messages.
+const bridgeCodes=new Set(['VELION_CHAT_MODEL_RESPONSE_REJECTED','VELION_CHAT_MODEL_RESPONSE_INCOMPLETE','VELION_CHAT_MODEL_RESPONSE_SCHEMA_INVALID','VELION_CHAT_FORMAT_DISABLED','VELION_CHAT_BUSY']);
 export function parseBoundedJson(text,maxDepth=24){
   if(typeof text!=='string'||!Number.isInteger(maxDepth)||maxDepth<1||maxDepth>64)throw fail('JSON_INVALID');
   let depth=0,quoted=false,escaped=false;
@@ -54,7 +56,7 @@ export async function fetchBounded({fetchImpl=fetch,url,options={},maxBytes,time
     }
     reader=response.body?.getReader?.();
     if(!reader)throw fail('RESPONSE_BODY_UNREADABLE');
-    const chunks=[];let bytes=0,first=true;
+    const chunks=[];let bytes=0;
     for(;;){
       const {done,value}=await guard(reader.read());
       if(controller.signal.aborted)throw fail(reason);
@@ -64,7 +66,6 @@ export async function fetchBounded({fetchImpl=fetch,url,options={},maxBytes,time
       bytes+=value.byteLength;
       if(bytes>maxBytes){stop('RESPONSE_TOO_LARGE');throw fail('RESPONSE_TOO_LARGE');}
       chunks.push(Buffer.from(value)); // own a bounded copy
-      if(first)first=false;
       phase(idleMs,'RESPONSE_IDLE_TIMEOUT');
     }
     clearTimeout(phaseTimer);
@@ -73,7 +74,7 @@ export async function fetchBounded({fetchImpl=fetch,url,options={},maxBytes,time
     catch{throw fail('RESPONSE_BODY_UNREADABLE');}
     return {response,text,decodedBytes:bytes};
   }catch(error){
-    stop(error instanceof ResponseBoundaryError?error.code:'RESPONSE_TRANSPORT_FAILED');
+    stop(error instanceof ResponseBoundaryError||bridgeCodes.has(error?.code)?error.code:'RESPONSE_TRANSPORT_FAILED');
     throw fail(reason||'RESPONSE_TRANSPORT_FAILED');
   }finally{
     clearTimeout(phaseTimer);clearTimeout(totalTimer);
