@@ -12,7 +12,10 @@ const secret=process.env.VELION_LOCAL_PERMIT_SECRET,model=process.env.VELION_LOC
 if(!secret||Buffer.byteLength(secret)<32||!model)throw Error('LOCAL_PERMIT_SECRET_AND_MODEL_REQUIRED');
 const mission={id:'repair-task-'+randomBytes(8).toString('hex'),goal:goal.trim(),allowModel:true};
 const consumedNonces=new Set();
-const result=await runBoundedTaskRepair({mission,maxAttempts:Number(count),runAttempt:async(scoped,n,signal)=>{
+const cancel=new AbortController();
+const stop=()=>cancel.abort();
+process.once('SIGINT',stop);process.once('SIGTERM',stop);
+const result=await runBoundedTaskRepair({mission,maxAttempts:Number(count),signal:cancel.signal,runAttempt:async(scoped,n,signal)=>{
  const now=Date.now();
  const permit=issueLocalDraftPermit({mission:scoped,route:ROUTE_LOCAL_TASK,model,secret,now});
  const receipt=await requestVelionTaskDraft({mission:scoped,permit,permitSecret:secret,consumedNonces,
@@ -20,5 +23,6 @@ const result=await runBoundedTaskRepair({mission,maxAttempts:Number(count),runAt
  const staged=await stageGeneratedTaskApp({receipt,outputRoot});
  return {receipt,staged};
 }});
+process.removeListener('SIGINT',stop);process.removeListener('SIGTERM',stop);
 console.log(JSON.stringify(result));
 if(result.status!=='PREFLIGHT_PASSED_QUARANTINED')process.exitCode=3;
