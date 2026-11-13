@@ -3,6 +3,7 @@
 import {createHash} from 'node:crypto';
 import {readFile,lstat,readdir,writeFile} from 'node:fs/promises';
 import {join,resolve} from 'node:path';
+import {assertIndependentQaLog} from './qa-log.mjs';
 const hash=x=>createHash('sha256').update(x).digest('hex');
 const [,,stagePath,logPath,receiptPath]=process.argv;
 if(!stagePath||!logPath||!receiptPath||process.argv.length!==5)throw Error('USAGE: node tools/verify-task-sandbox-qa.mjs STAGE QA_LOG RECEIPT');
@@ -23,8 +24,7 @@ for(const item of m.files){
  if(bytes.length!==item.bytes||hash(bytes)!==item.sha256)throw Error('STAGE_FILE_CHANGED');
 }
 const log=await readFile(logPath,'utf8');
-if(log.length>80000||!/\bpass\s+4\b/.test(log)||!/\bfail\s+0\b/.test(log)||
-   !log.includes('completion is immutable'))throw Error('INDEPENDENT_QA_LOG_NOT_ACCEPTABLE');
+assertIndependentQaLog(log);
 const evidence={schema:'constructor_task_qa_observation_v1',missionId:m.missionId,
  status:'UNATTESTED_QA_LOG_SHAPE_ONLY',execution:'NOT_ATTESTED_BY_COLLECTOR',
  stageManifestSha256:hash(manifestBytes),qaLogSha256:hash(log),
