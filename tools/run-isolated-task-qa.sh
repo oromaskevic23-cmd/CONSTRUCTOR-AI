@@ -10,6 +10,8 @@ EVIDENCE="$(realpath -e -- "$2")"
 [[ -d "$STAGE" && -d "$EVIDENCE" ]] || { echo "SAFE_DIRECTORIES_REQUIRED" >&2; exit 2; }
 [[ "$STAGE" != "$EVIDENCE" ]] || { echo "EVIDENCE_AND_STAGE_MUST_BE_SEPARATE" >&2; exit 2; }
 [[ ! -e "$EVIDENCE/independent-qa.log" && ! -e "$EVIDENCE/task-qa-observation.json" ]] || { echo "REFUSE_TO_OVERWRITE_EVIDENCE" >&2; exit 2; }
+# Reject preflight-failed, forged or tampered source before any Docker invocation.
+node "$ROOT/tools/require-task-stage.mjs" "$STAGE" >/dev/null
 IMAGE="node@sha256:fe4f6d74e20370acb04ad889077d14d0f64a9c8ea6a42bc60cddf1e844699914"
 docker image inspect "$IMAGE" >/dev/null 2>&1 || { echo "PINNED_SANDBOX_IMAGE_NOT_PRELOADED" >&2; exit 2; }
 docker run --rm --pull=never --network=none --read-only \
