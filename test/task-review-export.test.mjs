@@ -22,13 +22,13 @@ test('synthetic dual-signed local review records replay persistently and never e
    "export function createTask(id,title){if(typeof id!=='string'||!/^[A-Za-z0-9_-]{1,64}$/.test(id)||typeof title!=='string'||!title.trim())throw new TypeError('INVALID_TASK');return {id,title,done:false};}",
    "export function completeTask(task){if(!task||typeof task!=='object'||typeof task.id!=='string'||typeof task.title!=='string'||typeof task.done!=='boolean')throw new TypeError('INVALID_TASK');return {...task,done:true};}",
    "export function filterOpen(tasks){if(!Array.isArray(tasks))throw new TypeError('INVALID_LIST');return tasks.filter(task=>task&&task.done===false);}"
-  ].join('\\n')+'\\n'},
+  ].join('\n')+'\n'},
         {path:'test/app.test.mjs',content:[
           "import test from 'node:test';",
           "import assert from 'node:assert/strict';",
           "import {createTask,completeTask,filterOpen} from '../app.mjs';",
           "test('create',()=>{const task=createTask('a','Title');assert.equal(completeTask(task).done,true);assert.equal(filterOpen([task]).length,1);});"
-        ].join('\\n')+'\\n'}]};
+        ].join('\n')+'\n'}]};
  const checked=parseModelDraft(JSON.stringify(draft)),missionId='synthetic-export-001';
  const staged=await stageGeneratedTaskApp({outputRoot:staging,receipt:{
   status:'UNTRUSTED_GENERATED_TASK_APP',execution:'NOT_RUN',independentQa:'NOT_RUN',
