@@ -7,6 +7,7 @@ import {lstat,readdir,mkdir,open,realpath} from 'node:fs/promises';
 import {join,resolve,sep} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {verifyTaskOwnerApproval} from './task-approval-gateway.mjs';
+import {assertTaskStagePreflight} from './task-stage-preflight.mjs';
 
 const sha=x=>createHash('sha256').update(x).digest('hex');
 async function existingDir(path){
@@ -63,6 +64,9 @@ export async function exportOwnerApprovedReviewCopy({
    if(bytes.length!==entry.bytes||sha(bytes)!==entry.sha256)throw Error('STAGE_TAMPERED');
    files.push({path:entry.path,bytes});
  }
+ // Source content is hashed above. Recheck the claimed preflight against the actual bytes,
+ // before reading credentials, creating replay claims or writing an export.
+ assertTaskStagePreflight(manifest,files.map(f=>({path:f.path,content:f.bytes.toString('utf8')})));
  const qaProof=JSON.parse((await exactFile(resolve(qaProofPath))).toString('utf8'));
  const qaLog=await exactFile(resolve(qaLogPath));
  if(qaProof.stageManifestSha256!==sha(manifestBytes)||qaProof.qaLogSha256!==sha(qaLog)||
