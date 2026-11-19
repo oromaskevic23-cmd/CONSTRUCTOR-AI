@@ -8,6 +8,7 @@ import {join,resolve,sep} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {verifyTaskOwnerApproval} from './task-approval-gateway.mjs';
 import {assertTaskStagePreflight} from './task-stage-preflight.mjs';
+import {makeLocalReviewProof} from './local-review-evidence.mjs';
 
 const sha=x=>createHash('sha256').update(x).digest('hex');
 async function existingDir(path){
@@ -67,11 +68,13 @@ export async function exportOwnerApprovedReviewCopy({
  // Source content is hashed above. Recheck the claimed preflight against the actual bytes,
  // before reading credentials, creating replay claims or writing an export.
  assertTaskStagePreflight(manifest,files.map(f=>({path:f.path,content:f.bytes.toString('utf8')})));
- const qaProof=JSON.parse((await exactFile(resolve(qaProofPath))).toString('utf8'));
+ const qaProofBytes=await exactFile(resolve(qaProofPath));
+ const qaProof=JSON.parse(qaProofBytes.toString('utf8'));
  const qaLog=await exactFile(resolve(qaLogPath));
  if(qaProof.stageManifestSha256!==sha(manifestBytes)||qaProof.qaLogSha256!==sha(qaLog)||
     qaProof.missionId!==manifest.missionId)throw Error('QA_EVIDENCE_BINDING_FAILED');
- const approval=JSON.parse((await exactFile(resolve(approvalPath))).toString('utf8'));
+ const approvalBytes=await exactFile(resolve(approvalPath));
+ const approval=JSON.parse(approvalBytes.toString('utf8'));
  const ownerKey=(await exactFile(resolve(ownerPublicKeyPath))).toString('utf8');
  const qaKey=(await exactFile(resolve(qaPublicKeyPath))).toString('utf8');
  const qaSuite=await exactFile(fileURLToPath(new URL('../qa/independent-task-suite.mjs',import.meta.url)));
@@ -88,13 +91,13 @@ export async function exportOwnerApprovedReviewCopy({
  await mkdir(destination,{mode:0o700,recursive:false});
  await mkdir(join(destination,'test'),{mode:0o700});
  for(const file of files)await createExclusive(join(destination,file.path),file.bytes);
- const proof={schema:'constructor_local_review_copy_v1',missionId:approval.missionId,
-   artifactManifestSha256:sha(manifestBytes),qaLogSha256:sha(qaLog),
-   qaAttestationSha256:checked.qaAttestationSha256,
-   qaAuthority:'SUPPLIED_KEY_NOT_INDEPENDENTLY_ENROLLED',
-   approvedExportSha256:checked.approvalPayloadSha256,
-   originalModelSource:'UNTRUSTED',ownerApproval:'EXTERNALLY_SIGNED_KEY_REQUIRED',
-   destination:'LOCAL_REVIEW_ONLY',productionRelease:'DENIED'};
+ // Preserve exact signed evidence for independent review. Public keys stay out-of-band.
+ for(const [name,bytes] of [
+   ['stage-manifest.json',manifestBytes],['qa.log',qaLog],
+   ['qa-attestation.json',qaProofBytes],['owner-approval.json',approvalBytes]
+ ])await createExclusive(join(destination,name),bytes);
+ const proof=makeLocalReviewProof({missionId:approval.missionId,
+   manifestBytes,qaLog,checked,files});
  await createExclusive(join(destination,'review-proof.json'),JSON.stringify(proof,null,2)+'\n');
  return Object.freeze({status:'LOCAL_REVIEW_COPY_EXPORTED',destination,
    productionRelease:'DENIED',cloudDeployment:'DENIED',financialOperation:'DENIED'});

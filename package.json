@@ -15,6 +15,7 @@
     "verify": "npm run check && npm test && npm run ip:verify && node tools/verify.mjs",
     "plan": "node tools/generate-plan.mjs",
     "proof:verify": "node tools/verify-proof.mjs",
+    "review:verify": "node tools/verify-local-review.mjs",
     "ip:verify": "node tools/ip-rights-gate.mjs",
     "smoke:task-ui": "node tools/task-ui-browser-smoke.mjs"
   },

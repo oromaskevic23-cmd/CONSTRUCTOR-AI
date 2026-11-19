@@ -9,6 +9,7 @@ import {parseModelDraft} from '../engineering/draft-contract.mjs';
 import {stageGeneratedTaskApp} from '../engineering/task-build-quarantine.mjs';
 import {exportOwnerApprovedReviewCopy} from '../engineering/task-review-export.mjs';
 import {taskQaPayload} from '../engineering/task-qa-attestation.mjs';
+import {verifyLocalReviewCopy} from '../engineering/local-review-evidence.mjs';
 import {spawnSync} from 'node:child_process';
 const sha=x=>createHash('sha256').update(x).digest('hex');
 test('synthetic dual-signed local review records replay persistently and never enables production',async t=>{
@@ -70,6 +71,44 @@ test('synthetic dual-signed local review records replay persistently and never e
  assert.equal(copy.status,'LOCAL_REVIEW_COPY_EXPORTED');
  assert.equal(copy.productionRelease,'DENIED');
  assert.equal(await readFile(join(copy.destination,'app.mjs'),'utf8'),draft.files[0].content);
+ assert.equal(await readFile(join(copy.destination,'stage-manifest.json'),'utf8'),manifest.toString('utf8'));
+ const verify=()=>verifyLocalReviewCopy({directory:copy.destination,ownerPublicKeyPem:key,
+   qaPublicKeyPem:qaKeys.publicKey.export({type:'spki',format:'pem'}),
+   expectedQaSuiteSha256:qaSuiteSha256});
+ const portable=await verify();
+ assert.equal(portable.status,'REVIEW_COPY_SIGNATURES_AND_INTEGRITY_VALID_FOR_SUPPLIED_KEYS');
+ assert.equal(portable.productionRelease,'DENIED');
+ assert.equal(portable.filesVerified,2);
+ const copiedApp=join(copy.destination,'app.mjs');
+ await writeFile(copiedApp,draft.files[0].content+'\n// altered\n');
+ await assert.rejects(verify(),/REVIEW_SOURCE_MISMATCH/);
+ await writeFile(copiedApp,draft.files[0].content);
+ const copiedLog=join(copy.destination,'qa.log');
+ await writeFile(copiedLog,qaLog+'forged');
+ await assert.rejects(verify(),/REVIEW_QA_EVIDENCE_MISMATCH/);
+ await writeFile(copiedLog,qaLog);
+ const receiptPath=join(copy.destination,'review-proof.json');
+ const savedReceipt=await readFile(receiptPath,'utf8');
+ await writeFile(receiptPath,savedReceipt.replace('DENIED','ALLOWED'));
+ await assert.rejects(verify(),/REVIEW_PROOF_MISMATCH/);
+ await writeFile(receiptPath,savedReceipt);
+ const signedQa=join(copy.destination,'qa-attestation.json');
+ await writeFile(signedQa,JSON.stringify({...qaProof,result:'FAIL'}));
+ await assert.rejects(verify(),/QA_ATTESTATION_FIELDS_INVALID/);
+ await writeFile(signedQa,JSON.stringify(qaProof));
+ const otherKey=generateKeyPairSync('ed25519').publicKey.export({type:'spki',format:'pem'});
+ await assert.rejects(verifyLocalReviewCopy({directory:copy.destination,
+   ownerPublicKeyPem:otherKey,
+   qaPublicKeyPem:qaKeys.publicKey.export({type:'spki',format:'pem'}),
+   expectedQaSuiteSha256:qaSuiteSha256}),/OWNER_SIGNATURE_INVALID/);
+ await assert.rejects(verifyLocalReviewCopy({directory:copy.destination,
+   ownerPublicKeyPem:key,qaPublicKeyPem:otherKey,
+   expectedQaSuiteSha256:qaSuiteSha256}),/QA_SIGNATURE_INVALID/);
+ await assert.rejects(verifyLocalReviewCopy({directory:copy.destination,
+   ownerPublicKeyPem:key,
+   qaPublicKeyPem:qaKeys.publicKey.export({type:'spki',format:'pem'}),
+   expectedQaSuiteSha256:'a'.repeat(64)}),/QA_SUITE_MISMATCH/);
+
  await assert.rejects(exportOwnerApprovedReviewCopy(args),/EEXIST/);
  const differentKey=generateKeyPairSync('ed25519').publicKey.export({type:'spki',format:'pem'});
  await writeFile(keyPath,differentKey);
