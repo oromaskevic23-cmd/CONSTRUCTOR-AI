@@ -3,6 +3,7 @@
 import {createHash} from 'node:crypto';
 import {readFile,lstat,readdir,writeFile} from 'node:fs/promises';
 import {join,resolve} from 'node:path';
+import {assertTaskStagePreflight} from '../engineering/task-stage-preflight.mjs';
 const hash=x=>createHash('sha256').update(x).digest('hex');
 const [,,stagePath,logPath,receiptPath]=process.argv;
 if(!stagePath||!logPath||!receiptPath||process.argv.length!==5)throw Error('USAGE: node tools/verify-task-sandbox-qa.mjs STAGE QA_LOG RECEIPT');
@@ -15,13 +16,16 @@ if(!Array.isArray(m.files)||m.files.length!==2||
    m.files.map(f=>f.path).sort().join('|')!=='app.mjs|test/app.test.mjs')throw Error('STAGE_INVENTORY_INVALID');
 if((await readdir(stage)).sort().join('|')!=='app.mjs|stage-manifest.json|test'||
    (await readdir(join(stage,'test'))).join('|')!=='app.test.mjs')throw Error('STAGE_ADDITIONAL_FILES');
+const verifiedSource=[];
 for(const item of m.files){
  if(typeof item.bytes!=='number'||typeof item.sha256!=='string')throw Error('STAGE_RECORD_INVALID');
  const path=join(stage,item.path),st=await lstat(path);
  if(!st.isFile()||st.isSymbolicLink())throw Error('UNSAFE_FILE_TYPE');
  const bytes=await readFile(path);
  if(bytes.length!==item.bytes||hash(bytes)!==item.sha256)throw Error('STAGE_FILE_CHANGED');
+ verifiedSource.push({path:item.path,content:bytes.toString('utf8')});
 }
+assertTaskStagePreflight(m,verifiedSource);
 const log=await readFile(logPath,'utf8');
 if(log.length>80000||!/\bpass\s+4\b/.test(log)||!/\bfail\s+0\b/.test(log)||
    !log.includes('completion is immutable'))throw Error('INDEPENDENT_QA_LOG_NOT_ACCEPTABLE');
