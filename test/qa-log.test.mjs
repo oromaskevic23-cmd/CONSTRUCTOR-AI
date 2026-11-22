@@ -21,3 +21,16 @@ test('rejects aggregate candidate counts and failed or skipped QA',()=>{
 test('rejects missing names, conflicting summaries and arbitrary prose',()=>{
  for(const log of [valid.replace('ok 2 - completion is immutable and independently observable','ok 2 - unrelated'),valid+'# pass 3\n','pass 3 fail 0 completion is immutable',valid.replace('ok 3','not ok 3'),'x'.repeat(80001)])assert.throws(()=>assertIndependentQaLog(log),/INDEPENDENT_QA_LOG_NOT_ACCEPTABLE/);
 });
+
+test('rejects extra, reordered, missing-plan and failed top-level TAP entries',()=>{
+ for(const log of [
+   valid.replace('1..3','1..4').replace('# tests 3','# tests 3'),
+   valid.replace('ok 1 -','not ok 1 -'),
+   valid.replace('ok 1 - model generated real task creation contract','ok 4 - model generated real task creation contract'),
+   valid.replace('ok 2 - completion is immutable and independently observable','ok 1 - completion is immutable and independently observable'),
+   valid.replace('1..3',''),
+   valid.replace('1..3','1..3\n1..3'),
+   valid.replace('1..3','ok 4 - forged extra test\n1..3'),
+   valid.replace('ok 3 - filterOpen is nonmutating with realistic case variation','ok 3 - filterOpen is nonmutating with realistic case variation # SKIP'),
+ ])assert.throws(()=>assertIndependentQaLog(log),/INDEPENDENT_QA_LOG_NOT_ACCEPTABLE/);
+});
