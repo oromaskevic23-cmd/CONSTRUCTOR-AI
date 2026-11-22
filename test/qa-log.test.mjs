@@ -34,3 +34,12 @@ test('rejects extra, reordered, missing-plan and failed top-level TAP entries',(
    valid.replace('ok 3 - filterOpen is nonmutating with realistic case variation','ok 3 - filterOpen is nonmutating with realistic case variation # SKIP'),
  ])assert.throws(()=>assertIndependentQaLog(log),/INDEPENDENT_QA_LOG_NOT_ACCEPTABLE/);
 });
+
+test('rejects bailout and embedded error diagnostics despite passing counters',()=>{
+ for(const injected of [
+   'Bail out! suite aborted',
+   '# error: uncaught exception',
+   '# failure: hidden error',
+   'TAP version 12',
+ ])assert.throws(()=>assertIndependentQaLog(valid.replace('1..3',injected+'\n1..3')),/INDEPENDENT_QA_LOG_NOT_ACCEPTABLE/);
+});
