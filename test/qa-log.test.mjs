@@ -74,3 +74,10 @@ test('rejects Unicode bidirectional formatting controls in QA output',()=>{
     assert.throws(()=>assertIndependentQaLog(injected),/INDEPENDENT_QA_LOG_NOT_ACCEPTABLE/);
   }
 });
+
+test('rejects invisible directional marks in QA output',()=>{
+  for(const code of [0x061c,0x200e,0x200f]){
+    const injected=valid.replace('1..3',String.fromCodePoint(code)+'1..3');
+    assert.throws(()=>assertIndependentQaLog(injected),/INDEPENDENT_QA_LOG_NOT_ACCEPTABLE/);
+  }
+});
