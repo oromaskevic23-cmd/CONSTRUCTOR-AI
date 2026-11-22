@@ -60,3 +60,10 @@ test('rejects missing, duplicated or nonzero suite summaries',()=>{
    valid.replace('# suites 0','# suites 0\n# suites 0'),
  ])assert.throws(()=>assertIndependentQaLog(log),/INDEPENDENT_QA_LOG_NOT_ACCEPTABLE/);
 });
+
+test('rejects embedded terminal control bytes even with passing counters',()=>{
+  for(const code of [0, 7, 8, 11, 12, 27, 127, 128, 155, 159]){
+    const injected=valid.replace('1..3',String.fromCharCode(code)+'1..3');
+    assert.throws(()=>assertIndependentQaLog(injected),/INDEPENDENT_QA_LOG_NOT_ACCEPTABLE/);
+  }
+});
