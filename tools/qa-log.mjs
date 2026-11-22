@@ -17,6 +17,9 @@ export function assertIndependentQaLog(log){
   const lines=log.split(/\r?\n/);
   if(lines.some(line=>/^not ok(?:\s|$)/.test(line)||/^\s*(?:ok|not ok)\s+\d+.*#\s*(?:SKIP|TODO)\b/i.test(line)))
     throw Error('INDEPENDENT_QA_LOG_NOT_ACCEPTABLE');
+  // A TAP bailout or embedded error report must never be accepted as clean QA.
+  if(lines.some(line=>/^\s*(?:Bail out!|TAP version (?!13$)|#\s*(?:error|failure|uncaughtException)\b)/i.test(line)))
+    throw Error('INDEPENDENT_QA_LOG_NOT_ACCEPTABLE');
   const results=lines.filter(line=>/^(?:ok|not ok)\s+\d+\s+-\s+/.test(line));
   if(results.length!==expected.length||
      results.some((line,i)=>line!==`ok ${i+1} - ${expected[i]}`))
