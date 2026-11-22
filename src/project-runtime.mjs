@@ -1,4 +1,4 @@
-import {templateDefinition, validateRecords, saveRecord, changeStatus, removeRecord, summarizeRecords} from './project-domain.mjs';
+import {templateDefinition, validateRecords, saveRecord, changeStatus, removeRecord, summarizeRecords, exportWorkspaceCsv} from './project-domain.mjs';
 import {MAX_BACKUP_BYTES, serializeBackup, parseBackup} from './project-backup.mjs';
 
 // Detect a stale workspace before overwriting changes from another tab. This is
@@ -48,6 +48,7 @@ export function mountApplication(root, config, {persist = true} = {}) {
   const toolbar = element('div'); toolbar.className = 'toolbar';
   const searchLabel = element('label', 'Search', toolbar); const search = element('input', undefined, searchLabel); search.type = 'search'; search.placeholder = 'Filter your workspace';
   const backup = element('button', 'Export data', toolbar); backup.type = 'button';
+  const csv = element('button', 'Export CSV report', toolbar); csv.type = 'button';
   const restoreLabel = element('label', 'Restore JSON backup', toolbar);
   const restoreInput = element('input', undefined, restoreLabel); restoreInput.type = 'file'; restoreInput.accept = '.json,application/json';
   const list = element('ul'); list.className = 'record-list'; list.setAttribute('aria-label', 'Records');
@@ -115,6 +116,13 @@ export function mountApplication(root, config, {persist = true} = {}) {
   backup.addEventListener('click', () => {
     const blob = new Blob([serializeBackup(records, config.template)], {type: 'application/json'});
     const url = URL.createObjectURL(blob); const a = element('a', undefined); a.href = url; a.download = 'workspace-data.json'; a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+  });
+  csv.addEventListener('click', () => {
+    try {
+      const blob = new Blob([exportWorkspaceCsv(records, config.template)], {type: 'text/csv;charset=utf-8'});
+      const url = URL.createObjectURL(blob); const a = element('a', undefined); a.href = url; a.download = config.template + '-report.csv'; a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+      message.textContent = 'CSV report prepared for download. Keep JSON exports for restoration.';
+    } catch (error) {message.textContent = 'CSV export rejected: ' + error.message;}
   });
   render();
 }

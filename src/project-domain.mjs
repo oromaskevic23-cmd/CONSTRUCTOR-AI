@@ -61,3 +61,22 @@ export function summarizeRecords(records, template) {
   }
   return [['Metrics', records.length], ['On track', records.filter(r => r.status === 'On track').length], ['At risk', records.filter(r => r.status === 'At risk').length]];
 }
+
+// CSV is a human-readable report, not a lossless backup. Neutralize common
+// spreadsheet formula prefixes, including leading whitespace/format characters.
+function csvText(value) {
+  const risky = /^[\s\p{Cf}]*[=+\-@＝＋－＠]/u.test(value);
+  return '"' + (risky ? "'" + value : value).replaceAll('"', '""') + '"';
+}
+export function exportWorkspaceCsv(records, template) {
+  validateRecords(records, template);
+  const d = templateDefinition(template);
+  const headings = ['ID', d.item, d.detail, 'Status', ...(d.value ? [d.value] : [])];
+  const rows = [headings.map(csvText).join(',')];
+  for (const r of records) {
+    const cells = [r.id, r.title, r.detail, r.status].map(csvText);
+    if (d.value) cells.push(template === 'crm' ? (Math.round(r.value * 100) / 100).toFixed(2) : String(r.value));
+    rows.push(cells.join(','));
+  }
+  return '\uFEFF' + rows.join('\r\n') + '\r\n';
+}

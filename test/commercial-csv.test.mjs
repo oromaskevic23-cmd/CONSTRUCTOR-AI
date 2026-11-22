@@ -1,0 +1,12 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {exportWorkspaceCsv} from '../src/project-domain.mjs';
+const record = {id:'r1',title:'Client',detail:'Notes',status:'New',value:12.345};
+test('CRM exports numeric USD and correct headers',()=>assert.equal(exportWorkspaceCsv([record],'crm'),'\uFEFF"ID","Opportunity","Company / contact","Status","Deal value (USD)"\r\n"r1","Client","Notes","New",12.35\r\n'));
+test('task export excludes irrelevant values',()=>assert.equal(exportWorkspaceCsv([{...record,status:'Open',value:0}],'tasks'),'\uFEFF"ID","Task","Notes","Status"\r\n"r1","Client","Notes","Open"\r\n'));
+test('dashboard retains numeric value',()=>assert.match(exportWorkspaceCsv([{...record,status:'On track',value:0.125}],'dashboard'),/,0\.125\r\n$/));
+test('quotes, comma and Unicode escaped',()=>assert.match(exportWorkspaceCsv([{...record,title:'Клієнт, "A"'}],'crm'),/"Клієнт, ""A"""/));
+test('formula prefixes neutralized in all untrusted text cells',()=>{for(const prefix of ['=','+','-','@','  =','\u200B=','＝','＋','－','＠']){const r={...record,title:prefix+'1',detail:prefix+'2'};const csv=exportWorkspaceCsv([r],'crm');assert.ok(csv.includes('"\''+r.title+'"'));assert.ok(csv.includes('"\''+r.detail+'"'));}assert.match(exportWorkspaceCsv([{...record,id:'-123'}],'crm'),/"'-123"/);});
+test('invalid records fail closed',()=>{assert.throws(()=>exportWorkspaceCsv([{...record,value:Infinity}],'crm'));assert.throws(()=>exportWorkspaceCsv([record,record],'crm'));assert.throws(()=>exportWorkspaceCsv([record],'tasks'));});
+test('empty export has only header',()=>assert.equal(exportWorkspaceCsv([],'tasks'),'\uFEFF"ID","Task","Notes","Status"\r\n'));
+test('export does not mutate records',()=>{const r=Object.freeze({...record});const rs=Object.freeze([r]);exportWorkspaceCsv(rs,'crm');assert.equal(r.value,12.345);});
