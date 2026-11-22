@@ -3,7 +3,7 @@
 export function assertIndependentQaLog(log){
   if(typeof log!=='string'||log.length>80000)throw Error('INDEPENDENT_QA_LOG_NOT_ACCEPTABLE');
   // Reject terminal controls and Unicode bidirectional overrides that could mislead a reviewer.
-  if (/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f\u202a-\u202e\u2066-\u2069]/.test(log))
+  if (/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f\u061c\u200e\u200f\u202a-\u202e\u2066-\u2069]/.test(log))
     throw Error('INDEPENDENT_QA_LOG_NOT_ACCEPTABLE');
   const counts={tests:3,suites:0,pass:3,fail:0,cancelled:0,skipped:0,todo:0};
   for(const [name,expected] of Object.entries(counts)){
