@@ -52,3 +52,11 @@ test('rejects missing, duplicate or displaced TAP headers',()=>{
    valid.replace('TAP version 13','TAP version 14'),
  ])assert.throws(()=>assertIndependentQaLog(log),/INDEPENDENT_QA_LOG_NOT_ACCEPTABLE/);
 });
+
+test('rejects missing, duplicated or nonzero suite summaries',()=>{
+ for(const log of [
+   valid.replace('# suites 0','# suites 1'),
+   valid.replace('# suites 0',''),
+   valid.replace('# suites 0','# suites 0\n# suites 0'),
+ ])assert.throws(()=>assertIndependentQaLog(log),/INDEPENDENT_QA_LOG_NOT_ACCEPTABLE/);
+});
