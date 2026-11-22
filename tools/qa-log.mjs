@@ -15,6 +15,8 @@ export function assertIndependentQaLog(log){
     'filterOpen is nonmutating with realistic case variation',
   ];
   const lines=log.split(/\r?\n/);
+  if(lines.filter(line=>line==='TAP version 13').length!==1||lines[0]!=='TAP version 13')
+    throw Error('INDEPENDENT_QA_LOG_NOT_ACCEPTABLE');
   if(lines.some(line=>/^not ok(?:\s|$)/.test(line)||/^\s*(?:ok|not ok)\s+\d+.*#\s*(?:SKIP|TODO)\b/i.test(line)))
     throw Error('INDEPENDENT_QA_LOG_NOT_ACCEPTABLE');
   // A TAP bailout or embedded error report must never be accepted as clean QA.
