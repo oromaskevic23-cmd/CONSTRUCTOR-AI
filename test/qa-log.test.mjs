@@ -67,3 +67,10 @@ test('rejects embedded terminal control bytes even with passing counters',()=>{
     assert.throws(()=>assertIndependentQaLog(injected),/INDEPENDENT_QA_LOG_NOT_ACCEPTABLE/);
   }
 });
+
+test('rejects Unicode bidirectional formatting controls in QA output',()=>{
+  for(const code of [0x202a,0x202b,0x202c,0x202d,0x202e,0x2066,0x2067,0x2068,0x2069]){
+    const injected=valid.replace('1..3',String.fromCodePoint(code)+'1..3');
+    assert.throws(()=>assertIndependentQaLog(injected),/INDEPENDENT_QA_LOG_NOT_ACCEPTABLE/);
+  }
+});
