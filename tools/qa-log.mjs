@@ -2,6 +2,10 @@
 // Unauthenticated TAP observation; never evidence of sandbox origin or release authority.
 export function assertIndependentQaLog(log){
   if(typeof log!=='string'||log.length>80000)throw Error('INDEPENDENT_QA_LOG_NOT_ACCEPTABLE');
+  // Reject terminal-control bytes that can disguise log content in a viewer.
+  // Keep CR, LF and TAB because Node TAP output may legitimately use them.
+  if(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/.test(log))
+    throw Error('INDEPENDENT_QA_LOG_NOT_ACCEPTABLE');
   const counts={tests:3,suites:0,pass:3,fail:0,cancelled:0,skipped:0,todo:0};
   for(const [name,expected] of Object.entries(counts)){
     const lines=[...log.matchAll(new RegExp('^# '+name+' (\\d+)\\r?$','gm'))];
