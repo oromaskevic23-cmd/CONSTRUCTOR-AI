@@ -62,9 +62,9 @@ test('rejects missing, duplicated or nonzero suite summaries',()=>{
 });
 
 test('rejects terminal-control injection in otherwise passing QA logs',()=>{
- for(const ch of ['\\x1b[2J','\\x00','\\x08','\\x7f']){
+ for(const ch of ['\x1b[2J','\x00','\x08','\x7f']){
    assert.throws(
-     ()=>assertIndependentQaLog(valid.replace('1..3',ch+'\\n1..3')),
+     ()=>assertIndependentQaLog(valid.replace('1..3',ch+'\n1..3')),
      /INDEPENDENT_QA_LOG_NOT_ACCEPTABLE/
    );
  }
