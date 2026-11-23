@@ -11,21 +11,23 @@ export function enqueue(queue, { id, payload }) {
 }
 export function claim(queue, id, worker, now, ttlMs = 30000) {
   if (queue.stopped) throw new Error("OWNER_STOP");
-  if (typeof worker !== "string" || !worker || !Number.isFinite(now) || !Number.isSafeInteger(ttlMs) || ttlMs < 1 || ttlMs > 300000) throw new TypeError("Invalid lease");
+  if (typeof worker !== "string" || !worker || !Number.isSafeInteger(now) || now < 0 || !Number.isSafeInteger(ttlMs) || ttlMs < 1 || ttlMs > 300000) throw new TypeError("Invalid lease");
   const task = queue.tasks.get(id);
   if (!task || !["QUEUED", "RUNNING"].includes(task.state)) return null;
+  if (task.lease && now < task.lease.issuedAt) throw new Error("CLOCK_ROLLBACK");
   if (task.lease && task.lease.expiresAt > now) return null;
   const epoch = queue.epochs.get(id) + 1;
   queue.epochs.set(id, epoch);
-  task.lease = { worker, epoch, expiresAt: now + ttlMs };
+  if (!Number.isSafeInteger(now + ttlMs)) throw new RangeError("Lease timestamp overflow");
+  task.lease = { worker, epoch, issuedAt: now, expiresAt: now + ttlMs };
   task.state = "RUNNING";
   return { id, worker, epoch };
 }
 export function complete(queue, token, now, result) {
   if (queue.stopped) throw new Error("OWNER_STOP");
-  if (!Number.isFinite(now)) throw new TypeError("Invalid timestamp");
+  if (!Number.isSafeInteger(now) || now < 0) throw new TypeError("Invalid timestamp");
   const task = queue.tasks.get(token?.id);
-  if (!task || !task.lease || task.lease.worker !== token.worker || task.lease.epoch !== token.epoch || !(task.lease.expiresAt > now)) throw new Error("STALE_LEASE");
+  if (!task || !task.lease || task.state !== "RUNNING" || task.lease.worker !== token.worker || task.lease.epoch !== token.epoch || now < task.lease.issuedAt || !(task.lease.expiresAt > now)) throw new Error("STALE_LEASE");
   task.result = result;
   task.state = "VERIFYING"; // Independent QA, not worker, may mark COMPLETED.
   task.lease = null;
