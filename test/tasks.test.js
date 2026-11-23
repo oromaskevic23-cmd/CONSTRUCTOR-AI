@@ -147,3 +147,14 @@ test("rejects task timestamps that precede creation", () => {
   assert.throws(() => toggleTask(first, "task-1", earlier), /precede creation/);
   assert.equal(first[0].updatedAt, NOW);
 });
+
+
+test("rejects clock rollback after a successful task update", () => {
+  const original = add([]);
+  const changed = updateTask(original, "task-1", {title:"Revised"}, LATER);
+  const rollback = "2026-10-24T13:00:00.000Z";
+  assert.throws(() => updateTask(changed, "task-1", {title:"Stale"}, rollback), /precede previous update/);
+  assert.throws(() => toggleTask(changed, "task-1", rollback), /precede previous update/);
+  assert.equal(changed[0].updatedAt, LATER);
+  assert.equal(changed[0].title, "Revised");
+});
