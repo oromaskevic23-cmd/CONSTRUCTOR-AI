@@ -136,3 +136,14 @@ test("bad clock and malformed state fail without creating a task", () => {
   assert.throws(() => createTask([],{title:"ok"},{id:"task-2",now:"soon"}),TypeError);
   assert.throws(() => add(null),TypeError);
 });
+
+
+test("rejects task timestamps that precede creation", () => {
+  const first = add([]);
+  const earlier = "2026-10-23T12:00:00.000Z";
+  assert.equal(isTask({...first[0], updatedAt: earlier}), false);
+  assert.deepEqual(loadTasks(JSON.stringify([{...first[0], updatedAt: earlier}])), []);
+  assert.throws(() => updateTask(first, "task-1", {title:"Updated"}, earlier), /precede creation/);
+  assert.throws(() => toggleTask(first, "task-1", earlier), /precede creation/);
+  assert.equal(first[0].updatedAt, NOW);
+});
