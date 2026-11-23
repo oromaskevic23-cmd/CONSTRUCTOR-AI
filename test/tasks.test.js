@@ -143,8 +143,8 @@ test("rejects task timestamps that precede creation", () => {
   const earlier = "2026-10-23T12:00:00.000Z";
   assert.equal(isTask({...first[0], updatedAt: earlier}), false);
   assert.deepEqual(loadTasks(JSON.stringify([{...first[0], updatedAt: earlier}])), []);
-  assert.throws(() => updateTask(first, "task-1", {title:"Updated"}, earlier), /precede creation/);
-  assert.throws(() => toggleTask(first, "task-1", earlier), /precede creation/);
+  assert.throws(() => updateTask(first, "task-1", {title:"Updated"}, earlier), /precede previous update/);
+  assert.throws(() => toggleTask(first, "task-1", earlier), /precede previous update/);
   assert.equal(first[0].updatedAt, NOW);
 });
 
