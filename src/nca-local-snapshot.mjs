@@ -1,6 +1,6 @@
 // Local-only persistence prototype for Universal NCA. NOT a distributed queue.
 // Single writer only; no multi-process locks, DB transactions or production durability.
-import { readFile, writeFile, rename, mkdir } from "node:fs/promises";
+import { readFile, rename, mkdir, open, unlink } from "node:fs/promises";
 import { dirname } from "node:path";
 
 const VALID_STATES = new Set(["QUEUED", "RUNNING", "VERIFYING", "STOPPED"]);
@@ -34,7 +34,28 @@ export async function saveSnapshot(file, queue) {
   const snapshot = snapshotQueue(queue);
   await mkdir(dirname(file),{recursive:true});
   const temp = file + "." + process.pid + ".tmp";
-  await writeFile(temp,snapshot,{flag:"wx",mode:0o600});
-  await rename(temp,file);
+  let created = false;
+  try {
+    const handle = await open(temp,"wx",0o600);
+    created = true;
+    try {
+      await handle.writeFile(snapshot,"utf8");
+      await handle.sync();
+    } finally {
+      await handle.close();
+    }
+    await rename(temp,file);
+    // Best effort directory fsync: support depends on OS/filesystem.
+    try {
+      const dir = await open(dirname(file),"r");
+      try { await dir.sync(); } finally { await dir.close(); }
+    } catch (error) {
+      // Do not claim a power-loss durability guarantee on unsupported filesystems.
+      if (!["EINVAL","EISDIR","ENOTSUP","EPERM","EBADF"].includes(error.code)) throw error;
+    }
+  } catch (error) {
+    if (created) await unlink(temp).catch(() => {});
+    throw error;
+  }
 }
 export async function loadSnapshot(file) { return restoreQueue(await readFile(file,"utf8")); }
