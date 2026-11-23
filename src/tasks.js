@@ -83,8 +83,8 @@ export function updateTask(tasks, id, input, now) {
   if (!tasks.some(task => task.id === id)) throw new RangeError("Task not found");
   if (!input || typeof input !== "object") throw new TypeError("Invalid update");
   const time = timestamp(now);
-  if (Date.parse(time) < Date.parse(tasks.find(task => task.id === id).createdAt))
-    throw new RangeError("Task update cannot precede creation");
+  if (Date.parse(time) < Date.parse(tasks.find(task => task.id === id).updatedAt))
+    throw new RangeError("Task update cannot precede previous update");
   return tasks.map(task => task.id === id ? {
     ...task,
     title: normalizeTitle(input.title),
@@ -97,8 +97,8 @@ export function toggleTask(tasks, id, now) {
   assertState(tasks);
   if (!tasks.some(task => task.id === id)) throw new RangeError("Task not found");
   const time = timestamp(now);
-  if (Date.parse(time) < Date.parse(tasks.find(task => task.id === id).createdAt))
-    throw new RangeError("Task completion cannot precede creation");
+  if (Date.parse(time) < Date.parse(tasks.find(task => task.id === id).updatedAt))
+    throw new RangeError("Task completion cannot precede previous update");
   return tasks.map(task => task.id === id ? {...task, completed: !task.completed, updatedAt: time} : task);
 }
 
