@@ -16,9 +16,13 @@ export function claim(queue, id, worker, now, ttlMs = 30000) {
   if (!task || !["QUEUED", "RUNNING"].includes(task.state)) return null;
   if (task.lease && now < task.lease.issuedAt) throw new Error("CLOCK_ROLLBACK");
   if (task.lease && task.lease.expiresAt > now) return null;
-  const epoch = queue.epochs.get(id) + 1;
-  queue.epochs.set(id, epoch);
+  // Validate both counters before changing queue state: rejected claims are atomic.
   if (!Number.isSafeInteger(now + ttlMs)) throw new RangeError("Lease timestamp overflow");
+  const previousEpoch = queue.epochs.get(id);
+  if (!Number.isSafeInteger(previousEpoch) || previousEpoch < 0 ||
+      !Number.isSafeInteger(previousEpoch + 1)) throw new RangeError("Lease epoch overflow");
+  const epoch = previousEpoch + 1;
+  queue.epochs.set(id, epoch);
   task.lease = { worker, epoch, issuedAt: now, expiresAt: now + ttlMs };
   task.state = "RUNNING";
   return { id, worker, epoch };
