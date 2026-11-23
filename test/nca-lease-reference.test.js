@@ -42,3 +42,24 @@ test("invalid lease and identifiers fail closed", () => {
   enqueue(q,{id:"t1",payload:null});
   assert.throws(() => claim(q,"t1","worker",100,0),TypeError);
 });
+
+test("clock rollback cannot steal a lease or publish a result", () => {
+  const q = createQueue(); enqueue(q,{id:"t1",payload:null});
+  const token = claim(q,"t1","a",100,50);
+  assert.throws(() => claim(q,"t1","b",99,50),/CLOCK_ROLLBACK/);
+  assert.throws(() => complete(q,token,99,"invalid"),/STALE_LEASE/);
+  assert.equal(q.tasks.get("t1").state,"RUNNING");
+});
+test("invalid clock and timestamp overflow are rejected", () => {
+  const q = createQueue(); enqueue(q,{id:"t1",payload:null});
+  assert.throws(() => claim(q,"t1","a",-1,50),TypeError);
+  assert.throws(() => claim(q,"t1","a",Number.MAX_SAFE_INTEGER,50),RangeError);
+  const token = claim(q,"t1","a",100,50);
+  assert.throws(() => complete(q,token,Infinity,"invalid"),TypeError);
+});
+test("task pending independent verification cannot be reclaimed", () => {
+  const q = createQueue(); enqueue(q,{id:"t1",payload:null});
+  const token = claim(q,"t1","a",100,50);
+  complete(q,token,101,"candidate");
+  assert.equal(claim(q,"t1","b",200,50),null);
+});
