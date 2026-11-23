@@ -136,3 +136,88 @@ test("bad clock and malformed state fail without creating a task", () => {
   assert.throws(() => createTask([],{title:"ok"},{id:"task-2",now:"soon"}),TypeError);
   assert.throws(() => add(null),TypeError);
 });
+
+
+test("rejects task timestamps that precede creation", () => {
+  const first = add([]);
+  const earlier = "2026-10-23T12:00:00.000Z";
+  assert.equal(isTask({...first[0], updatedAt: earlier}), false);
+  assert.deepEqual(loadTasks(JSON.stringify([{...first[0], updatedAt: earlier}])), []);
+  assert.throws(() => updateTask(first, "task-1", {title:"Updated"}, earlier), /precede previous update/);
+  assert.throws(() => toggleTask(first, "task-1", earlier), /precede previous update/);
+  assert.equal(first[0].updatedAt, NOW);
+});
+
+
+test("rejects clock rollback after a successful task update", () => {
+  const original = add([]);
+  const changed = updateTask(original, "task-1", {title:"Revised"}, LATER);
+  const rollback = "2026-10-24T13:00:00.000Z";
+  assert.throws(() => updateTask(changed, "task-1", {title:"Stale"}, rollback), /precede previous update/);
+  assert.throws(() => toggleTask(changed, "task-1", rollback), /precede previous update/);
+  assert.equal(changed[0].updatedAt, LATER);
+  assert.equal(changed[0].title, "Revised");
+});
+
+
+test("requires explicit timezone for persisted and mutation timestamps", () => {
+  const first = add([]);
+  const ambiguous = "2026-10-24T15:00:00";
+  assert.equal(isTask({...first[0], updatedAt: ambiguous}), false);
+  assert.deepEqual(loadTasks(JSON.stringify([{...first[0], updatedAt: ambiguous}])), []);
+  assert.throws(() => createTask([], {title:"New"}, {id:"new", now:ambiguous}), /Invalid ISO timestamp/);
+  assert.throws(() => updateTask(first, "task-1", {title:"Changed"}, ambiguous), /Invalid ISO timestamp/);
+  assert.throws(() => toggleTask(first, "task-1", ambiguous), /Invalid ISO timestamp/);
+  assert.doesNotThrow(() => createTask([], {title:"UTC"}, {id:"utc", now:"2026-10-24T15:00:00Z"}));
+  assert.doesNotThrow(() => createTask([], {title:"Offset"}, {id:"offset", now:"2026-10-24T15:00:00+02:00"}));
+});
+
+
+test("rejects ISO 24:00 rollover in task timestamps", () => {
+  const first = add([]);
+  for (const rollover of ["2026-10-24T24:00:00Z", "2026-10-24T24:00:00+02:00"]) {
+    assert.equal(isTask({...first[0], updatedAt: rollover}), false);
+    assert.deepEqual(loadTasks(JSON.stringify([{...first[0], updatedAt: rollover}])), []);
+    assert.throws(() => createTask([], {title:"Invalid"}, {id:"invalid", now:rollover}), /Invalid ISO timestamp/);
+    assert.throws(() => updateTask(first, "task-1", {title:"Invalid"}, rollover), /Invalid ISO timestamp/);
+    assert.throws(() => toggleTask(first, "task-1", rollover), /Invalid ISO timestamp/);
+  }
+  assert.doesNotThrow(() => createTask([], {title:"Valid"}, {id:"valid", now:"2026-10-24T23:59:59Z"}));
+});
+
+
+test("rejects out-of-range minutes and seconds in ISO task timestamps", () => {
+  const first = add([]);
+  for (const invalid of [
+    "2026-10-24T12:60:00Z",
+    "2026-10-24T12:00:60Z",
+    "2026-10-24T12:99:00+02:00",
+    "2026-10-24T12:00:99+02:00"
+  ]) {
+    assert.equal(isTask({...first[0], updatedAt: invalid}), false);
+    assert.deepEqual(loadTasks(JSON.stringify([{...first[0], updatedAt: invalid}])), []);
+    assert.throws(() => createTask([], {title:"Invalid"}, {id:"invalid", now:invalid}), /Invalid ISO timestamp/);
+    assert.throws(() => updateTask(first, "task-1", {title:"Invalid"}, invalid), /Invalid ISO timestamp/);
+    assert.throws(() => toggleTask(first, "task-1", invalid), /Invalid ISO timestamp/);
+  }
+  assert.doesNotThrow(() => createTask([], {title:"Valid"}, {id:"valid", now:"2026-10-24T23:59:59Z"}));
+});
+
+
+test("rejects Unicode bidi spoofing controls in task title and description", () => {
+  const controls = ["\u202a", "\u202b", "\u202c", "\u202d", "\u202e", "\u2066", "\u2067", "\u2068", "\u2069"];
+  for (const control of controls) {
+    assert.throws(() => normalizeTitle("Review" + control + "task"), RangeError);
+    assert.throws(() => normalizeDescription("Review" + control + "task"), RangeError);
+    assert.throws(() => createTask([], {title:"safe", description:"a" + control}, {id:"bidi",now:NOW}), RangeError);
+  }
+  assert.equal(normalizeTitle("Задача 日本語 العربية"), "Задача 日本語 العربية");
+});
+
+test("rejects persisted task text with bidi controls without mutating caller data", () => {
+  const original = add([]);
+  const bad = [{...original[0], title:"Review\u202eabc"}];
+  assert.equal(isTask(bad[0]), false);
+  assert.deepEqual(loadTasks(JSON.stringify(bad)), []);
+  assert.equal(original[0].title, "Review specification");
+});

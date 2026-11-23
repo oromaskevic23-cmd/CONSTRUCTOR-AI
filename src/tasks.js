@@ -3,11 +3,13 @@ export const MAX_TASKS = 250;
 export const MAX_TITLE_LENGTH = 120;
 export const MAX_DESCRIPTION_LENGTH = 500;
 const ID_FORMAT = /^[A-Za-z0-9_-]{1,64}$/;
+// Prevent bidirectional display overrides in task text while retaining ordinary Unicode.
+const BIDI_FORMAT_CONTROLS = /[\u202a-\u202e\u2066-\u2069]/;
 
 export function normalizeTitle(value) {
   if (typeof value !== "string") throw new TypeError("Task title must be text");
   const result = value.trim().replace(/\s+/g, " ");
-  if (!result || result.length > MAX_TITLE_LENGTH || /[\u0000-\u001f\u007f]/.test(result)) {
+  if (!result || result.length > MAX_TITLE_LENGTH || /[\u0000-\u001f\u007f]/.test(result) || BIDI_FORMAT_CONTROLS.test(result)) {
     throw new RangeError("Task title must contain 1–120 printable characters");
   }
   return result;
@@ -16,14 +18,27 @@ export function normalizeTitle(value) {
 export function normalizeDescription(value = "") {
   if (typeof value !== "string") throw new TypeError("Description must be text");
   const result = value.trim();
-  if (result.length > MAX_DESCRIPTION_LENGTH || /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(result)) {
+  if (result.length > MAX_DESCRIPTION_LENGTH || /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(result) || BIDI_FORMAT_CONTROLS.test(result)) {
     throw new RangeError("Description must contain at most 500 characters");
   }
   return result;
 }
 
 function validDate(value) {
-  return typeof value === "string" && /^\d{4}-\d\d-\d\dT/.test(value) && !Number.isNaN(Date.parse(value));
+  if (typeof value !== "string") return false;
+  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d{1,3})?(?:Z|[+-]\d{2}:\d{2})$/.exec(value);
+  if (!match || Number.isNaN(Date.parse(value))) return false;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const hour = Number(match[4]);
+  const minute = Number(match[5]);
+  const second = Number(match[6]);
+  if (hour > 23 || minute > 59 || second > 59) return false;
+  if (month < 1 || month > 12) return false;
+  const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+  const daysInMonth = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  return day >= 1 && day <= daysInMonth[month - 1];
 }
 
 export function isTask(value) {
@@ -33,7 +48,8 @@ export function isTask(value) {
       normalizeTitle(value.title) === value.title &&
       normalizeDescription(value.description) === value.description &&
       typeof value.completed === "boolean" &&
-      validDate(value.createdAt) && validDate(value.updatedAt);
+      validDate(value.createdAt) && validDate(value.updatedAt) &&
+      Date.parse(value.updatedAt) >= Date.parse(value.createdAt);
   } catch {
     return false;
   }
@@ -73,6 +89,8 @@ export function updateTask(tasks, id, input, now) {
   if (!tasks.some(task => task.id === id)) throw new RangeError("Task not found");
   if (!input || typeof input !== "object") throw new TypeError("Invalid update");
   const time = timestamp(now);
+  if (Date.parse(time) < Date.parse(tasks.find(task => task.id === id).updatedAt))
+    throw new RangeError("Task update cannot precede previous update");
   return tasks.map(task => task.id === id ? {
     ...task,
     title: normalizeTitle(input.title),
@@ -85,6 +103,8 @@ export function toggleTask(tasks, id, now) {
   assertState(tasks);
   if (!tasks.some(task => task.id === id)) throw new RangeError("Task not found");
   const time = timestamp(now);
+  if (Date.parse(time) < Date.parse(tasks.find(task => task.id === id).updatedAt))
+    throw new RangeError("Task completion cannot precede previous update");
   return tasks.map(task => task.id === id ? {...task, completed: !task.completed, updatedAt: time} : task);
 }
 
