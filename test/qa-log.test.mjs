@@ -87,3 +87,9 @@ test('rejects indented failed TAP subtests despite passing top-level counters',(
     assert.throws(()=>assertIndependentQaLog(valid.replace('1..3',failure+'\n1..3')),/INDEPENDENT_QA_LOG_NOT_ACCEPTABLE/);
   }
 });
+
+test('rejects uncounted nested successful TAP records',()=>{
+  for(const nested of ['    ok 1 - uncounted nested check','\t ok 2 - uncounted nested check']){
+    assert.throws(()=>assertIndependentQaLog(valid.replace('1..3',nested+'\n1..3')),/INDEPENDENT_QA_LOG_NOT_ACCEPTABLE/);
+  }
+});
