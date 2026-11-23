@@ -81,3 +81,9 @@ test('rejects invisible directional marks in QA output',()=>{
     assert.throws(()=>assertIndependentQaLog(injected),/INDEPENDENT_QA_LOG_NOT_ACCEPTABLE/);
   }
 });
+
+test('rejects indented failed TAP subtests despite passing top-level counters',()=>{
+  for(const failure of ['    not ok 1 - hidden failure','\t not ok 2 - nested failure']){
+    assert.throws(()=>assertIndependentQaLog(valid.replace('1..3',failure+'\n1..3')),/INDEPENDENT_QA_LOG_NOT_ACCEPTABLE/);
+  }
+});
