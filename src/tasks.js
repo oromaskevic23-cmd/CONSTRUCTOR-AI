@@ -24,13 +24,15 @@ export function normalizeDescription(value = "") {
 
 function validDate(value) {
   if (typeof value !== "string") return false;
-  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):\d{2}:\d{2}(?:\.\d{1,3})?(?:Z|[+-]\d{2}:\d{2})$/.exec(value);
+  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d{1,3})?(?:Z|[+-]\d{2}:\d{2})$/.exec(value);
   if (!match || Number.isNaN(Date.parse(value))) return false;
   const year = Number(match[1]);
   const month = Number(match[2]);
   const day = Number(match[3]);
   const hour = Number(match[4]);
-  if (hour > 23) return false;
+  const minute = Number(match[5]);
+  const second = Number(match[6]);
+  if (hour > 23 || minute > 59 || second > 59) return false;
   if (month < 1 || month > 12) return false;
   const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
   const daysInMonth = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
