@@ -184,3 +184,21 @@ test("rejects ISO 24:00 rollover in task timestamps", () => {
   }
   assert.doesNotThrow(() => createTask([], {title:"Valid"}, {id:"valid", now:"2026-10-24T23:59:59Z"}));
 });
+
+
+test("rejects out-of-range minutes and seconds in ISO task timestamps", () => {
+  const first = add([]);
+  for (const invalid of [
+    "2026-10-24T12:60:00Z",
+    "2026-10-24T12:00:60Z",
+    "2026-10-24T12:99:00+02:00",
+    "2026-10-24T12:00:99+02:00"
+  ]) {
+    assert.equal(isTask({...first[0], updatedAt: invalid}), false);
+    assert.deepEqual(loadTasks(JSON.stringify([{...first[0], updatedAt: invalid}])), []);
+    assert.throws(() => createTask([], {title:"Invalid"}, {id:"invalid", now:invalid}), /Invalid ISO timestamp/);
+    assert.throws(() => updateTask(first, "task-1", {title:"Invalid"}, invalid), /Invalid ISO timestamp/);
+    assert.throws(() => toggleTask(first, "task-1", invalid), /Invalid ISO timestamp/);
+  }
+  assert.doesNotThrow(() => createTask([], {title:"Valid"}, {id:"valid", now:"2026-10-24T23:59:59Z"}));
+});
