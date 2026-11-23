@@ -158,3 +158,16 @@ test("rejects clock rollback after a successful task update", () => {
   assert.equal(changed[0].updatedAt, LATER);
   assert.equal(changed[0].title, "Revised");
 });
+
+
+test("requires explicit timezone for persisted and mutation timestamps", () => {
+  const first = add([]);
+  const ambiguous = "2026-10-24T15:00:00";
+  assert.equal(isTask({...first[0], updatedAt: ambiguous}), false);
+  assert.deepEqual(loadTasks(JSON.stringify([{...first[0], updatedAt: ambiguous}])), []);
+  assert.throws(() => createTask([], {title:"New"}, {id:"new", now:ambiguous}), /Invalid ISO timestamp/);
+  assert.throws(() => updateTask(first, "task-1", {title:"Changed"}, ambiguous), /Invalid ISO timestamp/);
+  assert.throws(() => toggleTask(first, "task-1", ambiguous), /Invalid ISO timestamp/);
+  assert.doesNotThrow(() => createTask([], {title:"UTC"}, {id:"utc", now:"2026-10-24T15:00:00Z"}));
+  assert.doesNotThrow(() => createTask([], {title:"Offset"}, {id:"offset", now:"2026-10-24T15:00:00+02:00"}));
+});
