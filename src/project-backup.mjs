@@ -1,6 +1,6 @@
 // Strict, dependency-free JSON recovery contract for local single-user apps.
 // Parsing never mutates the existing workspace; callers confirm replacement separately.
-import {templateDefinition, validateRecords} from './project-domain.mjs';
+import {MAX_RECORDS, templateDefinition, validateRecords} from './project-domain.mjs';
 export const BACKUP_SCHEMA = 'constructor-records-v1';
 // Large enough for all 250 valid records, including escaped Unicode, while
 // retaining a hard bound for untrusted backup input.
@@ -30,4 +30,25 @@ export function parseBackup(text, template) {
   if (data.template !== template) throw new RangeError('Backup belongs to a different application type');
   validateRecords(data.records, template);
   return data.records.map(record => ({...record}));
+}
+
+export function planRecovery(current, backup, template) {
+  validateRecords(current, template);
+  validateRecords(backup, template);
+  const byId = new Map(current.map(record => [record.id, record]));
+  const backupIds = new Set(backup.map(record => record.id));
+  const added = [], conflicts = [];
+  let unchanged = 0;
+  for (const incoming of backup) {
+    const existing = byId.get(incoming.id);
+    if (!existing) added.push(incoming);
+    else if (Object.keys(existing).every(key => existing[key] === incoming[key])) unchanged++;
+    else conflicts.push({existing, incoming});
+  }
+  const removed = current.filter(record => !backupIds.has(record.id));
+  const fits = current.length + added.length <= MAX_RECORDS;
+  return {
+    added, conflicts, removed, unchanged,
+    merged: fits ? [...current, ...added].map(record => ({...record})) : null,
+  };
 }

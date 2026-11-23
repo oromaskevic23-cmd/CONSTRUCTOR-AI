@@ -1,5 +1,6 @@
 // Shared, dependency-free domain for the three built-in application templates.
 export const TEMPLATE_IDS = Object.freeze(['tasks', 'crm', 'dashboard']);
+export const MAX_RECORDS = 250;
 export function normalizeProject(input) {
   if (!input || typeof input !== 'object' || Array.isArray(input)) throw new TypeError('Project settings are required');
   if (Object.keys(input).some(k => !['template', 'name', 'accent'].includes(k))) throw new TypeError('Unknown project setting');
@@ -22,7 +23,7 @@ export function templateDefinition(id) {
 }
 export function validateRecords(records, template) {
   const definition = templateDefinition(template);
-  if (!Array.isArray(records) || records.length > 250) throw new RangeError('At most 250 records are supported');
+  if (!Array.isArray(records) || records.length > MAX_RECORDS) throw new RangeError('At most 250 records are supported');
   const ids = new Set();
   for (const record of records) {
     if (!record || typeof record !== 'object' || Array.isArray(record) || Object.keys(record).sort().join(',') !== 'detail,id,status,title,value') throw new TypeError('Invalid record');
