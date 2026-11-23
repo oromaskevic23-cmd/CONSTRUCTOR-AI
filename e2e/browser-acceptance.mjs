@@ -86,9 +86,20 @@ async function run(kind,studioPage){
       const json=JSON.parse(await readFile(backupFile,'utf8'));
       assert.equal(json.template,kind.id);
       assert.equal(json.records.length,1);
+      const picker=page.locator('input[type=file]');
+      const review=page.getByRole('region',{name:'Backup review'});
+      const conflict={...json.records[0],title:'Conflicting title'};
+      const newRecord={...json.records[0],id:'from-backup',title:'New from backup'};
+      await picker.setInputFiles({name:'merge.json',mimeType:'application/json',
+        buffer:Buffer.from(JSON.stringify({...json,records:[conflict,newRecord]}))});
+      await review.getByText('1 new, 1 conflicting', {exact:false}).waitFor();
+      check(await page.locator('.record-list h2').count()===1,'Backup review modified records before approval');
+      await review.getByRole('button',{name:'Add new records'}).click();
+      await page.getByRole('status').filter({hasText:'Added 1 new record'}).waitFor();
+      assert.deepEqual(await page.locator('.record-list h2').allTextContents(),['Edited '+kind.id,'New from backup']);
+      await page.getByRole('button',{name:'Delete: New from backup'}).click();
       await page.getByRole('button',{name:'Delete: Edited '+kind.id}).click();
       check(await page.locator('.record-list li.empty').count()===1,'Delete failed');
-      const picker=page.locator('input[type=file]');
       await picker.setInputFiles({name:'invalid.json',mimeType:'application/json',buffer:Buffer.from('{invalid')});
       await page.getByRole('status').filter({hasText:'Restore rejected'}).waitFor();
       check(await page.locator('.record-list li.empty').count()===1,'Invalid restore modified records');
@@ -97,11 +108,13 @@ async function run(kind,studioPage){
       check(await page.locator('.record-list li.empty').count()===1,'Mismatched restore modified records');
       page.once('dialog',dialog=>dialog.dismiss());
       await picker.setInputFiles(backupFile);
+      await review.getByRole('button',{name:'Replace workspace'}).click();
       await page.getByRole('status').filter({hasText:'Restore cancelled'}).waitFor();
       check(await page.locator('.record-list li.empty').count()===1,'Cancelled restore modified records');
       page.once('dialog',dialog=>dialog.accept());
       await picker.setInputFiles(backupFile);
-      await page.getByRole('status').filter({hasText:'Restored 1 records'}).waitFor();
+      await review.getByRole('button',{name:'Replace workspace'}).click();
+      await page.getByRole('status').filter({hasText:'Restored 1 record'}).waitFor();
       check(await page.locator('.record-list h2').innerText()==='Edited '+kind.id,'Restore failed');
       await page.reload();
       check(await page.locator('.record-list h2').innerText()==='Edited '+kind.id,'Persistence failed');
@@ -119,13 +132,14 @@ async function run(kind,studioPage){
           await volatile.getByRole('status').filter({hasText:'for this session'}).waitFor();
           volatile.once('dialog',dialog=>dialog.accept());
           await volatile.locator('input[type=file]').setInputFiles(backupFile);
+          await volatile.getByRole('button',{name:'Replace workspace'}).click();
           await volatile.getByRole('status').filter({hasText:'for this session only'}).waitFor();
           check(await volatile.getByRole('alert').isVisible(),'Storage warning must persist after restore');
           await volatile.getByRole('button',{name:'Change status: Edited '+kind.id}).click();
           check(await volatile.getByRole('alert').isVisible(),'Storage warning must persist after later changes');
         }finally{await volatile.close();}
       }
-      outcomes.push({template:kind.id,status:'PASS',checks:['studio-preview','browser-zip','clean-extract','integrity','exported-tests','crud','status','edit','search','backup','malformed-reject','type-reject','cancel','restore','reload']});
+      outcomes.push({template:kind.id,status:'PASS',checks:['studio-preview','browser-zip','clean-extract','integrity','exported-tests','crud','status','edit','search','backup','review','conflict-preserving-merge','malformed-reject','type-reject','cancel','restore','reload']});
       await page.screenshot({path:join(root,kind.id+'-browser.png'),fullPage:true});
     }finally{await page.close();}
   }finally{

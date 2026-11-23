@@ -14,7 +14,13 @@ The manifest is unsigned. It does not establish legal ownership, a trusted relea
 
 ## Data and execution
 
-Preview records use temporary memory. Exported apps start empty and persist records in that browser's localStorage. Export data downloads a JSON backup. Restore JSON backup validates the strict schema, template type, all record fields, duplicate identities and a 1 MiB size limit before requesting explicit confirmation to replace the current workspace. The limit accommodates the maximum permitted workspace, including escaped text. A rejection or cancellation preserves the existing records. If browser storage cannot be read or written, a persistent warning identifies the session as temporary; exporting that session does not recover previously unreadable data. Neither cloud backup, team synchronization, authentication nor server storage is implemented. The downloaded ZIP contains application source, not preview customer records.
+Preview records use temporary memory. Exported apps start empty and persist records in that browser's localStorage. **Export data** downloads a JSON backup. **Restore JSON backup** validates the schema, template type, record fields, unique IDs and 1 MiB size limit, then shows a review with the number and details of new, conflicting and workspace-only records.
+
+- **Add new records** imports only IDs missing from the current workspace and keeps all existing records. It is unavailable when the merged workspace would exceed 250 records.
+- **Replace workspace** applies the validated backup after a second confirmation. Cancel or a rejected recovery leaves the workspace intact.
+- If the workspace changes after the backup is selected, review it again. An observed change in browser storage from another tab blocks the recovery write.
+
+The JSON backup schema is unchanged, so existing backups remain valid. If browser storage is already unavailable, the current session can still review and recover data in memory. Exporting that session does not recover previously unreadable data. The downloaded application ZIP contains source files. Workspace data remains in the browser unless explicitly exported.
 
 Before saving, an exported app checks whether the stored workspace changed since the tab last read or wrote it. If a conflicting change is detected, the tab stops writing, preserves its current edits in memory and advises the user to export them before reloading. This is a best-effort stale-tab check: localStorage has no atomic compare-and-set, so simultaneous writes can still race. Use one tab per workspace and keep JSON backups.
 

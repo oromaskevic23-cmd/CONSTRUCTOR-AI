@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {BACKUP_SCHEMA, MAX_BACKUP_BYTES, serializeBackup, parseBackup} from '../src/project-backup.mjs';
+import {BACKUP_SCHEMA, MAX_BACKUP_BYTES, serializeBackup, parseBackup, planRecovery} from '../src/project-backup.mjs';
 import {TEMPLATE_IDS, templateDefinition} from '../src/project-domain.mjs';
 const sample = kind => ({id:'case-1',title:'Customer <script>alert(1)</script>',detail:'Notes & follow-up',value:19.95,status:templateDefinition(kind).statuses[0]});
 for (const kind of TEMPLATE_IDS) test(kind + ': JSON backup round trip preserves records without reusing mutable input', () => {
@@ -45,4 +45,30 @@ test('maximum-size valid multilingual and escaped workspaces can be exported and
     assert.ok(new TextEncoder().encode(json).byteLength <= MAX_BACKUP_BYTES);
     assert.deepEqual(parseBackup(json, 'crm'), records);
   }
+});
+
+test('recovery groups changes by record ID and merges only new records', () => {
+  const original = sample('crm');
+  const preserved = {...original, id:'keep', title:'Kept'};
+  const unchanged = {...original, id:'same', title:'Unchanged'};
+  const modified = {...original, value:20.25};
+  const incoming = {...original, id:'new', title:'New'};
+  const current = [original, preserved, unchanged];
+  const plan = planRecovery(current, [modified, {...unchanged}, incoming], 'crm');
+  assert.deepEqual(plan.added, [incoming]);
+  assert.deepEqual(plan.conflicts, [{existing:original, incoming:modified}]);
+  assert.deepEqual(plan.removed, [preserved]);
+  assert.equal(plan.unchanged, 1);
+  assert.deepEqual(plan.merged, [...current, incoming]);
+  assert.notEqual(plan.merged[0], original);
+});
+
+test('recovery rejects over-limit merging while keeping the valid replacement available', () => {
+  const current = Array.from({length:250}, (_, index) => ({...sample('tasks'), id:'existing-' + index}));
+  const incoming = [sample('tasks')];
+  const plan = planRecovery(current, incoming, 'tasks');
+  assert.equal(plan.merged, null);
+  assert.equal(plan.added.length, 1);
+  assert.equal(plan.removed.length, 250);
+  assert.deepEqual(parseBackup(serializeBackup(incoming, 'tasks'), 'tasks'), incoming);
 });

@@ -1,5 +1,5 @@
 import {templateDefinition, validateRecords, saveRecord, changeStatus, removeRecord, summarizeRecords} from './project-domain.mjs';
-import {MAX_BACKUP_BYTES, serializeBackup, parseBackup} from './project-backup.mjs';
+import {MAX_BACKUP_BYTES, serializeBackup, parseBackup, planRecovery} from './project-backup.mjs';
 
 // Detect a stale workspace before overwriting changes from another tab. This is
 // a best-effort check; localStorage does not provide an atomic compare-and-set.
@@ -23,6 +23,7 @@ export function mountApplication(root, config, {persist = true} = {}) {
   const definition = templateDefinition(config.template);
   const key = 'constructor-app-v1:' + config.template + ':' + config.name;
   let records = [], editing = null, storageAvailable = persist, storageGuard;
+  let recovery = null, recoveryRequest = 0;
   root.replaceChildren();
   const element = (tag, text, parent = root) => {const el = doc.createElement(tag); if (text !== undefined) el.textContent = text; parent.append(el); return el;};
   const header = element('header'); header.className = 'app-heading';
@@ -50,6 +51,17 @@ export function mountApplication(root, config, {persist = true} = {}) {
   const backup = element('button', 'Export data', toolbar); backup.type = 'button';
   const restoreLabel = element('label', 'Restore JSON backup', toolbar);
   const restoreInput = element('input', undefined, restoreLabel); restoreInput.type = 'file'; restoreInput.accept = '.json,application/json';
+  const recoveryPanel = element('section'); recoveryPanel.hidden = true; recoveryPanel.className = 'recovery-panel';
+  recoveryPanel.setAttribute('aria-label', 'Backup review');
+  const recoveryHeading = element('h2', 'Review backup', recoveryPanel); recoveryHeading.tabIndex = -1;
+  const recoverySummary = element('p', undefined, recoveryPanel);
+  const recoveryDetails = element('details', undefined, recoveryPanel);
+  element('summary', 'View affected records', recoveryDetails);
+  const recoveryList = element('ul', undefined, recoveryDetails);
+  const recoveryActions = element('div', undefined, recoveryPanel); recoveryActions.className = 'record-actions';
+  const mergeBackup = element('button', 'Add new records', recoveryActions); mergeBackup.type = 'button';
+  const replaceBackup = element('button', 'Replace workspace', recoveryActions); replaceBackup.type = 'button';
+  const cancelRecovery = element('button', 'Cancel restore', recoveryActions); cancelRecovery.type = 'button';
   const list = element('ul'); list.className = 'record-list'; list.setAttribute('aria-label', 'Records');
   element('p', 'Local browser storage only. No cloud account, team access or automatic backup.', root).className = 'storage-note';
   function resetForm() {editing = null; form.reset(); if (value) value.value = '0'; submit.textContent = 'Add ' + definition.item.toLowerCase(); cancel.hidden = true;}
@@ -91,25 +103,103 @@ export function mountApplication(root, config, {persist = true} = {}) {
     } catch (error) {message.textContent = error.message;}
   });
   cancel.addEventListener('click', resetForm); search.addEventListener('input', render);
+  function closeRecovery() {
+    recovery = null;
+    recoveryPanel.hidden = true;
+    recoveryList.replaceChildren();
+    recoveryDetails.open = false;
+  }
+  function showRecovery(original, next) {
+    const plan = planRecovery(original, next, config.template);
+    recovery = {original, next, plan};
+    const counts = [plan.added.length + ' new', plan.conflicts.length + ' conflicting',
+      plan.unchanged + ' unchanged', plan.removed.length + ' only in this workspace'];
+    recoverySummary.textContent = counts.join(', ') + '. Adding new records keeps existing ones.'
+      + (plan.merged === null ? ' The combined workspace would exceed the record limit.' : '');
+    for (const record of plan.added) element('li', 'New: ' + record.title + ' (' + record.id + ')', recoveryList);
+    for (const {existing, incoming} of plan.conflicts) {
+      const conflict = element('li', 'Conflict: ' + existing.title + ' (' + existing.id + ')', recoveryList);
+      const fields = element('ul', undefined, conflict);
+      for (const [field, label] of [['title', definition.item], ['detail', definition.detail], ['status', 'Status'], ['value', definition.value ?? 'Value']]) {
+        if (existing[field] === incoming[field]) continue;
+        const before = existing[field] === '' ? 'empty' : existing[field];
+        const after = incoming[field] === '' ? 'empty' : incoming[field];
+        element('li', label + ': ' + before + ' → ' + after, fields);
+      }
+    }
+    for (const record of plan.removed) element('li', 'Removed only on replacement: ' + record.title + ' (' + record.id + ')', recoveryList);
+    recoveryDetails.hidden = !recoveryList.childElementCount;
+    mergeBackup.disabled = plan.merged === null || !plan.added.length;
+    recoveryPanel.hidden = false;
+    recoveryHeading.focus();
+  }
+  function applyRecovery(replace) {
+    if (!recovery) return;
+    const {original, next, plan} = recovery;
+    if (records !== original) {
+      closeRecovery();
+      restoreInput.focus();
+      message.textContent = 'Workspace changed after review. Select the backup again.';
+      return;
+    }
+    const result = replace ? next : plan.merged;
+    if (!result || (!replace && !plan.added.length)) return;
+    if (replace && !doc.defaultView.confirm(
+      'Replace all ' + original.length + ' current records with ' + next.length + ' from this backup? This cannot be undone.'
+    )) {
+      closeRecovery();
+      restoreInput.focus();
+      message.textContent = 'Restore cancelled; existing records are unchanged.';
+      return;
+    }
+    try {
+      if (storageAvailable && !storageGuard.write(JSON.stringify(result))) {
+        closeRecovery();
+        restoreInput.focus();
+        message.textContent = 'Browser storage changed in another tab. Reload and review the backup again.';
+        return;
+      }
+    } catch {
+      message.textContent = 'Browser storage could not save the restore. Existing records are unchanged.';
+      return;
+    }
+    records = result;
+    closeRecovery();
+    if (replace) resetForm();
+    render();
+    restoreInput.focus();
+    const affected = replace ? records.length : plan.added.length;
+    const noun = affected === 1 ? 'record' : 'records';
+    message.textContent = (replace ? 'Restored ' + affected + ' ' + noun + ' from a validated local backup'
+      : 'Added ' + affected + ' new ' + noun + ' and kept existing records') + (storageAvailable ? '.' : ' for this session only.');
+  }
+  mergeBackup.addEventListener('click', () => applyRecovery(false));
+  replaceBackup.addEventListener('click', () => applyRecovery(true));
+  cancelRecovery.addEventListener('click', () => {
+    closeRecovery();
+    restoreInput.focus();
+    message.textContent = 'Restore cancelled; existing records are unchanged.';
+  });
   restoreInput.addEventListener('change', async () => {
     const file = restoreInput.files?.[0];
     if (!file) return;
+    const original = records;
+    const request = ++recoveryRequest;
+    closeRecovery();
     try {
       if (file.size > MAX_BACKUP_BYTES) throw new RangeError('Backup exceeds 1 MiB');
       const next = parseBackup(await file.text(), config.template);
-      const messageText = 'Replace all ' + records.length + ' current records with ' + next.length + ' from this backup? This cannot be undone.';
-      if (!doc.defaultView.confirm(messageText)) {
-        message.textContent = 'Restore cancelled; existing records are unchanged.';
+      if (request !== recoveryRequest) return;
+      if (original !== records) {
+        message.textContent = 'Workspace changed while reading the backup. Select it again.';
         return;
       }
-      records = next;
-      resetForm();
-      persistAndRender();
-      message.textContent = 'Restored ' + records.length + ' records from a validated local backup' + (storageAvailable ? '.' : ' for this session only.');
+      showRecovery(original, next);
+      message.textContent = 'Backup ready to review.';
     } catch (error) {
-      message.textContent = 'Restore rejected: ' + error.message;
+      if (request === recoveryRequest) message.textContent = 'Restore rejected: ' + error.message;
     } finally {
-      restoreInput.value = '';
+      if (request === recoveryRequest) restoreInput.value = '';
     }
   });
   backup.addEventListener('click', () => {
