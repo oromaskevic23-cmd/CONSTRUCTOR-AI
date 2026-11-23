@@ -171,3 +171,16 @@ test("requires explicit timezone for persisted and mutation timestamps", () => {
   assert.doesNotThrow(() => createTask([], {title:"UTC"}, {id:"utc", now:"2026-10-24T15:00:00Z"}));
   assert.doesNotThrow(() => createTask([], {title:"Offset"}, {id:"offset", now:"2026-10-24T15:00:00+02:00"}));
 });
+
+
+test("rejects ISO 24:00 rollover in task timestamps", () => {
+  const first = add([]);
+  for (const rollover of ["2026-10-24T24:00:00Z", "2026-10-24T24:00:00+02:00"]) {
+    assert.equal(isTask({...first[0], updatedAt: rollover}), false);
+    assert.deepEqual(loadTasks(JSON.stringify([{...first[0], updatedAt: rollover}])), []);
+    assert.throws(() => createTask([], {title:"Invalid"}, {id:"invalid", now:rollover}), /Invalid ISO timestamp/);
+    assert.throws(() => updateTask(first, "task-1", {title:"Invalid"}, rollover), /Invalid ISO timestamp/);
+    assert.throws(() => toggleTask(first, "task-1", rollover), /Invalid ISO timestamp/);
+  }
+  assert.doesNotThrow(() => createTask([], {title:"Valid"}, {id:"valid", now:"2026-10-24T23:59:59Z"}));
+});
