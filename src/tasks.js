@@ -56,7 +56,7 @@ export function isTask(value) {
 }
 
 function assertState(tasks) {
-  if (!Array.isArray(tasks) || tasks.length > MAX_TASKS || tasks.some(task => !isTask(task))) {
+  if (!Array.isArray(tasks) || tasks.length > MAX_TASKS || Array.from(tasks).some(task => !isTask(task))) {
     throw new TypeError("Invalid task state");
   }
   const ids = tasks.map(task => task.id);
