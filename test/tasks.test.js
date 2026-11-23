@@ -202,3 +202,22 @@ test("rejects out-of-range minutes and seconds in ISO task timestamps", () => {
   }
   assert.doesNotThrow(() => createTask([], {title:"Valid"}, {id:"valid", now:"2026-10-24T23:59:59Z"}));
 });
+
+
+test("rejects Unicode bidi spoofing controls in task title and description", () => {
+  const controls = ["\u202a", "\u202b", "\u202c", "\u202d", "\u202e", "\u2066", "\u2067", "\u2068", "\u2069"];
+  for (const control of controls) {
+    assert.throws(() => normalizeTitle("Review" + control + "task"), RangeError);
+    assert.throws(() => normalizeDescription("Review" + control + "task"), RangeError);
+    assert.throws(() => createTask([], {title:"safe", description:"a" + control}, {id:"bidi",now:NOW}), RangeError);
+  }
+  assert.equal(normalizeTitle("Задача 日本語 العربية"), "Задача 日本語 العربية");
+});
+
+test("rejects persisted task text with bidi controls without mutating caller data", () => {
+  const original = add([]);
+  const bad = [{...original[0], title:"Review\u202eabc"}];
+  assert.equal(isTask(bad[0]), false);
+  assert.deepEqual(loadTasks(JSON.stringify(bad)), []);
+  assert.equal(original[0].title, "Review specification");
+});

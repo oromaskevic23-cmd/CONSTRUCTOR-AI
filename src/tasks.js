@@ -3,11 +3,13 @@ export const MAX_TASKS = 250;
 export const MAX_TITLE_LENGTH = 120;
 export const MAX_DESCRIPTION_LENGTH = 500;
 const ID_FORMAT = /^[A-Za-z0-9_-]{1,64}$/;
+// Prevent bidirectional display overrides in task text while retaining ordinary Unicode.
+const BIDI_FORMAT_CONTROLS = /[\u202a-\u202e\u2066-\u2069]/;
 
 export function normalizeTitle(value) {
   if (typeof value !== "string") throw new TypeError("Task title must be text");
   const result = value.trim().replace(/\s+/g, " ");
-  if (!result || result.length > MAX_TITLE_LENGTH || /[\u0000-\u001f\u007f]/.test(result)) {
+  if (!result || result.length > MAX_TITLE_LENGTH || /[\u0000-\u001f\u007f]/.test(result) || BIDI_FORMAT_CONTROLS.test(result)) {
     throw new RangeError("Task title must contain 1–120 printable characters");
   }
   return result;
@@ -16,7 +18,7 @@ export function normalizeTitle(value) {
 export function normalizeDescription(value = "") {
   if (typeof value !== "string") throw new TypeError("Description must be text");
   const result = value.trim();
-  if (result.length > MAX_DESCRIPTION_LENGTH || /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(result)) {
+  if (result.length > MAX_DESCRIPTION_LENGTH || /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(result) || BIDI_FORMAT_CONTROLS.test(result)) {
     throw new RangeError("Description must contain at most 500 characters");
   }
   return result;
