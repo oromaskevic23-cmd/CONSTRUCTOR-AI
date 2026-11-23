@@ -63,3 +63,20 @@ test("task pending independent verification cannot be reclaimed", () => {
   complete(q,token,101,"candidate");
   assert.equal(claim(q,"t1","b",200,50),null);
 });
+
+test("overflowed lease timestamp leaves queue unchanged and permits later claim", () => {
+  const q = createQueue(); enqueue(q,{id:"t1",payload:null});
+  assert.throws(() => claim(q,"t1","a",Number.MAX_SAFE_INTEGER,50),/Lease timestamp overflow/);
+  assert.equal(q.epochs.get("t1"),0);
+  assert.equal(q.tasks.get("t1").state,"QUEUED");
+  assert.equal(q.tasks.get("t1").lease,null);
+  assert.deepEqual(claim(q,"t1","a",100,50),{id:"t1",worker:"a",epoch:1});
+});
+test("fencing epoch overflow leaves queue unchanged", () => {
+  const q = createQueue(); enqueue(q,{id:"t1",payload:null});
+  q.epochs.set("t1",Number.MAX_SAFE_INTEGER);
+  assert.throws(() => claim(q,"t1","a",100,50),/Lease epoch overflow/);
+  assert.equal(q.epochs.get("t1"),Number.MAX_SAFE_INTEGER);
+  assert.equal(q.tasks.get("t1").state,"QUEUED");
+  assert.equal(q.tasks.get("t1").lease,null);
+});
