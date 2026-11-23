@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {mkdtemp,rm} from "node:fs/promises";
+import {mkdtemp,rm,writeFile,readFile} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {createQueue,enqueue,claim,complete,ownerStop} from "../src/nca-lease-reference.js";
@@ -42,5 +42,38 @@ test("file snapshot can be loaded in a fresh queue instance",async()=>{
    await saveSnapshot(path,q);
    const loaded=await loadSnapshot(path);
    assert.equal(loaded.tasks.get("a").payload,"persisted");
+ } finally {await rm(dir,{recursive:true,force:true});}
+});
+
+test("interrupted temporary snapshot does not replace committed state",async()=>{
+ const dir=await mkdtemp(join(tmpdir(),"nca-interrupt-"));
+ try {
+   const path=join(dir,"queue.json");
+   const q=createQueue();enqueue(q,{id:"committed",payload:"original"});
+   await saveSnapshot(path,q);
+   await writeFile(path+".999.tmp",'{"schema":1,"tasks":');
+   const recovered=await loadSnapshot(path);
+   assert.equal(recovered.tasks.get("committed").payload,"original");
+   assert.equal(recovered.tasks.size,1);
+ } finally {await rm(dir,{recursive:true,force:true});}
+});
+test("truncated committed snapshot fails closed rather than silently resetting queue",async()=>{
+ const dir=await mkdtemp(join(tmpdir(),"nca-corrupt-"));
+ try {
+   const path=join(dir,"queue.json");
+   const q=createQueue();enqueue(q,{id:"a",payload:"data"});
+   await saveSnapshot(path,q);
+   await writeFile(path,'{"schema":1');
+   await assert.rejects(loadSnapshot(path),SyntaxError);
+ } finally {await rm(dir,{recursive:true,force:true});}
+});
+test("saved snapshot is parseable and does not expose transient temporary path",async()=>{
+ const dir=await mkdtemp(join(tmpdir(),"nca-atomic-"));
+ try {
+   const path=join(dir,"queue.json");
+   const q=createQueue();enqueue(q,{id:"a",payload:"safe"});
+   await saveSnapshot(path,q);
+   const raw=await readFile(path,"utf8");
+   assert.equal(JSON.parse(raw).schema,1);
  } finally {await rm(dir,{recursive:true,force:true});}
 });
