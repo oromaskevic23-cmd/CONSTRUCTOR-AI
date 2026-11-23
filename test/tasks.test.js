@@ -221,3 +221,11 @@ test("rejects persisted task text with bidi controls without mutating caller dat
   assert.deepEqual(loadTasks(JSON.stringify(bad)), []);
   assert.equal(original[0].title, "Review specification");
 });
+
+ test("sparse task arrays fail closed before mutation", () => {
+  const sparse = new Array(1);
+  assert.throws(() => add(sparse), /Invalid task state/);
+  assert.throws(() => filterTasks(sparse), /Invalid task state/);
+  assert.throws(() => taskCounts(sparse), /Invalid task state/);
+  assert.equal(Object.hasOwn(sparse, 0), false);
+});
