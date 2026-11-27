@@ -25,6 +25,9 @@ let tasks = [];
 let selectedFilter = "all";
 let editingId = null;
 let storageReadBlocked = false;
+let storage;
+let lastStoredRaw = null;
+let storageChanged = false;
 
 function notify(text, error = false) {
   message.textContent = text;
@@ -36,25 +39,44 @@ function warnStorage(text) {
   storageWarning.hidden = !text;
 }
 
+function markStorageChanged() {
+  storageChanged = true;
+  warnStorage("Stored tasks changed outside this tab. New edits here stay in memory only. Copy anything you need before reloading.");
+}
+
 try {
-  const raw = window.localStorage.getItem(STORAGE_KEY);
-  tasks = raw === null ? [] : parseStoredTasks(raw);
+  storage = window.localStorage;
+  lastStoredRaw = storage.getItem(STORAGE_KEY);
+  tasks = lastStoredRaw === null ? [] : parseStoredTasks(lastStoredRaw);
 } catch {
   storageReadBlocked = true;
   submitButton.disabled = true;
   warnStorage("Stored tasks could not be read or validated. Saving is disabled to preserve existing data. Restore access or recover the stored data before continuing.");
 }
 
+window.addEventListener("storage", event => {
+  if (storageReadBlocked || event.storageArea !== storage) return;
+  if (event.key === STORAGE_KEY || event.key === null) markStorageChanged();
+});
+
 function persist(nextTasks) {
   if (storageReadBlocked) throw new Error("Saving is disabled because stored tasks could not be read or validated.");
   tasks = nextTasks;
   let saved = false;
-  try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
-    saved = true;
-    warnStorage("");
-  } catch {
-    warnStorage("Browser storage is unavailable. Changes are only in memory and will be lost when this page closes.");
+  if (!storageChanged) {
+    try {
+      if (storage.getItem(STORAGE_KEY) !== lastStoredRaw) {
+        markStorageChanged();
+      } else {
+        const raw = JSON.stringify(tasks);
+        storage.setItem(STORAGE_KEY, raw);
+        lastStoredRaw = raw;
+        saved = true;
+        warnStorage("");
+      }
+    } catch {
+      warnStorage("Browser storage is unavailable. Changes are only in memory and will be lost when this page closes.");
+    }
   }
   render();
   return saved;

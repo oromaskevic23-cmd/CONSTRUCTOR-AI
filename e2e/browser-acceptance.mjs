@@ -239,7 +239,28 @@ async function runReferenceStorage(){
     await volatile.getByRole('button',{name:'Active',exact:true}).click();
     check(await volatile.locator('#storage-warning').isVisible(),'Storage warning must persist after filtering');
   }finally{await volatile.close();}
-  outcomes.push({template:'reference-storage',status:'PASS',checks:['unreadable-preserved','write-failure-warning','no-false-save']});
+
+  // Pages in one context share localStorage and receive real cross-tab events.
+  const context=await browser.newContext();
+  try{
+    const first=await context.newPage();
+    const second=await context.newPage();
+    await first.goto(origin+'/',{waitUntil:'load'});
+    await second.goto(origin+'/',{waitUntil:'load'});
+    await first.locator('#title').fill('Saved in first tab');
+    await first.locator('#submit-task').click();
+    await first.locator('#message').filter({hasText:'Task created.'}).waitFor();
+    await second.locator('#storage-warning').filter({hasText:'changed outside this tab'}).waitFor();
+    await second.locator('#title').fill('Unsaved in second tab');
+    await second.locator('#submit-task').click();
+    await second.locator('#message').filter({hasText:'in memory only'}).waitFor();
+    assert.equal(await second.locator('#count-total').innerText(),'1');
+    const stored=await first.evaluate(()=>JSON.parse(localStorage.getItem('constructor_ai_task_manager_v1')));
+    assert.deepEqual(stored.map(task=>task.title),['Saved in first tab']);
+    await first.reload({waitUntil:'load'});
+    assert.equal(await first.locator('#task-list h3').innerText(),'Saved in first tab');
+  }finally{await context.close();}
+  outcomes.push({template:'reference-storage',status:'PASS',checks:['unreadable-preserved','write-failure-warning','no-false-save','observed-cross-tab-change-preserved']});
 }
 try{
   browser=await chromium.launch({headless:true});
