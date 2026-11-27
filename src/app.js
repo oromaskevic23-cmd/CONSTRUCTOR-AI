@@ -5,7 +5,7 @@
  * GitHub: https://github.com/oromaskevic23-cmd
  * Individual source contributions and third-party rights: see AUTHORS.md and Git history.
  */
-import {createTask, updateTask, toggleTask, deleteTask, filterTasks, taskCounts, loadTasks} from "./tasks.js";
+import {createTask, updateTask, toggleTask, deleteTask, filterTasks, taskCounts, parseStoredTasks} from "./tasks.js";
 
 const STORAGE_KEY = "constructor_ai_task_manager_v1";
 const form = document.querySelector("#task-form");
@@ -15,6 +15,7 @@ const submitButton = document.querySelector("#submit-task");
 const cancelButton = document.querySelector("#cancel-edit");
 const taskList = document.querySelector("#task-list");
 const message = document.querySelector("#message");
+const storageWarning = document.querySelector("#storage-warning");
 const counts = {
   total: document.querySelector("#count-total"),
   active: document.querySelector("#count-active"),
@@ -23,28 +24,40 @@ const counts = {
 let tasks = [];
 let selectedFilter = "all";
 let editingId = null;
+let storageReadBlocked = false;
 
 function notify(text, error = false) {
   message.textContent = text;
   message.dataset.state = error ? "error" : "ok";
 }
 
+function warnStorage(text) {
+  storageWarning.textContent = text;
+  storageWarning.hidden = !text;
+}
+
 try {
   const raw = window.localStorage.getItem(STORAGE_KEY);
-  tasks = loadTasks(raw);
-  if (raw && !tasks.length && raw !== "[]") notify("Stored data could not be validated. Nothing has been executed.", true);
+  tasks = raw === null ? [] : parseStoredTasks(raw);
 } catch {
-  notify("Browser storage is disabled. Changes will remain only until this page closes.", true);
+  storageReadBlocked = true;
+  submitButton.disabled = true;
+  warnStorage("Stored tasks could not be read or validated. Saving is disabled to preserve existing data. Restore access or recover the stored data before continuing.");
 }
 
 function persist(nextTasks) {
+  if (storageReadBlocked) throw new Error("Saving is disabled because stored tasks could not be read or validated.");
   tasks = nextTasks;
+  let saved = false;
   try {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+    saved = true;
+    warnStorage("");
   } catch {
-    notify("Storage is unavailable. Changes are temporarily in memory.", true);
+    warnStorage("Browser storage is unavailable. Changes are only in memory and will be lost when this page closes.");
   }
   render();
+  return saved;
 }
 
 function actionButton(label, action, id, extraClass = "") {
@@ -58,6 +71,15 @@ function actionButton(label, action, id, extraClass = "") {
 }
 
 function render() {
+  if (storageReadBlocked) {
+    Object.keys(counts).forEach(k => { counts[k].textContent = "—"; });
+    taskList.replaceChildren();
+    const unavailable = document.createElement("li");
+    unavailable.className = "empty-state";
+    unavailable.textContent = "Stored tasks are unavailable.";
+    taskList.append(unavailable);
+    return;
+  }
   const totals = taskCounts(tasks);
   Object.keys(counts).forEach(k => { counts[k].textContent = String(totals[k]); });
   taskList.replaceChildren();
@@ -104,8 +126,9 @@ form.addEventListener("submit", event => {
     const next = editingId
       ? updateTask(tasks, editingId, input, now)
       : createTask(tasks, input, {id: crypto.randomUUID(), now});
-    persist(next);
-    notify(editingId ? "Task updated." : "Task created.");
+    const saved = persist(next);
+    const action = editingId ? "Task updated" : "Task created";
+    notify(saved ? action + "." : action + " in memory only.", !saved);
     resetEditor();
   } catch (error) {
     notify(error.message || "Unable to save task.", true);
@@ -129,13 +152,13 @@ taskList.addEventListener("click", event => {
   if (!task) return;
   try {
     if (action === "toggle") {
-      persist(toggleTask(tasks, id, new Date().toISOString()));
-      notify("Task status updated.");
+      const saved = persist(toggleTask(tasks, id, new Date().toISOString()));
+      notify(saved ? "Task status updated." : "Task status updated in memory only.", !saved);
     } else if (action === "delete") {
       if (!window.confirm("Permanently remove this task from this browser?")) return;
-      persist(deleteTask(tasks, id));
+      const saved = persist(deleteTask(tasks, id));
       if (editingId === id) resetEditor();
-      notify("Task deleted.");
+      notify(saved ? "Task deleted." : "Task deleted in memory only.", !saved);
     } else if (action === "edit") {
       editingId = id;
       titleField.value = task.title;

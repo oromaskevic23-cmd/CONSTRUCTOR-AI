@@ -106,13 +106,15 @@ export function taskCounts(tasks) {
   return {total: tasks.length, active: tasks.length - completed, completed};
 }
 
+// Strict parser lets the UI distinguish an empty workspace from unreadable data.
+export function parseStoredTasks(raw) {
+  if (typeof raw !== "string") throw new TypeError("Stored tasks must be JSON text");
+  const parsed = JSON.parse(raw);
+  assertState(parsed);
+  return parsed.map(task => ({...task}));
+}
+
 export function loadTasks(raw) {
-  if (typeof raw !== "string") return [];
-  try {
-    const parsed = JSON.parse(raw);
-    assertState(parsed);
-    return parsed.map(task => ({...task}));
-  } catch {
-    return [];
-  }
+  try { return parseStoredTasks(raw); }
+  catch { return []; }
 }

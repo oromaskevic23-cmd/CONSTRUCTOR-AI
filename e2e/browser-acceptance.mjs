@@ -205,14 +205,50 @@ async function runHostedBoundary(){
     outcomes.push({template:'hosted-boundary',status:'PASS',checks:['local-token-disabled','no-api-request']});
   }finally{await page.close();}
 }
+async function runReferenceStorage(){
+  const invalid=await browser.newPage();
+  try{
+    await invalid.goto(origin+'/',{waitUntil:'load'});
+    const key='constructor_ai_task_manager_v1';
+    const original='{"unrecognized":"preserve me"}';
+    await invalid.evaluate(({key,original})=>localStorage.setItem(key,original),{key,original});
+    await invalid.reload({waitUntil:'load'});
+    await invalid.locator('#storage-warning').filter({hasText:'Saving is disabled'}).waitFor();
+    assert.equal(await invalid.locator('#submit-task').isDisabled(),true);
+    assert.equal(await invalid.locator('#count-total').innerText(),'—');
+    await invalid.locator('#title').fill('Do not overwrite');
+    await invalid.locator('#task-form').evaluate(form=>form.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true})));
+    assert.equal(await invalid.evaluate(key=>localStorage.getItem(key),key),original);
+  }finally{await invalid.close();}
+
+  const volatile=await browser.newPage();
+  try{
+    await volatile.addInitScript(()=>{
+      const original=Storage.prototype.setItem;
+      Storage.prototype.setItem=function(key,value){
+        if(key==='constructor_ai_task_manager_v1')throw new DOMException('Blocked','QuotaExceededError');
+        return original.call(this,key,value);
+      };
+    });
+    await volatile.goto(origin+'/',{waitUntil:'load'});
+    await volatile.locator('#title').fill('Temporary task');
+    await volatile.locator('#submit-task').click();
+    await volatile.locator('#storage-warning').filter({hasText:'only in memory'}).waitFor();
+    await volatile.locator('#message').filter({hasText:'in memory only'}).waitFor();
+    assert.equal(await volatile.evaluate(()=>localStorage.getItem('constructor_ai_task_manager_v1')),null);
+    await volatile.getByRole('button',{name:'Active',exact:true}).click();
+    check(await volatile.locator('#storage-warning').isVisible(),'Storage warning must persist after filtering');
+  }finally{await volatile.close();}
+  outcomes.push({template:'reference-storage',status:'PASS',checks:['unreadable-preserved','write-failure-warning','no-false-save']});
+}
 try{
   browser=await chromium.launch({headless:true});
   const studioPage=await browser.newPage({acceptDownloads:true});
   await studioPage.goto(origin+'/studio',{waitUntil:'load'});
   await studioPage.waitForFunction(()=>!document.querySelector('#download').disabled);
   for(const kind of TYPES)await run(kind,studioPage);
-  await runLocalAi();await runHostedBoundary();
-  assert.equal(outcomes.length,5);
+  await runLocalAi();await runHostedBoundary();await runReferenceStorage();
+  assert.equal(outcomes.length,6);
   console.log(JSON.stringify({schema:'constructor-chromium-acceptance-v1',commit:process.env.GITHUB_SHA||null,status:'PASS',outcomes}));
 }catch(error){
   console.error('BROWSER_ACCEPTANCE_FAIL: '+(error?.stack||error));
