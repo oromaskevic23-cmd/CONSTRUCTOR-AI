@@ -23,7 +23,7 @@ class Element {
 }
 
 let serial = 0;
-async function boot(t, {raw = null, failRead = false, failWrite = false} = {}) {
+async function boot(t, {raw = null, failRead = false, failWrite = false, failDownload = false, failClick = false} = {}) {
   const prior = new Map(['window', 'document', 'crypto'].map(key => [key, Object.getOwnPropertyDescriptor(globalThis, key)]));
   t.after(() => {
     for (const [key, descriptor] of prior) {
@@ -42,15 +42,31 @@ async function boot(t, {raw = null, failRead = false, failWrite = false} = {}) {
     getItem() { if (this.failRead) throw new Error('blocked read'); return this.raw; },
     setItem(_key, value) { this.writes++; if (this.failWrite) throw new Error('quota'); this.raw = value; }
   };
+  const downloads = [], urls = new Map(), revoked = [], timers = [];
   const document = {
     querySelector: element,
     querySelectorAll: () => [],
-    createElement: tag => new Element(tag)
+    createElement: tag => {
+      const el = new Element(tag);
+      if (tag === 'a') el.click = () => {
+        if (failClick) throw new Error('download click failed');
+        downloads.push({href:el.href, name:el.download, blob:urls.get(el.href)});
+      };
+      return el;
+    }
   };
   const windowListeners = new Map();
   Object.defineProperty(globalThis, 'window', {configurable:true, value:{
     localStorage:storage, confirm:()=>true,
-    addEventListener(type, listener) { windowListeners.set(type, listener); }
+    addEventListener(type, listener) { windowListeners.set(type, listener); },
+    URL: {
+      createObjectURL(blob) {
+        if (failDownload) throw new Error('download unavailable');
+        const url = 'blob:fixture-' + (urls.size + 1); urls.set(url, blob); return url;
+      },
+      revokeObjectURL(url) { revoked.push(url); urls.delete(url); }
+    },
+    setTimeout(callback) { timers.push(callback); }
   }});
   Object.defineProperty(globalThis, 'document', {configurable:true, value:document});
   let generated = 0;
@@ -64,7 +80,7 @@ async function boot(t, {raw = null, failRead = false, failWrite = false} = {}) {
   const storageEvent = (key, newValue, storageArea = storage) => {
     windowListeners.get('storage')?.({key, newValue, storageArea});
   };
-  return {element, storage, submit, storageEvent};
+  return {element, storage, submit, storageEvent, downloads, revoked, timers};
 }
 
 test('invalid stored data cannot be overwritten by a new task', async t => {
@@ -155,4 +171,75 @@ test('a later storage read failure prevents an unchecked overwrite', async t => 
   assert.equal(storage.raw, '[]');
   assert.match(element('#storage-warning').textContent, /only in memory/i);
   assert.match(element('#message').textContent, /memory only/i);
+});
+
+test('a local copy preserves memory-only tasks and an unfinished form without writing storage', async t => {
+  const {element, storage, submit, downloads, revoked, timers} = await boot(t, {raw:'[]'});
+  const newer = '[{"changed":"outside"}]';
+  storage.raw = newer;
+  submit('Only in this tab');
+  element('#title').value = 'Unsubmitted draft';
+  element('#description').value = 'Draft details <not markup>';
+  element('#download-task-copy').dispatch('click');
+  assert.equal(downloads.length, 1);
+  assert.equal(downloads[0].name, 'constructor-task-copy.json');
+  const copy = JSON.parse(await downloads[0].blob.text());
+  assert.equal(copy.format, 'constructor-reference-task-copy-v1');
+  assert.equal(copy.kind, 'current-tab');
+  assert.deepEqual(copy.tasks.map(task => task.title), ['Only in this tab']);
+  assert.deepEqual(copy.editor, {title:'Unsubmitted draft', description:'Draft details <not markup>', editingId:null});
+  assert.equal(storage.raw, newer);
+  assert.equal(storage.writes, 0);
+  assert.match(element('#message').textContent, /download requested/i);
+  assert.match(element('#storage-warning').textContent, /changed outside/i);
+  assert.equal(timers.length, 1);
+  timers[0]();
+  assert.deepEqual(revoked, [downloads[0].href]);
+});
+
+test('a malformed stored value is copied exactly without replacing it', async t => {
+  const original = '{bad:' + String.fromCharCode(0xd800) + '</script>\\n';
+  const {element, storage, downloads} = await boot(t, {raw:original});
+  element('#download-task-copy').dispatch('click');
+  assert.equal(downloads.length, 1);
+  const copy = JSON.parse(await downloads[0].blob.text());
+  assert.equal(copy.format, 'constructor-reference-task-copy-v1');
+  assert.equal(copy.kind, 'unreadable-storage-at-load');
+  assert.equal(copy.storedRaw, original);
+  assert.equal(storage.raw, original);
+  assert.equal(storage.writes, 0);
+  assert.equal(element('#submit-task').disabled, true);
+});
+
+test('a blocked initial read does not present an empty copy as recovered data', async t => {
+  const {element, storage, downloads} = await boot(t, {raw:'unreadable', failRead:true});
+  assert.equal(element('#download-task-copy').disabled, true);
+  element('#download-task-copy').dispatch('click');
+  assert.equal(downloads.length, 0);
+  assert.equal(storage.raw, 'unreadable');
+  assert.equal(storage.writes, 0);
+});
+
+test('copy preparation failure reports an error and preserves the session', async t => {
+  const {element, storage, submit, downloads} = await boot(t, {failWrite:true, failDownload:true});
+  submit('Unsaved task');
+  element('#download-task-copy').dispatch('click');
+  assert.equal(downloads.length, 0);
+  assert.equal(storage.raw, null);
+  assert.match(element('#message').textContent, /could not.*copy/i);
+  assert.equal(element('#message').dataset.state, 'error');
+  assert.equal(element('#count-total').textContent, '1');
+  assert.equal(element('#storage-warning').hidden, false);
+});
+
+test('a failed download click still schedules revocation of the created URL', async t => {
+  const {element, storage, downloads, revoked, timers} = await boot(t, {raw:'[]', failClick:true});
+  assert.equal(downloads.length, 0);
+  element('#download-task-copy').dispatch('click');
+  assert.equal(downloads.length, 0);
+  assert.equal(storage.writes, 0);
+  assert.equal(element('#message').dataset.state, 'error');
+  assert.equal(timers.length, 1);
+  timers[0]();
+  assert.equal(revoked.length, 1);
 });

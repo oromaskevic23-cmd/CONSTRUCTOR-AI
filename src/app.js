@@ -16,6 +16,7 @@ const cancelButton = document.querySelector("#cancel-edit");
 const taskList = document.querySelector("#task-list");
 const message = document.querySelector("#message");
 const storageWarning = document.querySelector("#storage-warning");
+const downloadTaskCopy = document.querySelector("#download-task-copy");
 const counts = {
   total: document.querySelector("#count-total"),
   active: document.querySelector("#count-active"),
@@ -41,7 +42,7 @@ function warnStorage(text) {
 
 function markStorageChanged() {
   storageChanged = true;
-  warnStorage("Stored tasks changed outside this tab. New edits here stay in memory only. Copy anything you need before reloading.");
+  warnStorage("Stored tasks changed outside this tab. New edits here stay in memory only. Download a task copy before reloading.");
 }
 
 try {
@@ -51,8 +52,35 @@ try {
 } catch {
   storageReadBlocked = true;
   submitButton.disabled = true;
-  warnStorage("Stored tasks could not be read or validated. Saving is disabled to preserve existing data. Restore access or recover the stored data before continuing.");
+  downloadTaskCopy.disabled = typeof lastStoredRaw !== "string";
+  warnStorage(downloadTaskCopy.disabled
+    ? "Stored tasks could not be read. Saving is disabled and a copy of stored data is unavailable until storage access is restored."
+    : "Stored tasks could not be validated. Saving is disabled to preserve existing data. You can download a copy of the original text read at page load.");
 }
+
+downloadTaskCopy.addEventListener("click", () => {
+  if (storageReadBlocked && typeof lastStoredRaw !== "string") {
+    notify("Stored data could not be read, so a copy cannot be made.", true);
+    return;
+  }
+  let url;
+  try {
+    const copy = storageReadBlocked
+      ? {format: "constructor-reference-task-copy-v1", kind: "unreadable-storage-at-load", storedRaw: lastStoredRaw}
+      : {format: "constructor-reference-task-copy-v1", kind: "current-tab", tasks,
+         editor: {title: titleField.value, description: descriptionField.value, editingId}};
+    url = window.URL.createObjectURL(new Blob([JSON.stringify(copy, null, 2)], {type: "application/json;charset=utf-8"}));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "constructor-task-copy.json";
+    link.click();
+    notify("Download requested. Automatic restore is not yet available.");
+  } catch {
+    notify("Could not prepare a task copy. Your task data has not been changed.", true);
+  } finally {
+    if (url) window.setTimeout(() => window.URL.revokeObjectURL(url), 1000);
+  }
+});
 
 window.addEventListener("storage", event => {
   if (storageReadBlocked || event.storageArea !== storage) return;
@@ -75,7 +103,7 @@ function persist(nextTasks) {
         warnStorage("");
       }
     } catch {
-      warnStorage("Browser storage is unavailable. Changes are only in memory and will be lost when this page closes.");
+      warnStorage("Browser storage is unavailable. Changes are only in memory and will be lost when this page closes. Download a task copy first.");
     }
   }
   render();

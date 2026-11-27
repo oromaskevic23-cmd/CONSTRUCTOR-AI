@@ -206,7 +206,17 @@ async function runHostedBoundary(){
   }finally{await page.close();}
 }
 async function runReferenceStorage(){
-  const invalid=await browser.newPage();
+  async function readTaskCopy(page,name){
+    const [download]=await Promise.all([
+      page.waitForEvent('download'),
+      page.getByRole('button',{name:'Download task copy'}).click()
+    ]);
+    assert.equal(download.suggestedFilename(),'constructor-task-copy.json');
+    const path=join(root,name+'.json');
+    await download.saveAs(path);
+    return JSON.parse(await readFile(path,'utf8'));
+  }
+  const invalid=await browser.newPage({acceptDownloads:true});
   try{
     await invalid.goto(origin+'/',{waitUntil:'load'});
     const key='constructor_ai_task_manager_v1';
@@ -219,9 +229,14 @@ async function runReferenceStorage(){
     await invalid.locator('#title').fill('Do not overwrite');
     await invalid.locator('#task-form').evaluate(form=>form.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true})));
     assert.equal(await invalid.evaluate(key=>localStorage.getItem(key),key),original);
+    const copy=await readTaskCopy(invalid,'unreadable-task-copy');
+    assert.equal(copy.format,'constructor-reference-task-copy-v1');
+    assert.equal(copy.kind,'unreadable-storage-at-load');
+    assert.equal(copy.storedRaw,original);
+    assert.equal(await invalid.evaluate(key=>localStorage.getItem(key),key),original);
   }finally{await invalid.close();}
 
-  const volatile=await browser.newPage();
+  const volatile=await browser.newPage({acceptDownloads:true});
   try{
     await volatile.addInitScript(()=>{
       const original=Storage.prototype.setItem;
@@ -238,10 +253,31 @@ async function runReferenceStorage(){
     assert.equal(await volatile.evaluate(()=>localStorage.getItem('constructor_ai_task_manager_v1')),null);
     await volatile.getByRole('button',{name:'Active',exact:true}).click();
     check(await volatile.locator('#storage-warning').isVisible(),'Storage warning must persist after filtering');
+    await volatile.locator('#title').fill('Unsubmitted title');
+    await volatile.locator('#description').fill('Unsubmitted details');
+    const copy=await readTaskCopy(volatile,'memory-only-task-copy');
+    assert.equal(copy.kind,'current-tab');
+    assert.deepEqual(copy.tasks.map(task=>task.title),['Temporary task']);
+    assert.deepEqual(copy.editor,{title:'Unsubmitted title',description:'Unsubmitted details',editingId:null});
+    assert.equal(await volatile.evaluate(()=>localStorage.getItem('constructor_ai_task_manager_v1')),null);
   }finally{await volatile.close();}
 
+  const blocked=await browser.newPage();
+  try{
+    await blocked.addInitScript(()=>{
+      const original=Storage.prototype.getItem;
+      Storage.prototype.getItem=function(key){
+        if(key==='constructor_ai_task_manager_v1')throw new DOMException('Blocked','SecurityError');
+        return original.call(this,key);
+      };
+    });
+    await blocked.goto(origin+'/',{waitUntil:'load'});
+    assert.equal(await blocked.getByRole('button',{name:'Download task copy'}).isDisabled(),true);
+    await blocked.locator('#storage-warning').filter({hasText:'copy of stored data is unavailable'}).waitFor();
+  }finally{await blocked.close();}
+
   // Pages in one context share localStorage and receive real cross-tab events.
-  const context=await browser.newContext();
+  const context=await browser.newContext({acceptDownloads:true});
   try{
     const first=await context.newPage();
     const second=await context.newPage();
@@ -255,12 +291,22 @@ async function runReferenceStorage(){
     await second.locator('#submit-task').click();
     await second.locator('#message').filter({hasText:'in memory only'}).waitFor();
     assert.equal(await second.locator('#count-total').innerText(),'1');
+    const copy=await readTaskCopy(second,'conflicted-task-copy');
+    assert.equal(copy.kind,'current-tab');
+    assert.deepEqual(copy.tasks.map(task=>task.title),['Unsaved in second tab']);
     const stored=await first.evaluate(()=>JSON.parse(localStorage.getItem('constructor_ai_task_manager_v1')));
     assert.deepEqual(stored.map(task=>task.title),['Saved in first tab']);
     await first.reload({waitUntil:'load'});
     assert.equal(await first.locator('#task-list h3').innerText(),'Saved in first tab');
+    await first.getByRole('button',{name:'Edit',exact:true}).click();
+    await first.locator('#title').fill('Unsubmitted edit');
+    const editCopy=await readTaskCopy(first,'unfinished-edit-task-copy');
+    assert.equal(editCopy.editor.editingId,stored[0].id);
+    assert.equal(editCopy.editor.title,'Unsubmitted edit');
+    assert.equal(editCopy.tasks[0].title,'Saved in first tab');
+    assert.equal((await first.evaluate(()=>JSON.parse(localStorage.getItem('constructor_ai_task_manager_v1'))))[0].title,'Saved in first tab');
   }finally{await context.close();}
-  outcomes.push({template:'reference-storage',status:'PASS',checks:['unreadable-preserved','write-failure-warning','no-false-save','observed-cross-tab-change-preserved']});
+  outcomes.push({template:'reference-storage',status:'PASS',checks:['unreadable-preserved','write-failure-warning','no-false-save','observed-cross-tab-change-preserved','local-json-copy','unfinished-form-copy','blocked-read-copy-disabled']});
 }
 try{
   browser=await chromium.launch({headless:true});
