@@ -5,7 +5,7 @@
  * GitHub: https://github.com/oromaskevic23-cmd
  * Individual source contributions and third-party rights: see AUTHORS.md and Git history.
  */
-import {createTask, updateTask, toggleTask, deleteTask, filterTasks, taskCounts, loadTasks} from "./tasks.js";
+import {createTask, updateTask, toggleTask, deleteTask, filterTasks, taskCounts, parseStoredTasks} from "./tasks.js";
 
 const STORAGE_KEY = "constructor_ai_task_manager_v1";
 const form = document.querySelector("#task-form");
@@ -15,6 +15,8 @@ const submitButton = document.querySelector("#submit-task");
 const cancelButton = document.querySelector("#cancel-edit");
 const taskList = document.querySelector("#task-list");
 const message = document.querySelector("#message");
+const storageWarning = document.querySelector("#storage-warning");
+const downloadTaskCopy = document.querySelector("#download-task-copy");
 const counts = {
   total: document.querySelector("#count-total"),
   active: document.querySelector("#count-active"),
@@ -23,28 +25,89 @@ const counts = {
 let tasks = [];
 let selectedFilter = "all";
 let editingId = null;
+let storageReadBlocked = false;
+let storage;
+let lastStoredRaw = null;
+let storageChanged = false;
 
 function notify(text, error = false) {
   message.textContent = text;
   message.dataset.state = error ? "error" : "ok";
 }
 
-try {
-  const raw = window.localStorage.getItem(STORAGE_KEY);
-  tasks = loadTasks(raw);
-  if (raw && !tasks.length && raw !== "[]") notify("Stored data could not be validated. Nothing has been executed.", true);
-} catch {
-  notify("Browser storage is disabled. Changes will remain only until this page closes.", true);
+function warnStorage(text) {
+  storageWarning.textContent = text;
+  storageWarning.hidden = !text;
 }
 
-function persist(nextTasks) {
-  tasks = nextTasks;
+function markStorageChanged() {
+  storageChanged = true;
+  warnStorage("Stored tasks changed outside this tab. New edits here stay in memory only. Download a task copy before reloading.");
+}
+
+try {
+  storage = window.localStorage;
+  lastStoredRaw = storage.getItem(STORAGE_KEY);
+  tasks = lastStoredRaw === null ? [] : parseStoredTasks(lastStoredRaw);
+} catch {
+  storageReadBlocked = true;
+  submitButton.disabled = true;
+  downloadTaskCopy.disabled = typeof lastStoredRaw !== "string";
+  warnStorage(downloadTaskCopy.disabled
+    ? "Stored tasks could not be read. Saving is disabled and a copy of stored data is unavailable until storage access is restored."
+    : "Stored tasks could not be validated. Saving is disabled to preserve existing data. You can download a copy of the original text read at page load.");
+}
+
+downloadTaskCopy.addEventListener("click", () => {
+  if (storageReadBlocked && typeof lastStoredRaw !== "string") {
+    notify("Stored data could not be read, so a copy cannot be made.", true);
+    return;
+  }
+  let url;
   try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+    const copy = storageReadBlocked
+      ? {format: "constructor-reference-task-copy-v1", kind: "unreadable-storage-at-load", storedRaw: lastStoredRaw}
+      : {format: "constructor-reference-task-copy-v1", kind: "current-tab", tasks,
+         editor: {title: titleField.value, description: descriptionField.value, editingId}};
+    url = window.URL.createObjectURL(new Blob([JSON.stringify(copy, null, 2)], {type: "application/json;charset=utf-8"}));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "constructor-task-copy.json";
+    link.click();
+    notify("Download requested. Automatic restore is not yet available.");
   } catch {
-    notify("Storage is unavailable. Changes are temporarily in memory.", true);
+    notify("Could not prepare a task copy. Your task data has not been changed.", true);
+  } finally {
+    if (url) window.setTimeout(() => window.URL.revokeObjectURL(url), 1000);
+  }
+});
+
+window.addEventListener("storage", event => {
+  if (storageReadBlocked || event.storageArea !== storage) return;
+  if (event.key === STORAGE_KEY || event.key === null) markStorageChanged();
+});
+
+function persist(nextTasks) {
+  if (storageReadBlocked) throw new Error("Saving is disabled because stored tasks could not be read or validated.");
+  tasks = nextTasks;
+  let saved = false;
+  if (!storageChanged) {
+    try {
+      if (storage.getItem(STORAGE_KEY) !== lastStoredRaw) {
+        markStorageChanged();
+      } else {
+        const raw = JSON.stringify(tasks);
+        storage.setItem(STORAGE_KEY, raw);
+        lastStoredRaw = raw;
+        saved = true;
+        warnStorage("");
+      }
+    } catch {
+      warnStorage("Browser storage is unavailable. Changes are only in memory and will be lost when this page closes. Download a task copy first.");
+    }
   }
   render();
+  return saved;
 }
 
 function actionButton(label, action, id, extraClass = "") {
@@ -58,6 +121,15 @@ function actionButton(label, action, id, extraClass = "") {
 }
 
 function render() {
+  if (storageReadBlocked) {
+    Object.keys(counts).forEach(k => { counts[k].textContent = "—"; });
+    taskList.replaceChildren();
+    const unavailable = document.createElement("li");
+    unavailable.className = "empty-state";
+    unavailable.textContent = "Stored tasks are unavailable.";
+    taskList.append(unavailable);
+    return;
+  }
   const totals = taskCounts(tasks);
   Object.keys(counts).forEach(k => { counts[k].textContent = String(totals[k]); });
   taskList.replaceChildren();
@@ -104,8 +176,9 @@ form.addEventListener("submit", event => {
     const next = editingId
       ? updateTask(tasks, editingId, input, now)
       : createTask(tasks, input, {id: crypto.randomUUID(), now});
-    persist(next);
-    notify(editingId ? "Task updated." : "Task created.");
+    const saved = persist(next);
+    const action = editingId ? "Task updated" : "Task created";
+    notify(saved ? action + "." : action + " in memory only.", !saved);
     resetEditor();
   } catch (error) {
     notify(error.message || "Unable to save task.", true);
@@ -129,13 +202,13 @@ taskList.addEventListener("click", event => {
   if (!task) return;
   try {
     if (action === "toggle") {
-      persist(toggleTask(tasks, id, new Date().toISOString()));
-      notify("Task status updated.");
+      const saved = persist(toggleTask(tasks, id, new Date().toISOString()));
+      notify(saved ? "Task status updated." : "Task status updated in memory only.", !saved);
     } else if (action === "delete") {
       if (!window.confirm("Permanently remove this task from this browser?")) return;
-      persist(deleteTask(tasks, id));
+      const saved = persist(deleteTask(tasks, id));
       if (editingId === id) resetEditor();
-      notify("Task deleted.");
+      notify(saved ? "Task deleted." : "Task deleted in memory only.", !saved);
     } else if (action === "edit") {
       editingId = id;
       titleField.value = task.title;
