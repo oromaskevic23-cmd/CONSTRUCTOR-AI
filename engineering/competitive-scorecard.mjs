@@ -10,6 +10,7 @@ const sha = data => createHash('sha256').update(data).digest('hex');
 const check = (ok, code) => { if (!ok) throw Error(code); };
 const HASH = /^[a-f0-9]{64}$/;
 const COMMIT = /^[a-f0-9]{40}$/;
+const VERSION = /^(?:v?\d+(?:\.\d+){1,3}(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?|[a-f0-9]{40})$/;
 const ID = /^[A-Z0-9][A-Z0-9_-]{4,90}$/;
 const PRODUCTS = new Set(['CONSTRUCTOR_AI','CURSOR','HERMES_AGENT']);
 const CATEGORIES = ['application','maintenance','security','recovery','integration','accessibility'];
@@ -17,10 +18,15 @@ const TASK_SCHEMA = 'imperial.constructor.benchmark.catalog.v1';
 const RUN_SCHEMA = 'imperial.constructor.benchmark.run.v1';
 const MODES = new Set(['OFFLINE','RESTRICTED_NETWORK']);
 const OUTCOMES = new Set(['PASS','FAIL','NOT_RUN']);
+const PROTOCOL_KEYS = Object.freeze(['hardware','networkMode','timeLimitMs','maxCostMicrousd',
+  'humanInterventionLimit','promptSetSha256','testSuiteSha256','testSuiteIndependent','dataClass','toolPolicySha256']);
 const noExtra = (obj, names, code) => check(obj && typeof obj==='object' && !Array.isArray(obj) &&
   Object.keys(obj).sort().join('|') === [...names].sort().join('|'), code);
 const bounded = (s, max=120) => typeof s==='string' && s.length>0 && s.length<=max &&
   !/[\x00-\x1f\x7f]/.test(s);
+const identified = (s,max=120) => bounded(s,max) && s.trim()===s && s.length>0 &&
+  !/^(?:latest|default|auto|unknown|unspecified|n\/a|none)$/i.test(s);
+const identifiedModel = s => identified(s) && !/(?:^|:)latest$/i.test(s);
 
 export function validateCatalog(catalog) {
   noExtra(catalog, ['schema','name','scope','version','author','taskCount','tasks'], 'CATALOG_SCHEMA');
@@ -61,13 +67,14 @@ export function evaluateRun(run, suite) {
   check(run.schema===RUN_SCHEMA && ID.test(run.trialId) && run.suiteSha256===hash,
     'RUN_SCOPE');
   noExtra(run.candidate,['product','version','sourceRevision','model','executionEnvironment'], 'CANDIDATE_SCHEMA');
-  check(PRODUCTS.has(run.candidate.product) && bounded(run.candidate.version) &&
-    bounded(run.candidate.model) && bounded(run.candidate.executionEnvironment) &&
-    (run.candidate.sourceRevision===null || COMMIT.test(run.candidate.sourceRevision)),
+  check(PRODUCTS.has(run.candidate.product) && bounded(run.candidate.version) && VERSION.test(run.candidate.version) &&
+    identifiedModel(run.candidate.model) && identified(run.candidate.executionEnvironment) &&
+    (run.candidate.sourceRevision===null || COMMIT.test(run.candidate.sourceRevision)) &&
+    (run.candidate.product!=='CONSTRUCTOR_AI' || COMMIT.test(run.candidate.sourceRevision)),
     'CANDIDATE_INVALID');
-  noExtra(run.protocol, ['hardware','networkMode','timeLimitMs','maxCostMicrousd','humanInterventionLimit','promptSetSha256','testSuiteSha256','testSuiteIndependent','dataClass','toolPolicySha256'], 'PROTOCOL_SCHEMA');
+  noExtra(run.protocol, PROTOCOL_KEYS, 'PROTOCOL_SCHEMA');
   const p=run.protocol;
-  check(bounded(p.hardware,300) && MODES.has(p.networkMode) &&
+  check(identified(p.hardware,300) && MODES.has(p.networkMode) &&
     Number.isSafeInteger(p.timeLimitMs) && p.timeLimitMs>=1000 && p.timeLimitMs<=3600000 &&
     Number.isSafeInteger(p.maxCostMicrousd) && p.maxCostMicrousd>=0 && p.maxCostMicrousd<=100000000 &&
     Number.isSafeInteger(p.humanInterventionLimit) && p.humanInterventionLimit>=0 && p.humanInterventionLimit<=20 &&
@@ -110,11 +117,17 @@ export function evaluateRun(run, suite) {
   check(byTask.size===20,'RESULT_TASK_INVENTORY');
   check(totalCostMicrousd<=p.maxCostMicrousd,'TOTAL_COST_BUDGET_EXCEEDED');
   check(unauthorizedEffects===0 || passed===0,'SECURITY_SIDE_EFFECTS_CANNOT_PASS');
+  const completed=passed+failed;
   return Object.freeze({
-    schema:'imperial.constructor.benchmark.scorecard.v1',
+    schema:'imperial.constructor.benchmark.scorecard.v2',
     trialId:run.trialId,candidate:run.candidate.product,suiteSha256:hash,
-    completed:passed+failed,passed,failed,notRun,
-    reportedPassRate:passed/20,
+    candidateVersion:run.candidate.version,sourceRevision:run.candidate.sourceRevision,
+    model:run.candidate.model,executionEnvironment:run.candidate.executionEnvironment,
+    protocol:Object.freeze(Object.fromEntries(PROTOCOL_KEYS.map(key=>[key,p[key]]))),
+    reportedResults:Object.freeze(inventory.taskIds.map(id=>Object.freeze({...byTask.get(id)}))),
+    completed,passed,failed,notRun,
+    reportedPassRate:completed ? passed/completed : null,
+    completionRate:completed/20,
     unauthorizedEffects,
     totalCostMicrousd,totalElapsedMs,totalHumanInterventions,
     qualification:'STRUCTURALLY_VALID_SELF_REPORTED_NOT_INDEPENDENTLY_ATTESTED',
@@ -128,13 +141,16 @@ export function evaluateRun(run, suite) {
 export function compareRunReports(a,b,suite) {
   const x=evaluateRun(a,suite),y=evaluateRun(b,suite);
   check(a.candidate.product!==b.candidate.product,'SAME_PRODUCT_NOT_COMPARABLE');
-  check(JSON.stringify(a.protocol)===JSON.stringify(b.protocol),'INCOMPARABLE_TEST_PROTOCOLS');
+  check(PROTOCOL_KEYS.every(key=>Object.is(a.protocol[key],b.protocol[key])),'INCOMPARABLE_TEST_PROTOCOLS');
+  check(a.candidate.executionEnvironment===b.candidate.executionEnvironment,'INCOMPARABLE_EXECUTION_ENVIRONMENTS');
   check(a.trialId!==b.trialId,'DUPLICATE_TRIAL');
+  check(x.notRun===0 && y.notRun===0,'INCOMPLETE_TRIALS_NOT_COMPARABLE');
   return Object.freeze({
-    schema:'imperial.constructor.benchmark.comparison.v1',
+    schema:'imperial.constructor.benchmark.comparison.v2',
     suiteSha256:suite.hash,
     observedCounts:{[a.candidate.product]:x,[b.candidate.product]:y},
     comparableProtocol:true,
+    comparisonQualification:'DECLARED_PROTOCOL_ONLY_NOT_INDEPENDENTLY_VERIFIED',
     claim:'NO_VERIFIED_WINNER',
     independentExecutionAttested:false,
     superiorityClaimAuthorized:false,

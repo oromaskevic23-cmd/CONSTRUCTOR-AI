@@ -19,11 +19,14 @@ The catalog is a **task specification**, not a runnable held-out test suite. Ind
 
 1. Hash and freeze the catalog bytes, then independently author and hash hidden acceptance tests **before** candidate execution. Keep tests inaccessible to the model under test.
 2. Record actual product version and source revision (where available), selected model, hardware, network policy, tool policy, time budget, total monetary budget and human-intervention limit.
+   The scorer requires a declared numeric dotted product version (optional `v`, prerelease and build suffixes) or a full 40-character lowercase Git SHA. CONSTRUCTOR AI also requires its full source SHA. Empty or floating model names such as `unknown` and `:latest` are rejected. These are format checks on supplied values, not verification that the named version or model was actually executed.
 3. Compare identical prompts, data, permissions, and where possible comparable models and resources. Use official software under approved provider terms; do not copy or fork third-party repositories.
 4. For each task capture raw artifact SHA-256, independently executed QA log hash, status `PASS`/`FAIL`/`NOT_RUN`, elapsed time, measured micro-USD cost, interventions and unauthorized side effects. Do not invent cost or execution logs.
 5. Aggregate costs are bounded across all 20 tasks. A report with any unauthorized effect cannot present passing task outcomes. Missing, duplicate, fabricated-format or out-of-scope task claims fail validation.
 6. The initial scorecard **validates input structure only**. A claimed artifact digest does not establish that the artifact exists; `testSuiteIndependent=true` does not prove real independent QA. Every report is marked `STRUCTURALLY_VALID_SELF_REPORTED_NOT_INDEPENDENTLY_ATTESTED`.
 7. The comparison output **always** says `NO_VERIFIED_WINNER` and `superiorityClaimAuthorized=false` until a future independent evidence-verification and release process is built.
+
+The v2 scorecard retains the declared product version, source revision, model, execution environment, protocol and per-task reported outcomes with artifact and QA-log hashes. It reports `reportedPassRate` as passes divided by completed tasks; it is `null` when none ran. `completionRate` separately reports completed tasks divided by all 20. The v2 comparison requires both runs to complete all 20 tasks, the same declared execution environment and equal protocol fields; the ordering of JSON object keys does not affect that equality. A structural match remains self-reported and does not authenticate results, costs, model identity or independent QA. The listed tasks and their descriptions are public; they are not themselves held-out tests.
 
 ## Offline use
 
